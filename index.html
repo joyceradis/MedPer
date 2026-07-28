@@ -77,7 +77,7 @@
             <div>
               <div class="eyebrow"><span class="eyebrow-line"></span> TERÇA-FEIRA, 28 JUL 2026</div>
               <h1>O caso antes do laudo<span class="accent">.</span></h1>
-              <p>Organize achados, evidências e raciocínio técnico antes de transformar análise em conclusão.</p>
+              <p>Organize fontes, achados e raciocínio técnico antes de transformar análise em conclusão.</p>
             </div>
             <div class="intro-actions">
               <button class="button button-quiet" id="exportButton"><span>↓</span> Exportar síntese</button>
@@ -118,6 +118,7 @@
               </div>
               <h3>Queimadura por óleo quente<br /><em>face e região cervical</em></h3>
               <p class="case-description">Análise médico-legal para avaliação de nexo, consolidação e repercussões do dano alegado.</p>
+              <div class="question-chip"><span>OBJETO PERICIAL</span><strong>Verificar dano corporal, dano estético e repercussões atuais.</strong><button aria-label="Editar objeto">↗</button></div>
               <div class="case-meta">
                 <div><span>Última atualização</span><strong>Hoje, 00:42</strong></div>
                 <div><span>Documentos</span><strong>18 arquivos</strong></div>
@@ -133,7 +134,7 @@
               <div class="panel-heading"><div><span class="section-kicker">PROGRESSO DO CASO</span><h3>Da evidência à conclusão</h3></div><span class="progress-number">68%</span></div>
               <div class="phase-track" role="list" aria-label="Etapas do caso">
                 <button class="phase-step done" data-phase="1" role="listitem"><span>01</span><strong>Caso</strong><i>✓</i></button>
-                <button class="phase-step done" data-phase="2" role="listitem"><span>02</span><strong>Evidências</strong><i>✓</i></button>
+                <button class="phase-step done" data-phase="2" role="listitem"><span>02</span><strong>Fontes</strong><i>✓</i></button>
                 <button class="phase-step active" data-phase="3" role="listitem"><span>03</span><strong>Achados</strong><i>•</i></button>
                 <button class="phase-step" data-phase="4" role="listitem"><span>04</span><strong>Raciocínio</strong><i>○</i></button>
                 <button class="phase-step" data-phase="5" role="listitem"><span>05</span><strong>Síntese</strong><i>○</i></button>
@@ -148,6 +149,7 @@
               <button class="filter-button active" data-filter="all" role="tab">Visão geral</button>
               <button class="filter-button" data-filter="causal" role="tab">Nexo</button>
               <button class="filter-button" data-filter="temporal" role="tab">Temporalidade</button>
+              <button class="filter-button" data-filter="consolidation" role="tab">Consolidação</button>
               <button class="filter-button" data-filter="impact" role="tab">Repercussões</button>
             </div>
           </section>
@@ -167,6 +169,13 @@
                 <div class="score-bar violet-bar"><span style="width: 91%"></span></div>
                 <p>Sequência temporal consistente entre evento, atendimento inicial e evolução.</p>
                 <button class="card-link">Ver linha do tempo <span>→</span></button>
+              </article>
+              <article class="reasoning-card panel" data-reasoning="consolidation">
+                <div class="reasoning-card-top"><span class="reasoning-label"><i class="reasoning-dot green-dot"></i> Consolidação</span><button class="kebab" aria-label="Opções da consolidação">•••</button></div>
+                <div class="score-row"><strong>63</strong><span>/ 100</span><em class="confidence green-text">em avaliação</em></div>
+                <div class="score-bar green-bar"><span style="width: 63%"></span></div>
+                <p>O intervalo evolutivo é conhecido, mas ainda falta delimitar a estabilidade do quadro.</p>
+                <button class="card-link">Ver evolução <span>→</span></button>
               </article>
               <article class="reasoning-card panel" data-reasoning="impact">
                 <div class="reasoning-card-top"><span class="reasoning-label"><i class="reasoning-dot amber-dot"></i> Repercussões</span><button class="kebab" aria-label="Opções das repercussões">•••</button></div>
@@ -208,6 +217,12 @@
               </div>
               <button class="add-finding" id="addFinding">＋ Adicionar achado</button>
             </article>
+          </section>
+
+          <section class="method-strip panel">
+            <div><span class="section-kicker">05 / FUNDAMENTAÇÃO</span><h3>Referências vinculadas ao caso</h3><p>O raciocínio fica rastreável quando cada conclusão aponta para sua base.</p></div>
+            <div class="method-list"><button><span>AIPE</span><strong>Brasil</strong><small>02 vínculos</small></button><button><span>ABMLPM</span><strong>Medicina legal</strong><small>01 vínculo</small></button><button><span>INML</span><strong>Portugal</strong><small>01 vínculo</small></button></div>
+            <button class="method-action" id="methodButton">Gerenciar referências <span>→</span></button>
           </section>
 
           <footer class="app-footer"><span><span class="footer-mark">✦</span> MLKS / uma camada de clareza antes da conclusão</span><span>v0.1 MVP <b>·</b> protótipo local</span></footer>

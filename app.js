@@ -58,7 +58,7 @@ $("#createCase").addEventListener("click", () => {
 
 const phaseNotes = {
   1: "Revise a pergunta pericial e os limites do objeto antes de reunir documentos.",
-  2: "As evidências devem estar identificadas, datadas e vinculadas ao ponto que sustentam.",
+  2: "Evidências, entrevista e exame clínico devem estar identificados e vinculados ao ponto que sustentam.",
   3: "Registre a base de achados antes de avançar para o raciocínio.",
   4: "Separe o que está documentado da inferência técnica e explicite o grau de suporte.",
   5: "A síntese deve responder ao objeto com fundamentação proporcional à prova disponível.",
@@ -108,6 +108,7 @@ $$('[data-finding]').forEach((tab) => {
 });
 
 $("#addFinding").addEventListener("click", () => toast("Campo de novo achado ativado no próximo ciclo do MVP."));
+$("#methodButton").addEventListener("click", () => toast("Fundamentação técnica: módulo de referências em construção."));
 $("#openCaseButton").addEventListener("click", () => toast("Caso completo: estação de análise em construção."));
 $("#caseArrow").addEventListener("click", () => toast("Abrindo o caso MLKS-024…"));
 $("#exportButton").addEventListener("click", () => toast("Síntese preparada: exportação será habilitada na próxima versão."));

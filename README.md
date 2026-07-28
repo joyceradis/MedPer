@@ -7,9 +7,9 @@ MLKS é uma estação de trabalho médico-legal pensada para organizar o caminho
 Esta primeira versão é um MVP estático, sem backend e sem envio de dados. Ela demonstra a arquitetura de uma análise estruturada:
 
 - caso e objeto da análise;
-- evidências e documentos;
+- fontes do caso: evidências, entrevista e exame clínico;
 - base de achados;
-- motor de raciocínio separado em nexo causal, temporalidade e repercussões;
+- motor de raciocínio separado em nexo causal, temporalidade, consolidação e repercussões;
 - sinalizações técnicas e pendências;
 - linha do caso e síntese.
 
