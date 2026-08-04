@@ -16,6 +16,11 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      PYTHONPATH: .
+      MEDPER_DATABASE_URL: sqlite:///./test_medper.db
+      MEDPER_JWT_SECRET: test-secret-that-is-longer-than-32-bytes
+      MEDPER_PUBLIC_API_URL: http://localhost:8000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
