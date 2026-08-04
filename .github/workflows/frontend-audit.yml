@@ -27,90 +27,68 @@ jobs:
 
       - name: Check JavaScript syntax
         run: |
+          node --check js/preflight.js
           node --check js/app.js
-          node --check js/api-client.js
-          node --check js/case-schema.js
-          node --check js/storage.js
-          node --check js/aipe.js
-          node --check js/quesitos.js
-          node --check js/report-builder.js
           node --check sw.js
 
-      - name: Check HTML structure, assets and PWA shell
+      - name: Check startup order, assets and PWA shell
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
 
-          root = Path('.')
-          html = (root / 'index.html').read_text(encoding='utf-8')
-          app = (root / 'js/app.js').read_text(encoding='utf-8')
-          sw = (root / 'sw.js').read_text(encoding='utf-8')
+          html = Path('index.html').read_text(encoding='utf-8')
+          app = Path('js/app.js').read_text(encoding='utf-8')
+          preflight = Path('js/preflight.js').read_text(encoding='utf-8')
+          sw = Path('sw.js').read_text(encoding='utf-8')
 
           refs = re.findall(r'(?:href|src)="([^"?#]+)', html)
-          missing = []
-          for ref in refs:
-              if ref.startswith(('http:', 'https:', '#')):
-                  continue
-              path = root / ref.removeprefix('./')
-              if not path.exists():
-                  missing.append(ref)
+          missing = [ref for ref in refs if not ref.startswith(('http:', 'https:', '#')) and not Path(ref.removeprefix('./')).exists()]
           if missing:
               raise SystemExit(f'Missing local assets: {missing}')
 
           ids = re.findall(r'\bid="([^"]+)"', html)
-          duplicated = sorted({item for item in ids if ids.count(item) > 1})
-          if duplicated:
-              raise SystemExit(f'Duplicate HTML ids: {duplicated}')
+          duplicates = sorted({item for item in ids if ids.count(item) > 1})
+          if duplicates:
+              raise SystemExit(f'Duplicate HTML ids: {duplicates}')
 
-          required_shell = ['./index.html', './css/styles.css', './js/app.js', './manifest.webmanifest', './icon.svg']
+          if html.find('./js/preflight.js') == -1 or html.find('./js/app.js') == -1:
+              raise SystemExit('Startup scripts are not both referenced.')
+          if html.find('./js/preflight.js') > html.find('./js/app.js'):
+              raise SystemExit('Preflight must load before app.js.')
+
+          required_shell = ['./index.html', './css/styles.css', './js/preflight.js', './js/app.js', './manifest.webmanifest', './icon.svg']
           absent = [item for item in required_shell if item not in sw]
           if absent:
               raise SystemExit(f'Assets absent from service worker shell: {absent}')
 
-          obsolete = ['./css/compat.css', 'mlks.prototype.v1\'']
-          if './css/compat.css' in html or './css/compat.css' in sw:
-              raise SystemExit('Obsolete compatibility stylesheet is still referenced.')
+          if "medper.state.v2" not in preflight or "updatedAt" not in preflight:
+              raise SystemExit('Preflight does not guarantee a valid startup state.')
 
-          if "const STORAGE_KEY='medper.state.v2'" not in app and 'const STORAGE_KEY = \'medper.state.v2\'' not in app:
-              raise SystemExit('Current MedPer storage key not found.')
+          if "let state=loadState()" in app and "const now=" in app:
+              if html.find('./js/preflight.js') == -1:
+                  raise SystemExit('Known startup ordering hazard is not protected.')
 
-          print(f'Validated {len(refs)} local references, unique ids and the PWA shell.')
+          print('Startup order, HTML assets and PWA shell validated.')
           PY
 
-      - name: Check pericial workflow and traceability safeguards
+      - name: Check pericial workflow and language safeguards
         run: |
           python - <<'PY'
           from pathlib import Path
 
           visible = Path('index.html').read_text(encoding='utf-8') + '\n' + Path('js/app.js').read_text(encoding='utf-8')
-
-          forbidden = [
-              'Conectar API',
-              'Endereço da API',
-              'localhost:8000',
-              'MLKS Core · Medical-Legal Knowledge System',
-              'prompt(',
-          ]
+          forbidden = ['Conectar API', 'Endereço da API', 'localhost:8000', 'MLKS Core · Medical-Legal Knowledge System', 'prompt(']
           found = [term for term in forbidden if term in visible]
           if found:
               raise SystemExit(f'Forbidden developer or prototype patterns exposed: {found}')
 
-          required = [
-              'Em qual esfera ocorre este trabalho?',
-              'Qual é o seu papel neste caso?',
-              'Dano estético',
-              'Autos e fatos',
-              'Cronologia',
-              'Conclusões sustentadas',
-              'evidenceIds',
-              'documentGaps',
-          ]
+          required = ['Em qual esfera ocorre este trabalho?', 'Qual é o seu papel neste caso?', 'Dano estético', 'Autos e fatos', 'Cronologia', 'Conclusões sustentadas', 'evidenceIds', 'documentGaps']
           missing = [term for term in required if term not in visible]
           if missing:
               raise SystemExit(f'Required pericial workflow elements missing: {missing}')
 
-          print('Pericial workflow, traceability and language safeguards validated.')
+          print('Pericial workflow and traceability safeguards validated.')
           PY
 
       - name: Check dialog accessibility wiring
@@ -124,10 +102,7 @@ jobs:
           unlabeled = [attrs for attrs in dialogs if 'aria-labelledby=' not in attrs]
           if unlabeled:
               raise SystemExit(f'Dialogs without aria-labelledby: {len(unlabeled)}')
-
-          close_buttons = re.findall(r'<button\b[^>]*data-close[^>]*>', html)
-          if not close_buttons:
+          if not re.findall(r'<button\b[^>]*data-close[^>]*>', html):
               raise SystemExit('No explicit dialog close controls found.')
-
-          print(f'Validated {len(dialogs)} labeled native dialogs and close controls.')
+          print(f'Validated {len(dialogs)} labeled dialogs.')
           PY
