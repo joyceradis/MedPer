@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medper-shell-v5-20260804';
+const CACHE_NAME = 'medper-shell-v6-20260804';
 const APP_SHELL = [
   './',
   './index.html',
