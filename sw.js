@@ -1,8 +1,9 @@
-const CACHE_NAME = 'medper-shell-v6-20260804';
+const CACHE_NAME = 'medper-shell-v7-20260804';
 const APP_SHELL = [
   './',
   './index.html',
   './css/styles.css',
+  './css/compat.css',
   './js/case-schema.js',
   './js/storage.js',
   './js/aipe.js',
