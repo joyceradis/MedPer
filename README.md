@@ -1,26 +1,61 @@
 # MLKS
 
-## Medical Legal Knowledge System
+**Medical-Legal Knowledge System** — protótipo de uma plataforma de apoio ao raciocínio médico-legal, centrada em evidências, achados estruturados e conclusões rastreáveis.
 
-MLKS é uma estação de trabalho médico-legal pensada para organizar o caminho entre a documentação e a conclusão pericial.
+> Não é um gerador de laudos. O laudo é uma saída possível de um domínio médico-legal estruturado.
 
-Esta primeira versão é um MVP estático, sem backend e sem envio de dados. Ela demonstra a arquitetura de uma análise estruturada:
+## Protótipo
 
-- caso e objeto da análise;
-- fontes do caso: evidências, entrevista e exame clínico;
-- base de achados;
-- motor de raciocínio separado em nexo causal, temporalidade, consolidação e repercussões;
-- sinalizações técnicas e pendências;
-- linha do caso e síntese.
+O MVP atual é um PWA estático, sem dependências externas, pronto para GitHub Pages.
 
-## Executar
+### Recursos
 
-Abra `index.html` em um navegador. O projeto não exige instalação de dependências ou processo de build e pode ser publicado diretamente pelo GitHub Pages.
+- criação de casos e definição do objeto pericial;
+- linha do tempo;
+- evidências documentais, clínicas e fotográficas;
+- observações vinculadas às fontes;
+- achados clínicos estruturados;
+- grafo médico-legal visual;
+- análise manual de nexo, temporalidade, consolidação e repercussões;
+- regra **nenhuma conclusão sem evidência**;
+- matriz de rastreabilidade;
+- auditoria estrutural;
+- autosave local;
+- exportação JSON;
+- funcionamento offline após o primeiro carregamento.
 
-## Próximas camadas
+## Executar localmente
 
-1. persistência segura de casos e documentos;
-2. ingestão e classificação de evidências;
-3. formulários periciais reutilizáveis;
-4. trilha de auditoria dos achados e das conclusões;
-5. exportação de síntese e laudo em formato editável.
+Como o projeto usa Service Worker, execute por HTTP em vez de abrir o arquivo diretamente:
+
+```bash
+python3 -m http.server 8080
+```
+
+Abra `http://localhost:8080`.
+
+## Publicação
+
+O projeto pode ser publicado diretamente pelo GitHub Pages a partir da branch `main` e da raiz do repositório.
+
+## Segurança
+
+O protótipo grava dados no `localStorage` do navegador. **Não utilize dados reais, identificáveis, sigilosos ou assistenciais.** Autenticação, criptografia, segregação de acesso, auditoria imutável e backend seguro pertencem à próxima fase.
+
+## Documentação
+
+- [Arquitetura](./docs/ARCHITECTURE.md)
+- [JSON Schema](./data/mlks.schema.json)
+
+## Princípios
+
+- data first;
+- fatos antes de conclusões;
+- rastreabilidade integral;
+- IA assistiva, não decisória;
+- metodologias desacopladas do núcleo clínico;
+- validação humana obrigatória.
+
+## Estrutura unificada desta entrega
+
+O caso agora inclui delimitação judicial, cronologia, exame pericial, avaliação estética AIPE, quesitos, montador de laudo e validação final. As páginas em `pages/` e `casos/` são rotas estáticas para as respectivas áreas da SPA, mantendo publicação simples no GitHub Pages.

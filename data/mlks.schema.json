@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://joyceradis.github.io/MLKS/data/mlks.schema.json",
+  "title": "MLKS Case Export",
+  "type": "object",
+  "required": ["schema", "exportedAt", "application", "case"],
+  "properties": {
+    "schema": { "type": "string" },
+    "exportedAt": { "type": "string", "format": "date-time" },
+    "application": { "type": "string" },
+    "case": { "$ref": "#/$defs/case" }
+  },
+  "$defs": {
+    "identifier": { "type": "string", "minLength": 1 },
+    "case": {
+      "type": "object",
+      "required": ["id", "title", "objectType", "evidence", "observations", "findings", "reasoning", "conclusions"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1 },
+        "reference": { "type": "string" },
+        "objectType": {
+          "enum": [
+            "Dano corporal",
+            "Dano estético",
+            "Incapacidade",
+            "Nexo causal",
+            "Erro médico",
+            "Responsabilidade profissional",
+            "Acidente de trabalho",
+            "Acidente de trânsito"
+          ]
+        },
+        "status": { "type": "string" },
+        "scope": { "type": "string" },
+        "person": { "type": "object" },
+        "events": { "type": "array", "items": { "$ref": "#/$defs/event" } },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+        "observations": { "type": "array", "items": { "$ref": "#/$defs/observation" } },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+        "reasoning": { "$ref": "#/$defs/reasoning" },
+        "conclusions": { "type": "array", "items": { "$ref": "#/$defs/conclusion" } }
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": ["id", "date", "title", "description"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "date": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "sourceIds": { "type": "array", "items": { "$ref": "#/$defs/identifier" } }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["id", "type", "title", "description"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "reliability": { "type": "string" }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "required": ["id", "sourceId", "title", "text"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "sourceId": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string" },
+        "text": { "type": "string" }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "type", "title", "description", "observationIds", "evidenceIds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "confidence": { "type": "string" },
+        "observationIds": { "type": "array", "items": { "$ref": "#/$defs/identifier" } },
+        "evidenceIds": { "type": "array", "items": { "$ref": "#/$defs/identifier" } }
+      }
+    },
+    "reasoning": {
+      "type": "object",
+      "properties": {
+        "nexus": { "type": "string" },
+        "temporality": { "type": "string" },
+        "consolidation": { "type": "string" },
+        "repercussions": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "conclusion": {
+      "type": "object",
+      "required": ["id", "title", "text", "evidenceIds", "findingIds", "status"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string" },
+        "text": { "type": "string" },
+        "status": { "type": "string" },
+        "evidenceIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/identifier" } },
+        "findingIds": { "type": "array", "items": { "$ref": "#/$defs/identifier" } }
+      }
+    }
+  }
+}

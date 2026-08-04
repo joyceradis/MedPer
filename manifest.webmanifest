@@ -1,0 +1,19 @@
+{
+  "name": "MLKS · Medical-Legal Knowledge System",
+  "short_name": "MLKS",
+  "description": "Plataforma de apoio ao raciocínio médico-legal com rastreabilidade de evidências.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#071117",
+  "theme_color": "#0b1720",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
