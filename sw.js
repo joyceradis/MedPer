@@ -1,4 +1,4 @@
-const CACHE_NAME = 'medper-shell-v4-20260804';
+const CACHE_NAME = 'medper-shell-v5-20260804';
 const APP_SHELL = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const APP_SHELL = [
   './js/quesitos.js',
   './js/report-builder.js',
   './js/app.js',
+  './js/api-client.js',
   './manifest.webmanifest',
   './icon.svg',
   './data/mlks.schema.json'
@@ -32,7 +33,6 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
