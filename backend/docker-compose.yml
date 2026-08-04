@@ -5,20 +5,44 @@ services:
       POSTGRES_DB: medper
       POSTGRES_USER: medper_owner
       POSTGRES_PASSWORD: dev-owner-password
-    volumes: [medper_db:/var/lib/postgresql/data]
+    volumes:
+      - medper_db:/var/lib/postgresql/data
+      - ./scripts/init_database.sql:/docker-entrypoint-initdb.d/10-init-role.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U medper_owner -d medper"]
       interval: 5s
       timeout: 5s
       retries: 10
-  api:
+
+  migrate:
     build: .
+    user: root
+    command: >-
+      sh -c "alembic upgrade head &&
+      psql postgresql://medper_owner:dev-owner-password@db:5432/medper -f scripts/restrict_audit.sql &&
+      psql postgresql://medper_owner:dev-owner-password@db:5432/medper -f scripts/enable_rls.sql"
     environment:
       MEDPER_DATABASE_URL: postgresql+psycopg://medper_owner:dev-owner-password@db:5432/medper
-      MEDPER_JWT_SECRET: change-this-secret-to-at-least-32-random-bytes
-    ports: ["8000:8000"]
     depends_on:
       db:
         condition: service_healthy
+
+  api:
+    build: .
+    environment:
+      MEDPER_DATABASE_URL: postgresql+psycopg://medper_app:dev-app-password@db:5432/medper
+      MEDPER_JWT_SECRET: dev-only-secret-change-before-deployment-123456
+      MEDPER_FILE_ENCRYPTION_KEY: AKpHjv-oqAzU91RNNwRc0sVjMScZkQC7TkWGf1yYD4M=
+      MEDPER_CORS_ORIGINS: http://localhost:8080,https://joyceradis.github.io
+      MEDPER_STORAGE_PATH: /app/storage
+      MEDPER_PUBLIC_API_URL: http://localhost:8000
+    ports: ["8000:8000"]
+    volumes:
+      - medper_files:/app/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
   medper_db: {}
+  medper_files: {}
