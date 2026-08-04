@@ -11,7 +11,7 @@ on:
       - 'backend/**'
 
 jobs:
-  test:
+  sqlite-tests:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -30,4 +30,52 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - run: python -m compileall -q app
-      - run: pytest -q
+      - run: pytest -q -k 'not postgres_rls'
+
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: medper
+          POSTGRES_USER: medper_owner
+          POSTGRES_PASSWORD: owner-test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U medper_owner -d medper"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PYTHONPATH: .
+      PGPASSWORD: owner-test-password
+      MEDPER_JWT_SECRET: postgres-test-secret-that-is-longer-than-32-bytes
+      MEDPER_PUBLIC_API_URL: http://localhost:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Create restricted application role
+        run: psql -h localhost -U medper_owner -d medper -f scripts/init_database.sql
+      - name: Apply migrations as owner
+        env:
+          MEDPER_DATABASE_URL: postgresql+psycopg://medper_owner:owner-test-password@localhost:5432/medper
+        run: alembic upgrade head
+      - name: Apply grants and RLS
+        run: |
+          psql -h localhost -U medper_owner -d medper -f scripts/restrict_audit.sql
+          psql -h localhost -U medper_owner -d medper -f scripts/enable_rls.sql
+      - name: Run PostgreSQL integration test as restricted role
+        env:
+          MEDPER_DATABASE_URL: postgresql+psycopg://medper_app:dev-app-password@localhost:5432/medper
+          MEDPER_POSTGRES_TEST: '1'
+        run: pytest -q tests/test_postgres_integration.py
