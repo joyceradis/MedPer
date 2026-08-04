@@ -1,0 +1,71 @@
+name: Frontend audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'css/**'
+      - 'js/**'
+      - 'sw.js'
+      - 'manifest.webmanifest'
+      - '.github/workflows/frontend-audit.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'css/**'
+      - 'js/**'
+      - 'sw.js'
+      - 'manifest.webmanifest'
+      - '.github/workflows/frontend-audit.yml'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check JavaScript syntax
+        run: |
+          node --check js/app.js
+          node --check js/api-client.js
+          node --check js/case-schema.js
+          node --check js/storage.js
+          node --check js/aipe.js
+          node --check js/quesitos.js
+          node --check js/report-builder.js
+          node --check sw.js
+      - name: Check local asset references and service worker shell
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path('.')
+          html = (root / 'index.html').read_text(encoding='utf-8')
+          refs = re.findall(r'(?:href|src)="([^"?#]+)', html)
+          missing = []
+          for ref in refs:
+              if ref.startswith(('http:', 'https:', '#')):
+                  continue
+              path = root / ref.removeprefix('./')
+              if not path.exists():
+                  missing.append(ref)
+          if missing:
+              raise SystemExit(f'Missing local assets: {missing}')
+          sw = (root / 'sw.js').read_text(encoding='utf-8')
+          required = ['./index.html', './css/styles.css', './css/compat.css', './js/app.js', './js/api-client.js']
+          absent = [item for item in required if item not in sw]
+          if absent:
+              raise SystemExit(f'Assets absent from service worker shell: {absent}')
+          print(f'Validated {len(refs)} HTML references and the PWA shell.')
+          PY
+      - name: Reject developer jargon in the visible interface
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          visible = (Path('index.html').read_text(encoding='utf-8') + '\n' + Path('js/app.js').read_text(encoding='utf-8'))
+          forbidden = ['Conectar API', 'Endereço da API', 'localhost:8000', 'MLKS Core · Medical-Legal Knowledge System']
+          found = [term for term in forbidden if term in visible]
+          if found:
+              raise SystemExit(f'Developer-facing language exposed: {found}')
+          print('No prohibited developer jargon exposed in the primary interface.')
+          PY
