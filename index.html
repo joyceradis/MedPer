@@ -2,22 +2,100 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f4f1e9">
-  <meta name="description" content="MedPer — método médico-pericial estruturado, do objeto à conclusão.">
-  <title>MedPer · Método médico-pericial</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=20260804.11">
-  <link rel="icon" href="./icon.svg?v=20260804.11" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/styles.css?v=20260804.11">
-  <link rel="stylesheet" href="./css/methodology.css?v=20260804.11">
-  <link rel="stylesheet" href="./css/guided-methodology.css?v=20260804.11">
-  <link rel="stylesheet" href="./css/auth.css?v=20260804.11">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f1e8">
+  <meta name="description" content="MedPer organiza o raciocínio médico-pericial do objeto à conclusão, com protocolos guiados, rastreabilidade e clareza técnica.">
+  <title>MedPer · Método médico-pericial estruturado</title>
+  <link rel="icon" href="./icon.svg?v=20260804.12" type="image/svg+xml">
+  <link rel="stylesheet" href="./css/marketing.css?v=20260804.12">
 </head>
 <body>
-  <a class="skip-link" href="#workspace">Ir para o conteúdo</a>
-  <div id="app"></div>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <noscript>O MedPer precisa de JavaScript habilitado para funcionar.</noscript>
-  <script type="module" src="./js/main.js?v=20260804.11"></script>
+  <div class="site-wrap">
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a class="site-brand" href="./" aria-label="MedPer — início">
+          <span class="site-brand-mark">M</span>
+          <span class="site-brand-copy"><strong>MedPer</strong><small>Método médico-pericial</small></span>
+        </a>
+        <nav class="site-nav" aria-label="Navegação principal">
+          <a href="#produto">Produto</a>
+          <a href="#protocolos">Protocolos</a>
+          <a href="#seguranca">Segurança</a>
+          <a href="#planos">Planos</a>
+          <a class="site-cta" href="./app.html">Entrar</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="marketing-main">
+      <section class="marketing-hero">
+        <div>
+          <span class="kicker">Medicina pericial</span>
+          <h1>Raciocínio pericial organizado antes do laudo.</h1>
+          <p>Estruture objeto, autos, fatos, cronologia, exame, metodologia, quesitos e conclusão em um fluxo construído para a prática médico-pericial.</p>
+          <div class="hero-actions">
+            <a class="site-cta" href="./app.html">Acessar o MedPer</a>
+            <a class="site-cta secondary" href="#produto">Conhecer o fluxo</a>
+          </div>
+        </div>
+        <aside class="hero-proof">
+          <strong>O software organiza. A decisão continua médica.</strong>
+          <p>Protocolos guiados ajudam a demonstrar como a conclusão foi construída, sem automatizar o juízo pericial.</p>
+        </aside>
+      </section>
+
+      <section class="marketing-section" id="produto">
+        <div class="section-heading">
+          <h2>Da pergunta técnica à conclusão sustentada.</h2>
+          <p>O MedPer reúne as etapas que normalmente ficam dispersas entre autos, anotações, planilhas e modelos de laudo.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card"><span>01</span><h3>Organize as fontes</h3><p>Cadastre documentos, extraia fatos e construa uma cronologia vinculada ao material analisado.</p></article>
+          <article class="feature-card"><span>02</span><h3>Execute o método</h3><p>Siga um protocolo compatível com a matéria, registrando achados, limitações e critérios técnicos.</p></article>
+          <article class="feature-card"><span>03</span><h3>Revise a sustentação</h3><p>Identifique bloqueios, ressalvas, hipóteses alternativas e o alcance admissível da conclusão.</p></article>
+        </div>
+      </section>
+
+      <section class="marketing-section" id="protocolos">
+        <div class="section-heading">
+          <h2>Fluxos próprios para objetos periciais distintos.</h2>
+          <p>A interface é guiada, mas o método muda conforme a matéria. O AIPE permanece restrito ao dano estético.</p>
+        </div>
+        <div class="protocol-grid">
+          <article class="protocol-card"><span>DE</span><h3>Dano estético</h3><p>Consolidação, descrição morfológica, percepção estática e dinâmica, fotografia e AIPE.</p></article>
+          <article class="protocol-card"><span>IN</span><h3>Incapacidade</h3><p>Função, atividade habitual, exigências, capacidade residual, temporalidade e reabilitação.</p></article>
+          <article class="protocol-card"><span>NX</span><h3>Nexo causal</h3><p>Evento, compatibilidade temporal e anatômica, mecanismo, estado anterior e causas alternativas.</p></article>
+          <article class="protocol-card"><span>RP</span><h3>Responsabilidade profissional</h3><p>Contexto assistencial, indicação, consentimento, execução, evolução, dano e nexo.</p></article>
+        </div>
+      </section>
+
+      <section class="marketing-section" id="seguranca">
+        <div class="security-band">
+          <div><span class="kicker">Estrutura multiusuário</span><h2>Acesso individual e compartilhamento controlado.</h2><p>A arquitetura está sendo preparada para contas, organizações, casos privados, colaboração explícita e auditoria de ações.</p></div>
+          <div class="security-list">
+            <div class="security-item"><strong>Identidade própria</strong><p>Cada profissional terá sessão e espaço vinculados à sua conta.</p></div>
+            <div class="security-item"><strong>Casos isolados</strong><p>Permissões serão validadas no banco, não apenas na interface.</p></div>
+            <div class="security-item"><strong>Organizações</strong><p>Salas e equipes poderão operar com papéis e assentos definidos.</p></div>
+            <div class="security-item"><strong>Rastreabilidade</strong><p>Ações críticas poderão ser registradas sem expor conteúdo sensível em logs.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="marketing-section" id="planos">
+        <div class="section-heading">
+          <h2>Planos em preparação para o piloto.</h2>
+          <p>Os valores serão publicados após a conexão do banco, a validação dos limites e o piloto fechado.</p>
+        </div>
+        <div class="plan-grid">
+          <article class="plan-card"><span class="kicker">Individual</span><h3>Para atuação autônoma</h3><div class="plan-price">Em definição</div><ul><li>Uma profissional</li><li>Casos privados</li><li>Protocolos guiados</li><li>Documento final</li></ul><a class="site-cta secondary" href="./app.html">Acessar demonstração</a></article>
+          <article class="plan-card"><span class="kicker">Equipe</span><h3>Para salas e grupos</h3><div class="plan-price">Em definição</div><ul><li>Múltiplos assentos</li><li>Gestão de membros</li><li>Compartilhamento controlado</li><li>Auditoria de ações</li></ul><a class="site-cta secondary" href="./app.html">Conhecer o produto</a></article>
+          <article class="plan-card"><span class="kicker">Institucional</span><h3>Para operações maiores</h3><div class="plan-price">Sob consulta</div><ul><li>Contratação personalizada</li><li>Políticas próprias</li><li>Implantação assistida</li><li>Suporte definido em contrato</li></ul><a class="site-cta secondary" href="mailto:contato@medper.com.br">Falar sobre contratação</a></article>
+        </div>
+        <p class="plans-note">Nenhum recurso de segurança ou cobrança será anunciado como disponível antes da validação operacional.</p>
+      </section>
+    </main>
+
+    <footer class="site-footer"><div class="site-footer-inner"><strong>MedPer</strong><span>Produto em desenvolvimento e validação fechada.</span><a href="./app.html">Entrar na aplicação</a></div></footer>
+  </div>
 </body>
 </html>
