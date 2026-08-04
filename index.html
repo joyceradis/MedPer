@@ -68,5 +68,6 @@
   <script src="./js/report-builder.js?v=20260804.3" defer></script>
   <script src="./js/api-client.js?v=20260804.3" defer></script>
   <script src="./js/app.js?v=20260804.3" defer></script>
+  <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
 </body>
 </html>
