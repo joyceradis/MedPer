@@ -80,17 +80,14 @@ async function loadWorkspace(supabase,user) {
   return {profile, memberships, currentOrganization:selected.organization, currentRole:selected.role};
 }
 
-export async function createAuthController({root}) {
+export async function createAuthController({root,onAccessGranted=()=>{},onAccessRevoked=()=>{}}) {
   const configured=isSupabaseConfigured();
   let supabase=null;
   let session=null;
   let workspace=null;
   let appStarted=false;
-  const listeners=new Set();
 
   const snapshot=()=>({configured,session,workspace,appStarted});
-  const notify=()=>listeners.forEach(listener=>listener(snapshot()));
-  const subscribe=listener=>{listeners.add(listener);return()=>listeners.delete(listener)};
 
   function ensureAccountDialog(){
     if(document.querySelector('#authAccountDialog'))return;
@@ -113,9 +110,7 @@ export async function createAuthController({root}) {
   async function signOut(){
     if(supabase)await supabase.auth.signOut();
     session=null;workspace=null;appStarted=false;
-    root.innerHTML=authShell('Sessão encerrada.');
-    bindAuthScreen();
-    notify();
+    onAccessRevoked();
   }
 
   async function authenticate(kind,email,password){
@@ -129,19 +124,19 @@ export async function createAuthController({root}) {
   }
 
   async function signInWithGoogle(){
-    const {error}=await supabase.auth.signInWithOAuth({
-      provider:'google',
-      options:{redirectTo:SUPABASE_CONFIG.redirectUrl}
-    });
+    const {error}=await supabase.auth.signInWithOAuth({provider:'google',options:{redirectTo:SUPABASE_CONFIG.redirectUrl}});
     if(error)throw error;
   }
 
   function bindAuthScreen(){
-    root.querySelector('[data-auth-local]')?.addEventListener('click',()=>{
-      root.innerHTML='';
-      appStarted=true;
-      notify();
-    });
+    const localButton=root.querySelector('[data-auth-local]');
+    if(localButton){
+      localButton.addEventListener('click',event=>{
+        event.preventDefault();
+        appStarted=true;
+        onAccessGranted();
+      },{once:true});
+    }
 
     root.querySelector('[data-auth-google]')?.addEventListener('click',async event=>{
       const button=event.currentTarget;button.disabled=true;
@@ -152,16 +147,13 @@ export async function createAuthController({root}) {
       event.preventDefault();
       const form=event.currentTarget;
       if(!form.reportValidity())return;
-      const submitter=event.submitter;
-      const kind=submitter?.dataset.authAction||'signin';
+      const kind=event.submitter?.dataset.authAction||'signin';
       const formData=new FormData(form);
       form.querySelectorAll('button').forEach(button=>button.disabled=true);
       showError('');
       try{
         const result=await authenticate(kind,String(formData.get('email')||'').trim(),String(formData.get('password')||''));
-        if(result.pendingConfirmation){
-          root.querySelector('[data-auth-error]').textContent='Conta criada. Confirme o e-mail para entrar.';
-        }
+        if(result.pendingConfirmation)root.querySelector('[data-auth-error]').textContent='Conta criada. Confirme o e-mail para entrar.';
       }catch(error){showError(error.message)}finally{form.querySelectorAll('button').forEach(button=>button.disabled=false)}
     });
   }
@@ -177,20 +169,17 @@ export async function createAuthController({root}) {
       workspace=null;
       appStarted=false;
       if(configured){root.innerHTML=authShell();bindAuthScreen()}
-      notify();
       return;
     }
     root.innerHTML='<main class="auth-shell"><section class="auth-card"><p>Preparando seu espaço…</p></section></main>';
     try{
       workspace=await loadWorkspace(supabase,session.user);
-      root.innerHTML='';
       appStarted=true;
-      notify();
+      onAccessGranted();
     }catch(error){
       appStarted=false;
       root.innerHTML=authShell(`Não foi possível preparar a conta: ${error.message}`);
       bindAuthScreen();
-      notify();
     }
   }
 
@@ -202,7 +191,7 @@ export async function createAuthController({root}) {
   if(!configured){
     root.innerHTML=setupShell();
     bindAuthScreen();
-    return {configured:false,subscribe,getState:snapshot,openAccount};
+    return {configured:false,getState:snapshot,openAccount};
   }
 
   const module=await import('https://esm.sh/@supabase/supabase-js@2');
@@ -214,12 +203,5 @@ export async function createAuthController({root}) {
   await handleSession(data.session);
   supabase.auth.onAuthStateChange((_event,nextSession)=>{void handleSession(nextSession)});
 
-  return {
-    configured:true,
-    supabase,
-    subscribe,
-    getState:snapshot,
-    openAccount,
-    signOut
-  };
+  return {configured:true,supabase,getState:snapshot,openAccount,signOut};
 }
