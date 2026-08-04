@@ -21,7 +21,7 @@ def register(slug: str, email: str):
 
 
 def test_refresh_rotation_and_reuse_detection():
-    tokens = register('phase2-refresh', 'refresh@medper.test')
+    tokens = register('phase2-refresh', 'refresh@example.com')
     first = client.post('/auth/refresh', json={'refresh_token': tokens['refresh_token']})
     assert first.status_code == 200, first.text
     assert first.json()['refresh_token'] != tokens['refresh_token']
@@ -34,8 +34,8 @@ def test_refresh_rotation_and_reuse_detection():
 
 
 def test_password_reset_revokes_sessions():
-    tokens = register('phase2-reset', 'reset@medper.test')
-    forgot = client.post('/auth/forgot-password', json={'email': 'reset@medper.test'})
+    tokens = register('phase2-reset', 'reset@example.com')
+    forgot = client.post('/auth/forgot-password', json={'email': 'reset@example.com'})
     assert forgot.status_code == 200
     reset_token = forgot.json()['development_token']
 
@@ -49,14 +49,14 @@ def test_password_reset_revokes_sessions():
     assert revoked.status_code == 401
 
     login = client.post('/auth/token', data={
-        'username': 'reset@medper.test',
+        'username': 'reset@example.com',
         'password': 'new-correct-horse-battery',
     })
     assert login.status_code == 200
 
 
 def test_complete_import_preserves_snapshot_and_evidence_rule():
-    tokens = register('phase2-import', 'import@medper.test')
+    tokens = register('phase2-import', 'import@example.com')
     headers = {'Authorization': 'Bearer ' + tokens['access_token']}
     payload = {
         'schema': 'https://joyceradis.github.io/MedPer/data/mlks.schema.json',
@@ -90,7 +90,7 @@ def test_complete_import_preserves_snapshot_and_evidence_rule():
 
 
 def test_file_upload_is_encrypted_at_rest(tmp_path: Path):
-    tokens = register('phase2-files', 'files@medper.test')
+    tokens = register('phase2-files', 'files@example.com')
     headers = {'Authorization': 'Bearer ' + tokens['access_token']}
     case = client.post('/cases', headers=headers, json={'title': 'Arquivos', 'objectType': 'Dano corporal'})
     assert case.status_code == 201
