@@ -1,7 +1,7 @@
 {
-  "name": "MLKS · Medical-Legal Knowledge System",
-  "short_name": "MLKS",
-  "description": "Plataforma de apoio ao raciocínio médico-legal com rastreabilidade de evidências.",
+  "name": "MedPer · Plataforma Médico-Pericial",
+  "short_name": "MedPer",
+  "description": "Plataforma médico-pericial com delimitação do objeto, evidências, exame, AIPE, quesitos, laudo e validação.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",
