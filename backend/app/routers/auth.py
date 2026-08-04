@@ -36,6 +36,10 @@ class ResetIn(BaseModel):
     new_password: str = Field(min_length=12)
 
 
+def utc(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
 def issue_pair(db: Session, user: User, request: Request, family_id: str | None = None) -> TokenPair:
     raw, session = RefreshSession.issue(user.id, user.organization_id, settings.refresh_token_days, family_id)
     session.user_agent = request.headers.get("user-agent", "")[:300]
@@ -75,7 +79,7 @@ def token(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
 def refresh(data: RefreshIn, request: Request, db: Session = Depends(db_session)):
     row = db.scalar(select(RefreshSession).where(RefreshSession.token_hash == token_digest(data.refresh_token)))
     now = datetime.now(timezone.utc)
-    if not row or row.revoked_at or row.expires_at <= now:
+    if not row or row.revoked_at or utc(row.expires_at) <= now:
         if row:
             db.execute(update(RefreshSession).where(RefreshSession.family_id == row.family_id).values(revoked_at=now))
             db.commit()
@@ -109,7 +113,6 @@ def logout_all(db: Session = Depends(db_session), user: User = Depends(current_u
 
 @router.post("/forgot-password")
 def forgot_password(data: ForgotIn, db: Session = Depends(db_session)):
-    # Resposta uniforme para impedir enumeração de contas.
     user = db.scalar(select(User).where(User.email == str(data.email).lower()))
     if user:
         raw = opaque_token()
@@ -120,7 +123,6 @@ def forgot_password(data: ForgotIn, db: Session = Depends(db_session)):
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=settings.password_reset_minutes),
         ))
         db.commit()
-        # Em produção, envie por provedor de e-mail. Em desenvolvimento, o token só aparece se explicitamente habilitado.
         if settings.public_api_url.startswith("http://localhost"):
             return {"message": "Solicitação registrada", "development_token": raw}
     return {"message": "Se a conta existir, as instruções serão enviadas."}
@@ -130,7 +132,7 @@ def forgot_password(data: ForgotIn, db: Session = Depends(db_session)):
 def reset_password(data: ResetIn, db: Session = Depends(db_session)):
     row = db.scalar(select(PasswordResetToken).where(PasswordResetToken.token_hash == token_digest(data.token)))
     now = datetime.now(timezone.utc)
-    if not row or row.consumed_at or row.expires_at <= now:
+    if not row or row.consumed_at or utc(row.expires_at) <= now:
         raise HTTPException(400, "Token inválido ou expirado")
     user = db.get(User, row.user_id)
     if not user:
