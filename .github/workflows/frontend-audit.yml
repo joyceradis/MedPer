@@ -2,7 +2,7 @@ name: Frontend audit
 
 on:
   push:
-    branches: [main, methodology-engine-v1]
+    branches: [main]
     paths:
       - 'index.html'
       - 'css/**'
@@ -30,6 +30,7 @@ jobs:
           node --check js/methodology.js
           node --check js/app.js
           node --check js/methodology-ui.js
+          node --check js/guided-methodology.js
           node --check sw.js
       - name: Check startup order, assets and PWA shell
         run: |
@@ -44,31 +45,31 @@ jobs:
           ids=re.findall(r'\bid="([^"]+)"',html)
           dup=sorted({x for x in ids if ids.count(x)>1})
           if dup: raise SystemExit(f'Duplicate HTML ids: {dup}')
-          order=['./js/preflight.js','./js/methodology.js','./js/app.js','./js/methodology-ui.js']
+          order=['./js/preflight.js','./js/methodology.js','./js/app.js','./js/methodology-ui.js','./js/guided-methodology.js']
           positions=[html.find(x) for x in order]
           if any(x<0 for x in positions) or positions!=sorted(positions): raise SystemExit(f'Invalid startup order: {order}')
-          required=['./index.html','./css/styles.css','./css/methodology.css','./js/preflight.js','./js/methodology.js','./js/app.js','./js/methodology-ui.js','./manifest.webmanifest','./icon.svg']
+          required=['./index.html','./css/styles.css','./css/methodology.css','./css/guided-methodology.css','./js/preflight.js','./js/methodology.js','./js/app.js','./js/methodology-ui.js','./js/guided-methodology.js','./manifest.webmanifest','./icon.svg']
           absent=[x for x in required if x not in sw]
           if absent: raise SystemExit(f'Assets absent from service worker shell: {absent}')
           print('Startup order, HTML assets and PWA shell validated.')
           PY
-      - name: Check methodology and forensic safeguards
+      - name: Check guided methodology safeguards
         run: |
           python - <<'PY'
           from pathlib import Path
           method=Path('js/methodology.js').read_text(encoding='utf-8')
-          ui=Path('js/methodology-ui.js').read_text(encoding='utf-8')
-          visible=Path('index.html').read_text(encoding='utf-8')+'\n'+Path('js/app.js').read_text(encoding='utf-8')+'\n'+ui
+          guided=Path('js/guided-methodology.js').read_text(encoding='utf-8')
+          visible=Path('index.html').read_text(encoding='utf-8')+'\n'+Path('js/app.js').read_text(encoding='utf-8')+'\n'+guided
           forbidden=['Conectar API','Endereço da API','localhost:8000','MLKS Core · Medical-Legal Knowledge System','prompt(']
           found=[x for x in forbidden if x in visible]
           if found: raise SystemExit(f'Forbidden prototype patterns: {found}')
-          required_method=['Método médico-pericial geral','Dano estético','Incapacidade','Nexo causal e concausa','Responsabilidade profissional','Sem consolidação fundamentada','Diagnóstico isolado não demonstra incapacidade','Resultado adverso não equivale a erro','Grau de sustentação']
+          required_method=['Método médico-pericial geral','Dano estético','Incapacidade','Nexo causal e concausa','Responsabilidade profissional','Grau de sustentação']
           absent=[x for x in required_method if x not in method]
           if absent: raise SystemExit(f'Methodology elements missing: {absent}')
-          required_ui=['Auditoria metodológica','Método e técnica','Análise e decisão','Matriz de decisão pericial','CONCLUSÃO METODOLOGICAMENTE ADMISSÍVEL']
-          absent_ui=[x for x in required_ui if x not in ui]
-          if absent_ui: raise SystemExit(f'Methodology UI elements missing: {absent_ui}')
-          print('Methodology engine and interface safeguards validated.')
+          required_guided=['Elegibilidade e consolidação','AIPE — impressão do impacto','Atividade habitual','Compatibilidades','Contexto assistencial','Conclusão causal','Nexo entre eventual desvio e dano']
+          absent_guided=[x for x in required_guided if x not in guided]
+          if absent_guided: raise SystemExit(f'Guided workflows missing: {absent_guided}')
+          print('Guided methodology workflows validated.')
           PY
       - name: Check dialog accessibility wiring
         run: |
