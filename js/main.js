@@ -12,14 +12,18 @@ installDialogController(document);
 
 const auth=await createAuthController({root});
 
-function startApplicationWhenAllowed(state=auth.getState()){
+function handleAuthState(state=auth.getState()){
+  if(appStarted&&!state.appStarted){
+    window.location.reload();
+    return;
+  }
   if(appStarted||!state.appStarted)return;
   appStarted=true;
   createApp({store,root,toast,auth});
 }
 
-startApplicationWhenAllowed();
-auth.subscribe(startApplicationWhenAllowed);
+handleAuthState();
+auth.subscribe(handleAuthState);
 
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
