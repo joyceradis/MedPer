@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select, update
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..audit import record
 from ..config import settings
 from ..deps import current_user, db_session, set_request_context
+from ..mailer import send_password_reset
 from ..models import Organization, User
 from ..schemas import RegisterIn
 from ..security import create_access_token, hash_password, opaque_token, token_digest, verify_password
@@ -114,7 +115,7 @@ def logout_all(db: Session = Depends(db_session), user: User = Depends(current_u
 
 
 @router.post("/forgot-password")
-def forgot_password(data: ForgotIn, db: Session = Depends(db_session)):
+def forgot_password(data: ForgotIn, background: BackgroundTasks, db: Session = Depends(db_session)):
     user = db.scalar(select(User).where(User.email == str(data.email).lower()))
     if user:
         raw = opaque_token()
@@ -125,7 +126,9 @@ def forgot_password(data: ForgotIn, db: Session = Depends(db_session)):
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=settings.password_reset_minutes),
         ))
         db.commit()
-        if settings.public_api_url.startswith("http://localhost"):
+        if settings.smtp_enabled:
+            background.add_task(send_password_reset, user.email, raw)
+        elif settings.public_api_url.startswith("http://localhost"):
             return {"message": "Solicitação registrada", "development_token": raw}
     return {"message": "Se a conta existir, as instruções serão enviadas."}
 
