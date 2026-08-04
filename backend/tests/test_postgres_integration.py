@@ -17,13 +17,13 @@ def test_postgres_rls_and_evidence_rule():
     first = client.post('/auth/register', json={
         'organization_name': 'Postgres A',
         'organization_slug': 'postgres-a',
-        'email': 'a@postgres.test',
+        'email': 'postgres-a@example.com',
         'password': 'correct-horse-battery',
     })
     second = client.post('/auth/register', json={
         'organization_name': 'Postgres B',
         'organization_slug': 'postgres-b',
-        'email': 'b@postgres.test',
+        'email': 'postgres-b@example.com',
         'password': 'correct-horse-battery',
     })
     assert first.status_code == 201, first.text
