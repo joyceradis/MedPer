@@ -14,11 +14,22 @@ class Settings(BaseSettings):
     cors_origins: str = "https://joyceradis.github.io,http://localhost:8080"
     log_level: str = "INFO"
     public_api_url: str = "http://localhost:8000"
+    public_frontend_url: str = "https://joyceradis.github.io/MedPer"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_starttls: bool = True
     model_config = SettingsConfigDict(env_file=".env", env_prefix="MEDPER_")
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+
+    @property
+    def smtp_enabled(self) -> bool:
+        return bool(self.smtp_host and self.smtp_from)
 
 
 settings = Settings()
