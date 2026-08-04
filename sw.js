@@ -1,5 +1,5 @@
-const CACHE_NAME='medper-shell-v16-20260804';
-const APP_SHELL=['./','./index.html','./css/styles.css','./css/methodology.css','./css/guided-methodology.css','./css/auth.css','./js/main.js','./js/core/store.js','./js/methodology/protocols.js','./js/methodology/engine.js','./js/ui/app.js','./js/ui/dialog-controller.js','./js/auth/auth-controller.js','./js/config/supabase-config.js','./manifest.webmanifest','./icon.svg'];
+const CACHE_NAME='medper-shell-v17-20260804';
+const APP_SHELL=['./','./index.html','./app.html','./css/marketing.css','./css/styles.css','./css/methodology.css','./css/guided-methodology.css','./css/auth.css','./js/main.js','./js/core/store.js','./js/methodology/protocols.js','./js/methodology/engine.js','./js/ui/app.js','./js/ui/dialog-controller.js','./js/auth/auth-controller.js','./js/config/supabase-config.js','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',event=>{
@@ -12,7 +12,12 @@ self.addEventListener('fetch',event=>{
       const clone=response.clone();
       caches.open(CACHE_NAME).then(cache=>cache.put(event.request,clone));
       return response;
-    }).catch(async()=>await caches.match(event.request)||caches.match('./index.html')));
+    }).catch(async()=>{
+      const cached=await caches.match(event.request);
+      if(cached)return cached;
+      const isAppNavigation=url.pathname.endsWith('/app.html')||url.pathname.includes('/app.html');
+      return caches.match(isAppNavigation?'./app.html':'./index.html');
+    }));
     return;
   }
   event.respondWith(caches.match(event.request).then(cached=>cached||fetch(event.request).then(response=>{
