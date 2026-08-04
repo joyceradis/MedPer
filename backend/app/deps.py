@@ -19,6 +19,12 @@ def db_session():
         db.close()
 
 
+def set_request_context(db: Session, user: User) -> None:
+    if db.bind and db.bind.dialect.name == "postgresql":
+        db.execute(text("select set_config('app.organization_id', :org, true)"), {"org": user.organization_id})
+        db.execute(text("select set_config('app.user_id', :usr, true)"), {"usr": user.id})
+
+
 def current_user(token: str = Depends(oauth2), db: Session = Depends(db_session)) -> User:
     try:
         payload = decode_access_token(token)
@@ -27,7 +33,5 @@ def current_user(token: str = Depends(oauth2), db: Session = Depends(db_session)
     user = db.get(User, payload.get("sub"))
     if not user or not user.is_active or user.organization_id != payload.get("org"):
         raise HTTPException(401, "Usuário inválido")
-    if db.bind and db.bind.dialect.name == "postgresql":
-        db.execute(text("select set_config('app.organization_id', :org, true)"), {"org": user.organization_id})
-        db.execute(text("select set_config('app.user_id', :usr, true)"), {"usr": user.id})
+    set_request_context(db, user)
     return user
