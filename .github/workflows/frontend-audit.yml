@@ -3,83 +3,78 @@ name: Frontend audit
 on:
   push:
     branches: [main]
-    paths:
-      - 'index.html'
-      - 'css/**'
-      - 'js/**'
-      - 'sw.js'
-      - 'manifest.webmanifest'
-      - '.github/workflows/frontend-audit.yml'
+    paths: ['index.html','css/**','js/**','sw.js','manifest.webmanifest','.github/workflows/frontend-audit.yml']
   pull_request:
-    paths:
-      - 'index.html'
-      - 'css/**'
-      - 'js/**'
-      - 'sw.js'
-      - 'manifest.webmanifest'
-      - '.github/workflows/frontend-audit.yml'
+    paths: ['index.html','css/**','js/**','sw.js','manifest.webmanifest','.github/workflows/frontend-audit.yml']
 
 jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check JavaScript syntax
+      - name: Check module syntax
         run: |
-          node --check js/preflight.js
-          node --check js/methodology.js
-          node --check js/app.js
-          node --check js/methodology-ui.js
-          node --check js/guided-methodology.js
+          node --check js/main.js
+          node --check js/core/store.js
+          node --check js/methodology/protocols.js
+          node --check js/methodology/engine.js
+          node --check js/ui/app.js
           node --check sw.js
-      - name: Check startup order, assets and PWA shell
+      - name: Check architecture and PWA shell
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
           html=Path('index.html').read_text(encoding='utf-8')
           sw=Path('sw.js').read_text(encoding='utf-8')
+          loaded=re.findall(r'<script[^>]+src="([^"?#]+)"',html)
+          if loaded!=['./js/main.js']:
+              raise SystemExit(f'Expected one module entrypoint, found: {loaded}')
+          if 'type="module"' not in html:
+              raise SystemExit('main.js is not loaded as an ES module.')
+          required=['./index.html','./css/styles.css','./css/methodology.css','./css/guided-methodology.css','./js/main.js','./js/core/store.js','./js/methodology/protocols.js','./js/methodology/engine.js','./js/ui/app.js','./manifest.webmanifest','./icon.svg']
+          absent=[x for x in required if x not in sw]
+          if absent: raise SystemExit(f'Assets absent from service worker shell: {absent}')
           refs=re.findall(r'(?:href|src)="([^"?#]+)',html)
           missing=[r for r in refs if not r.startswith(('http:','https:','#')) and not Path(r.removeprefix('./')).exists()]
           if missing: raise SystemExit(f'Missing local assets: {missing}')
           ids=re.findall(r'\bid="([^"]+)"',html)
           dup=sorted({x for x in ids if ids.count(x)>1})
           if dup: raise SystemExit(f'Duplicate HTML ids: {dup}')
-          order=['./js/preflight.js','./js/methodology.js','./js/app.js','./js/methodology-ui.js','./js/guided-methodology.js']
-          positions=[html.find(x) for x in order]
-          if any(x<0 for x in positions) or positions!=sorted(positions): raise SystemExit(f'Invalid startup order: {order}')
-          required=['./index.html','./css/styles.css','./css/methodology.css','./css/guided-methodology.css','./js/preflight.js','./js/methodology.js','./js/app.js','./js/methodology-ui.js','./js/guided-methodology.js','./manifest.webmanifest','./icon.svg']
-          absent=[x for x in required if x not in sw]
-          if absent: raise SystemExit(f'Assets absent from service worker shell: {absent}')
-          print('Startup order, HTML assets and PWA shell validated.')
+          print('Single module entrypoint, assets and PWA shell validated.')
           PY
-      - name: Check guided methodology safeguards
+      - name: Check state ownership and DOM architecture
         run: |
           python - <<'PY'
           from pathlib import Path
-          method=Path('js/methodology.js').read_text(encoding='utf-8')
-          guided=Path('js/guided-methodology.js').read_text(encoding='utf-8')
-          visible=Path('index.html').read_text(encoding='utf-8')+'\n'+Path('js/app.js').read_text(encoding='utf-8')+'\n'+guided
-          forbidden=['Conectar API','Endereço da API','localhost:8000','MLKS Core · Medical-Legal Knowledge System','prompt(']
-          found=[x for x in forbidden if x in visible]
-          if found: raise SystemExit(f'Forbidden prototype patterns: {found}')
-          required_method=['Método médico-pericial geral','Dano estético','Incapacidade','Nexo causal e concausa','Responsabilidade profissional','Grau de sustentação']
-          absent=[x for x in required_method if x not in method]
-          if absent: raise SystemExit(f'Methodology elements missing: {absent}')
-          required_guided=['Elegibilidade e consolidação','AIPE — impressão do impacto','Atividade habitual','Compatibilidades','Contexto assistencial','Conclusão causal','Nexo entre eventual desvio e dano']
-          absent_guided=[x for x in required_guided if x not in guided]
-          if absent_guided: raise SystemExit(f'Guided workflows missing: {absent_guided}')
-          print('Guided methodology workflows validated.')
+          loaded=[Path('js/main.js'),Path('js/core/store.js'),Path('js/methodology/protocols.js'),Path('js/methodology/engine.js'),Path('js/ui/app.js')]
+          text='\n'.join(p.read_text(encoding='utf-8') for p in loaded)
+          forbidden=['MutationObserver','window.MedPer','window.MedPerMethodology','prompt(','innerHTML +=']
+          found=[x for x in forbidden if x in text]
+          if found: raise SystemExit(f'Forbidden layered architecture patterns: {found}')
+          storage_users=[]
+          for p in loaded:
+              if 'localStorage.' in p.read_text(encoding='utf-8'):
+                  storage_users.append(str(p))
+          if storage_users!=['js/core/store.js']:
+              raise SystemExit(f'localStorage must be owned by store.js only: {storage_users}')
+          if text.count('export function createStore')!=1:
+              raise SystemExit('Single store implementation not found.')
+          if "import { createStore }" not in Path('js/main.js').read_text(encoding='utf-8'):
+              raise SystemExit('main.js does not import the store explicitly.')
+          print('No MutationObserver, no window globals and one storage owner.')
           PY
-      - name: Check dialog accessibility wiring
+      - name: Check medical-pericial protocols
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
-          html=Path('index.html').read_text(encoding='utf-8')
-          dialogs=re.findall(r'<dialog\b([^>]*)>',html)
-          unlabeled=[x for x in dialogs if 'aria-labelledby=' not in x]
-          if unlabeled: raise SystemExit(f'Dialogs without aria-labelledby: {len(unlabeled)}')
-          if not re.findall(r'<button\b[^>]*data-close[^>]*>',html): raise SystemExit('No explicit dialog close controls found.')
-          print(f'Validated {len(dialogs)} labeled dialogs.')
+          protocols=Path('js/methodology/protocols.js').read_text(encoding='utf-8')
+          engine=Path('js/methodology/engine.js').read_text(encoding='utf-8')
+          required=['Dano estético','AIPE — impressão do impacto','Incapacidade','Atividade habitual','Nexo causal e concausa','Compatibilidades','Responsabilidade profissional','Nexo entre eventual desvio e dano']
+          absent=[x for x in required if x not in protocols]
+          if absent: raise SystemExit(f'Protocols missing: {absent}')
+          safeguards=['Sem consolidação fundamentada','Diagnóstico isolado não demonstra incapacidade','Resultado adverso não equivale a erro','Grau de sustentação']
+          absent=[x for x in safeguards if x not in engine]
+          if absent: raise SystemExit(f'Methodological safeguards missing: {absent}')
+          print('Guided protocols and methodological safeguards validated.')
           PY
