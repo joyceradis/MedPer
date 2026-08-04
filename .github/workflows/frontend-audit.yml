@@ -3,9 +3,9 @@ name: Frontend audit
 on:
   push:
     branches: [main]
-    paths: ['index.html','css/**','js/**','sw.js','manifest.webmanifest','.github/workflows/frontend-audit.yml']
+    paths: ['index.html','app.html','ROADMAP.md','css/**','js/**','sw.js','manifest.webmanifest','.github/workflows/frontend-audit.yml']
   pull_request:
-    paths: ['index.html','css/**','js/**','sw.js','manifest.webmanifest','.github/workflows/frontend-audit.yml']
+    paths: ['index.html','app.html','ROADMAP.md','css/**','js/**','sw.js','manifest.webmanifest','.github/workflows/frontend-audit.yml']
 
 permissions:
   contents: read
@@ -27,9 +27,11 @@ jobs:
           node --check js/methodology/engine.js
           node --check js/ui/app.js
           node --check js/ui/dialog-controller.js
+          node --check js/auth/auth-controller.js
+          node --check js/config/supabase-config.js
           node --check sw.js
 
-      - name: Check architecture and PWA shell
+      - name: Check public and application entrypoints
         shell: bash
         run: |
           set -euo pipefail
@@ -37,49 +39,79 @@ jobs:
           from pathlib import Path
           import re
 
-          html = Path('index.html').read_text(encoding='utf-8')
+          public_html = Path('index.html').read_text(encoding='utf-8')
+          app_html = Path('app.html').read_text(encoding='utf-8')
           sw = Path('sw.js').read_text(encoding='utf-8')
+          manifest = Path('manifest.webmanifest').read_text(encoding='utf-8')
 
-          loaded = re.findall(r'<script[^>]+src="([^"?#]+)"', html)
-          if loaded != ['./js/main.js']:
-              raise SystemExit(f'Expected one module entrypoint, found: {loaded}')
+          public_scripts = re.findall(r'<script[^>]+src="([^"?#]+)"', public_html)
+          if public_scripts:
+              raise SystemExit(f'Public site must not load the application bundle: {public_scripts}')
+          if './app.html' not in public_html:
+              raise SystemExit('Public site has no link to the application entrypoint.')
+          if 'Seus casos' in public_html or 'Salvo neste dispositivo' in public_html:
+              raise SystemExit('Operational dashboard content leaked into public site.')
 
-          if 'type="module"' not in html:
-              raise SystemExit('main.js is not loaded as an ES module.')
+          app_scripts = re.findall(r'<script[^>]+src="([^"?#]+)"', app_html)
+          if app_scripts != ['./js/main.js']:
+              raise SystemExit(f'Expected one application module entrypoint, found: {app_scripts}')
+          if 'type="module"' not in app_html:
+              raise SystemExit('main.js is not loaded as an ES module in app.html.')
+          if 'noindex,nofollow' not in app_html:
+              raise SystemExit('Application entrypoint must be excluded from search indexing.')
 
           required = [
-              './index.html',
-              './css/styles.css',
-              './css/methodology.css',
-              './css/guided-methodology.css',
-              './js/main.js',
-              './js/core/store.js',
-              './js/methodology/protocols.js',
-              './js/methodology/engine.js',
-              './js/ui/app.js',
-              './js/ui/dialog-controller.js',
-              './manifest.webmanifest',
-              './icon.svg',
+              './index.html','./app.html','./css/marketing.css','./css/styles.css',
+              './css/methodology.css','./css/guided-methodology.css','./css/auth.css',
+              './js/main.js','./js/core/store.js','./js/methodology/protocols.js',
+              './js/methodology/engine.js','./js/ui/app.js','./js/ui/dialog-controller.js',
+              './js/auth/auth-controller.js','./js/config/supabase-config.js',
+              './manifest.webmanifest','./icon.svg'
           ]
           absent = [item for item in required if item not in sw]
           if absent:
               raise SystemExit(f'Assets absent from service worker shell: {absent}')
 
-          refs = re.findall(r'(?:href|src)="([^"?#]+)', html)
-          missing = [
-              ref for ref in refs
-              if not ref.startswith(('http:', 'https:', '#'))
-              and not Path(ref.removeprefix('./')).exists()
+          for filename, html in [('index.html', public_html), ('app.html', app_html)]:
+              refs = re.findall(r'(?:href|src)="([^"?#]+)', html)
+              missing = [
+                  ref for ref in refs
+                  if not ref.startswith(('http:', 'https:', 'mailto:', '#'))
+                  and not Path(ref.removeprefix('./')).exists()
+              ]
+              if missing:
+                  raise SystemExit(f'Missing local assets in {filename}: {missing}')
+              ids = re.findall(r'\bid="([^"]+)"', html)
+              duplicates = sorted({item for item in ids if ids.count(item) > 1})
+              if duplicates:
+                  raise SystemExit(f'Duplicate HTML ids in {filename}: {duplicates}')
+
+          if '"start_url": "./app.html"' not in manifest:
+              raise SystemExit('PWA must start from app.html.')
+          if "isAppNavigation?'./app.html':'./index.html'" not in sw:
+              raise SystemExit('Service worker does not separate offline fallbacks.')
+
+          print('Public site and application dashboard are separated.')
+          PYTHON_EOF
+
+      - name: Check roadmap stage one
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat <<'PYTHON_EOF' | python -u -
+          from pathlib import Path
+          roadmap = Path('ROADMAP.md').read_text(encoding='utf-8')
+          required = [
+              '1. Separar site público de dashboard',
+              '**Em andamento**',
+              'Criar uma landing page pública',
+              'Mover a aplicação para uma entrada própria',
+              'Critérios de conclusão'
           ]
+          missing = [item for item in required if item not in roadmap]
           if missing:
-              raise SystemExit(f'Missing local assets: {missing}')
-
-          ids = re.findall(r'\bid="([^"]+)"', html)
-          duplicates = sorted({item for item in ids if ids.count(item) > 1})
-          if duplicates:
-              raise SystemExit(f'Duplicate HTML ids: {duplicates}')
-
-          print('Single module entrypoint, assets and PWA shell validated.')
+              raise SystemExit(f'Roadmap stage one is incomplete: {missing}')
+          print('Official roadmap and active stage validated.')
           PYTHON_EOF
 
       - name: Check state ownership and DOM architecture
@@ -90,41 +122,23 @@ jobs:
           from pathlib import Path
 
           loaded = [
-              Path('js/main.js'),
-              Path('js/core/store.js'),
-              Path('js/methodology/protocols.js'),
-              Path('js/methodology/engine.js'),
-              Path('js/ui/app.js'),
-              Path('js/ui/dialog-controller.js'),
+              Path('js/main.js'),Path('js/core/store.js'),Path('js/methodology/protocols.js'),
+              Path('js/methodology/engine.js'),Path('js/ui/app.js'),Path('js/ui/dialog-controller.js'),
+              Path('js/auth/auth-controller.js')
           ]
           text = '\n'.join(path.read_text(encoding='utf-8') for path in loaded)
-
-          forbidden = [
-              'MutationObserver',
-              'window.MedPer',
-              'window.MedPerMethodology',
-              'prompt(',
-              'innerHTML +=',
-          ]
+          forbidden = ['MutationObserver','window.MedPer','window.MedPerMethodology','prompt(','innerHTML +=']
           found = [item for item in forbidden if item in text]
           if found:
               raise SystemExit(f'Forbidden layered architecture patterns: {found}')
-
-          storage_users = [
-              str(path) for path in loaded
-              if 'localStorage.' in path.read_text(encoding='utf-8')
-          ]
+          storage_users = [str(path) for path in loaded if 'localStorage.' in path.read_text(encoding='utf-8')]
           if storage_users != ['js/core/store.js']:
               raise SystemExit(f'localStorage must be owned by store.js only: {storage_users}')
-
           if text.count('export function createStore') != 1:
               raise SystemExit('Single store implementation not found.')
-
-          main = Path('js/main.js').read_text(encoding='utf-8')
-          if "import { createStore }" not in main:
+          if "import { createStore }" not in Path('js/main.js').read_text(encoding='utf-8'):
               raise SystemExit('main.js does not import the store explicitly.')
-
-          print('No MutationObserver, no window globals and one storage owner.')
+          print('No layered observers, no application globals and one storage owner.')
           PYTHON_EOF
 
       - name: Check dialog cancellation safeguards
@@ -133,22 +147,14 @@ jobs:
           set -euo pipefail
           cat <<'PYTHON_EOF' | python -u -
           from pathlib import Path
-
           controller = Path('js/ui/dialog-controller.js').read_text(encoding='utf-8')
           main = Path('js/main.js').read_text(encoding='utf-8')
           source = controller + '\n' + main
-
-          required = [
-              'button[value="cancel"]',
-              'event.preventDefault()',
-              "dialog.close('cancel')",
-              'installDialogController(document)',
-          ]
+          required = ['button[value="cancel"]','event.preventDefault()',"dialog.close('cancel')",'installDialogController(document)']
           missing = [item for item in required if item not in source]
           if missing:
               raise SystemExit(f'Dialog cancellation safeguards missing: {missing}')
-
-          print('Dialog cancellation bypasses native form validation and closes centrally.')
+          print('Dialog cancellation safeguards validated.')
           PYTHON_EOF
 
       - name: Check medical-pericial protocols
@@ -157,33 +163,15 @@ jobs:
           set -euo pipefail
           cat <<'PYTHON_EOF' | python -u -
           from pathlib import Path
-
           protocols = Path('js/methodology/protocols.js').read_text(encoding='utf-8')
           engine = Path('js/methodology/engine.js').read_text(encoding='utf-8')
-
-          required = [
-              'Dano estético',
-              'AIPE — impressão do impacto',
-              'Incapacidade',
-              'Atividade habitual',
-              'Nexo causal e concausa',
-              'Compatibilidades',
-              'Responsabilidade profissional',
-              'Nexo entre eventual desvio e dano',
-          ]
+          required = ['Dano estético','AIPE — impressão do impacto','Incapacidade','Atividade habitual','Nexo causal e concausa','Compatibilidades','Responsabilidade profissional','Nexo entre eventual desvio e dano']
           absent = [item for item in required if item not in protocols]
           if absent:
               raise SystemExit(f'Protocols missing: {absent}')
-
-          safeguards = [
-              'Sem consolidação fundamentada',
-              'Diagnóstico isolado não demonstra incapacidade',
-              'Resultado adverso não equivale a erro',
-              'Grau de sustentação',
-          ]
+          safeguards = ['Sem consolidação fundamentada','Diagnóstico isolado não demonstra incapacidade','Resultado adverso não equivale a erro','Grau de sustentação']
           absent = [item for item in safeguards if item not in engine]
           if absent:
               raise SystemExit(f'Methodological safeguards missing: {absent}')
-
           print('Guided protocols and methodological safeguards validated.')
           PYTHON_EOF
