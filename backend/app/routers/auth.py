@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..audit import record
 from ..config import settings
-from ..deps import current_user, db_session
+from ..deps import current_user, db_session, set_request_context
 from ..models import Organization, User
 from ..schemas import RegisterIn
 from ..security import create_access_token, hash_password, opaque_token, token_digest, verify_password
@@ -59,6 +59,7 @@ def register(data: RegisterIn, request: Request, db: Session = Depends(db_sessio
     user = User(organization_id=org.id, email=str(data.email).lower(), password_hash=hash_password(data.password), role="admin")
     db.add(user)
     db.flush()
+    set_request_context(db, user)
     pair = issue_pair(db, user, request)
     record(db, user, "create", "organization", org.id)
     db.commit()
@@ -91,6 +92,7 @@ def refresh(data: RefreshIn, request: Request, db: Session = Depends(db_session)
     pair = issue_pair(db, user, request, row.family_id)
     replacement = db.scalar(select(RefreshSession).where(RefreshSession.token_hash == token_digest(pair.refresh_token)))
     row.replaced_by_id = replacement.id if replacement else None
+    set_request_context(db, user)
     record(db, user, "rotate", "refresh_session", row.id)
     db.commit()
     return pair
@@ -140,6 +142,7 @@ def reset_password(data: ResetIn, db: Session = Depends(db_session)):
     user.password_hash = hash_password(data.new_password)
     row.consumed_at = now
     db.execute(update(RefreshSession).where(RefreshSession.user_id == user.id, RefreshSession.revoked_at.is_(None)).values(revoked_at=now))
+    set_request_context(db, user)
     record(db, user, "password_reset", "user", user.id)
     db.commit()
     return {"message": "Senha alterada e sessões revogadas"}
