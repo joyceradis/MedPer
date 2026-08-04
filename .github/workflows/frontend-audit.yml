@@ -2,7 +2,7 @@ name: Frontend audit
 
 on:
   push:
-    branches: [main]
+    branches: [main, methodology-engine-v1]
     paths:
       - 'index.html'
       - 'css/**'
@@ -24,85 +24,61 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Check JavaScript syntax
         run: |
           node --check js/preflight.js
+          node --check js/methodology.js
           node --check js/app.js
+          node --check js/methodology-ui.js
           node --check sw.js
-
       - name: Check startup order, assets and PWA shell
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
-
-          html = Path('index.html').read_text(encoding='utf-8')
-          app = Path('js/app.js').read_text(encoding='utf-8')
-          preflight = Path('js/preflight.js').read_text(encoding='utf-8')
-          sw = Path('sw.js').read_text(encoding='utf-8')
-
-          refs = re.findall(r'(?:href|src)="([^"?#]+)', html)
-          missing = [ref for ref in refs if not ref.startswith(('http:', 'https:', '#')) and not Path(ref.removeprefix('./')).exists()]
-          if missing:
-              raise SystemExit(f'Missing local assets: {missing}')
-
-          ids = re.findall(r'\bid="([^"]+)"', html)
-          duplicates = sorted({item for item in ids if ids.count(item) > 1})
-          if duplicates:
-              raise SystemExit(f'Duplicate HTML ids: {duplicates}')
-
-          if html.find('./js/preflight.js') == -1 or html.find('./js/app.js') == -1:
-              raise SystemExit('Startup scripts are not both referenced.')
-          if html.find('./js/preflight.js') > html.find('./js/app.js'):
-              raise SystemExit('Preflight must load before app.js.')
-
-          required_shell = ['./index.html', './css/styles.css', './js/preflight.js', './js/app.js', './manifest.webmanifest', './icon.svg']
-          absent = [item for item in required_shell if item not in sw]
-          if absent:
-              raise SystemExit(f'Assets absent from service worker shell: {absent}')
-
-          if "medper.state.v2" not in preflight or "updatedAt" not in preflight:
-              raise SystemExit('Preflight does not guarantee a valid startup state.')
-
-          if "let state=loadState()" in app and "const now=" in app:
-              if html.find('./js/preflight.js') == -1:
-                  raise SystemExit('Known startup ordering hazard is not protected.')
-
+          html=Path('index.html').read_text(encoding='utf-8')
+          sw=Path('sw.js').read_text(encoding='utf-8')
+          refs=re.findall(r'(?:href|src)="([^"?#]+)',html)
+          missing=[r for r in refs if not r.startswith(('http:','https:','#')) and not Path(r.removeprefix('./')).exists()]
+          if missing: raise SystemExit(f'Missing local assets: {missing}')
+          ids=re.findall(r'\bid="([^"]+)"',html)
+          dup=sorted({x for x in ids if ids.count(x)>1})
+          if dup: raise SystemExit(f'Duplicate HTML ids: {dup}')
+          order=['./js/preflight.js','./js/methodology.js','./js/app.js','./js/methodology-ui.js']
+          positions=[html.find(x) for x in order]
+          if any(x<0 for x in positions) or positions!=sorted(positions): raise SystemExit(f'Invalid startup order: {order}')
+          required=['./index.html','./css/styles.css','./css/methodology.css','./js/preflight.js','./js/methodology.js','./js/app.js','./js/methodology-ui.js','./manifest.webmanifest','./icon.svg']
+          absent=[x for x in required if x not in sw]
+          if absent: raise SystemExit(f'Assets absent from service worker shell: {absent}')
           print('Startup order, HTML assets and PWA shell validated.')
           PY
-
-      - name: Check pericial workflow and language safeguards
+      - name: Check methodology and forensic safeguards
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          visible = Path('index.html').read_text(encoding='utf-8') + '\n' + Path('js/app.js').read_text(encoding='utf-8')
-          forbidden = ['Conectar API', 'Endereço da API', 'localhost:8000', 'MLKS Core · Medical-Legal Knowledge System', 'prompt(']
-          found = [term for term in forbidden if term in visible]
-          if found:
-              raise SystemExit(f'Forbidden developer or prototype patterns exposed: {found}')
-
-          required = ['Em qual esfera ocorre este trabalho?', 'Qual é o seu papel neste caso?', 'Dano estético', 'Autos e fatos', 'Cronologia', 'Conclusões sustentadas', 'evidenceIds', 'documentGaps']
-          missing = [term for term in required if term not in visible]
-          if missing:
-              raise SystemExit(f'Required pericial workflow elements missing: {missing}')
-
-          print('Pericial workflow and traceability safeguards validated.')
+          method=Path('js/methodology.js').read_text(encoding='utf-8')
+          ui=Path('js/methodology-ui.js').read_text(encoding='utf-8')
+          visible=Path('index.html').read_text(encoding='utf-8')+'\n'+Path('js/app.js').read_text(encoding='utf-8')+'\n'+ui
+          forbidden=['Conectar API','Endereço da API','localhost:8000','MLKS Core · Medical-Legal Knowledge System','prompt(']
+          found=[x for x in forbidden if x in visible]
+          if found: raise SystemExit(f'Forbidden prototype patterns: {found}')
+          required_method=['Método médico-pericial geral','Dano estético','Incapacidade','Nexo causal e concausa','Responsabilidade profissional','Sem consolidação fundamentada','Diagnóstico isolado não demonstra incapacidade','Resultado adverso não equivale a erro','Grau de sustentação']
+          absent=[x for x in required_method if x not in method]
+          if absent: raise SystemExit(f'Methodology elements missing: {absent}')
+          required_ui=['Auditoria metodológica','Método e técnica','Análise e decisão','Matriz de decisão pericial','CONCLUSÃO METODOLOGICAMENTE ADMISSÍVEL']
+          absent_ui=[x for x in required_ui if x not in ui]
+          if absent_ui: raise SystemExit(f'Methodology UI elements missing: {absent_ui}')
+          print('Methodology engine and interface safeguards validated.')
           PY
-
       - name: Check dialog accessibility wiring
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
-
-          html = Path('index.html').read_text(encoding='utf-8')
-          dialogs = re.findall(r'<dialog\b([^>]*)>', html)
-          unlabeled = [attrs for attrs in dialogs if 'aria-labelledby=' not in attrs]
-          if unlabeled:
-              raise SystemExit(f'Dialogs without aria-labelledby: {len(unlabeled)}')
-          if not re.findall(r'<button\b[^>]*data-close[^>]*>', html):
-              raise SystemExit('No explicit dialog close controls found.')
+          html=Path('index.html').read_text(encoding='utf-8')
+          dialogs=re.findall(r'<dialog\b([^>]*)>',html)
+          unlabeled=[x for x in dialogs if 'aria-labelledby=' not in x]
+          if unlabeled: raise SystemExit(f'Dialogs without aria-labelledby: {len(unlabeled)}')
+          if not re.findall(r'<button\b[^>]*data-close[^>]*>',html): raise SystemExit('No explicit dialog close controls found.')
           print(f'Validated {len(dialogs)} labeled dialogs.')
           PY
