@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Check JavaScript syntax
         run: |
           node --check js/app.js
@@ -34,13 +35,18 @@ jobs:
           node --check js/quesitos.js
           node --check js/report-builder.js
           node --check sw.js
-      - name: Check local asset references and service worker shell
+
+      - name: Check HTML structure, assets and PWA shell
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
+
           root = Path('.')
           html = (root / 'index.html').read_text(encoding='utf-8')
+          app = (root / 'js/app.js').read_text(encoding='utf-8')
+          sw = (root / 'sw.js').read_text(encoding='utf-8')
+
           refs = re.findall(r'(?:href|src)="([^"?#]+)', html)
           missing = []
           for ref in refs:
@@ -51,21 +57,77 @@ jobs:
                   missing.append(ref)
           if missing:
               raise SystemExit(f'Missing local assets: {missing}')
-          sw = (root / 'sw.js').read_text(encoding='utf-8')
-          required = ['./index.html', './css/styles.css', './css/compat.css', './js/app.js', './js/api-client.js']
-          absent = [item for item in required if item not in sw]
+
+          ids = re.findall(r'\bid="([^"]+)"', html)
+          duplicated = sorted({item for item in ids if ids.count(item) > 1})
+          if duplicated:
+              raise SystemExit(f'Duplicate HTML ids: {duplicated}')
+
+          required_shell = ['./index.html', './css/styles.css', './js/app.js', './manifest.webmanifest', './icon.svg']
+          absent = [item for item in required_shell if item not in sw]
           if absent:
               raise SystemExit(f'Assets absent from service worker shell: {absent}')
-          print(f'Validated {len(refs)} HTML references and the PWA shell.')
+
+          obsolete = ['./css/compat.css', 'mlks.prototype.v1\'']
+          if './css/compat.css' in html or './css/compat.css' in sw:
+              raise SystemExit('Obsolete compatibility stylesheet is still referenced.')
+
+          if "const STORAGE_KEY='medper.state.v2'" not in app and 'const STORAGE_KEY = \'medper.state.v2\'' not in app:
+              raise SystemExit('Current MedPer storage key not found.')
+
+          print(f'Validated {len(refs)} local references, unique ids and the PWA shell.')
           PY
-      - name: Reject developer jargon in the visible interface
+
+      - name: Check pericial workflow and traceability safeguards
         run: |
           python - <<'PY'
           from pathlib import Path
-          visible = (Path('index.html').read_text(encoding='utf-8') + '\n' + Path('js/app.js').read_text(encoding='utf-8'))
-          forbidden = ['Conectar API', 'Endereço da API', 'localhost:8000', 'MLKS Core · Medical-Legal Knowledge System']
+
+          visible = Path('index.html').read_text(encoding='utf-8') + '\n' + Path('js/app.js').read_text(encoding='utf-8')
+
+          forbidden = [
+              'Conectar API',
+              'Endereço da API',
+              'localhost:8000',
+              'MLKS Core · Medical-Legal Knowledge System',
+              'prompt(',
+          ]
           found = [term for term in forbidden if term in visible]
           if found:
-              raise SystemExit(f'Developer-facing language exposed: {found}')
-          print('No prohibited developer jargon exposed in the primary interface.')
+              raise SystemExit(f'Forbidden developer or prototype patterns exposed: {found}')
+
+          required = [
+              'Em qual esfera ocorre este trabalho?',
+              'Qual é o seu papel neste caso?',
+              'Dano estético',
+              'Autos e fatos',
+              'Cronologia',
+              'Conclusões sustentadas',
+              'evidenceIds',
+              'documentGaps',
+          ]
+          missing = [term for term in required if term not in visible]
+          if missing:
+              raise SystemExit(f'Required pericial workflow elements missing: {missing}')
+
+          print('Pericial workflow, traceability and language safeguards validated.')
+          PY
+
+      - name: Check dialog accessibility wiring
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          html = Path('index.html').read_text(encoding='utf-8')
+          dialogs = re.findall(r'<dialog\b([^>]*)>', html)
+          unlabeled = [attrs for attrs in dialogs if 'aria-labelledby=' not in attrs]
+          if unlabeled:
+              raise SystemExit(f'Dialogs without aria-labelledby: {len(unlabeled)}')
+
+          close_buttons = re.findall(r'<button\b[^>]*data-close[^>]*>', html)
+          if not close_buttons:
+              raise SystemExit('No explicit dialog close controls found.')
+
+          print(f'Validated {len(dialogs)} labeled native dialogs and close controls.')
           PY
