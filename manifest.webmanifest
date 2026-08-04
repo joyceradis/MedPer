@@ -1,4 +1,5 @@
 {
+  "id": "./",
   "name": "MedPer · Plataforma Médico-Pericial",
   "short_name": "MedPer",
   "description": "Plataforma médico-pericial com delimitação do objeto, evidências, exame, AIPE, quesitos, laudo e validação.",
@@ -6,6 +7,7 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#071117",
   "theme_color": "#0b1720",
   "icons": [
