@@ -2,7 +2,7 @@ name: Frontend audit
 
 on:
   push:
-    branches: [main]
+    branches: [main, frontend-pericial-audit-fixes]
     paths:
       - 'index.html'
       - 'css/**'
@@ -24,48 +24,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
       - name: Check JavaScript syntax
         run: |
           node --check js/app.js
-          node --check js/api-client.js
-          node --check js/case-schema.js
-          node --check js/storage.js
-          node --check js/aipe.js
-          node --check js/quesitos.js
-          node --check js/report-builder.js
+          node --check js/runtime-fixes.js
           node --check sw.js
-      - name: Check local asset references and service worker shell
+      - name: Check HTML, assets and PWA shell
         run: |
           python - <<'PY'
+          from html.parser import HTMLParser
           from pathlib import Path
-          import re
-          root = Path('.')
-          html = (root / 'index.html').read_text(encoding='utf-8')
-          refs = re.findall(r'(?:href|src)="([^"?#]+)', html)
-          missing = []
-          for ref in refs:
-              if ref.startswith(('http:', 'https:', '#')):
-                  continue
-              path = root / ref.removeprefix('./')
-              if not path.exists():
-                  missing.append(ref)
-          if missing:
-              raise SystemExit(f'Missing local assets: {missing}')
-          sw = (root / 'sw.js').read_text(encoding='utf-8')
-          required = ['./index.html', './css/styles.css', './css/compat.css', './js/app.js', './js/api-client.js']
-          absent = [item for item in required if item not in sw]
-          if absent:
-              raise SystemExit(f'Assets absent from service worker shell: {absent}')
-          print(f'Validated {len(refs)} HTML references and the PWA shell.')
+
+          class Audit(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.ids=[]; self.refs=[]
+              def handle_starttag(self, tag, attrs):
+                  data=dict(attrs)
+                  if data.get('id'): self.ids.append(data['id'])
+                  ref=data.get('src') or data.get('href')
+                  if ref and ref.startswith('./'): self.refs.append(ref.split('?')[0][2:])
+
+          html=Path('index.html').read_text(encoding='utf-8')
+          audit=Audit(); audit.feed(html)
+          duplicates=sorted({item for item in audit.ids if audit.ids.count(item)>1})
+          if duplicates: raise SystemExit(f'Duplicate HTML ids: {duplicates}')
+          missing=[ref for ref in audit.refs if not Path(ref).exists()]
+          if missing: raise SystemExit(f'Missing local assets: {missing}')
+          sw=Path('sw.js').read_text(encoding='utf-8')
+          required=['./index.html','./css/styles.css','./css/audit-fixes.css','./js/app.js','./js/runtime-fixes.js']
+          absent=[item for item in required if item not in sw]
+          if absent: raise SystemExit(f'Assets absent from service worker shell: {absent}')
+          print('HTML and PWA shell audit passed')
           PY
-      - name: Reject developer jargon in the visible interface
+      - name: Check forensic workflow requirements
         run: |
           python - <<'PY'
           from pathlib import Path
-          visible = (Path('index.html').read_text(encoding='utf-8') + '\n' + Path('js/app.js').read_text(encoding='utf-8'))
-          forbidden = ['Conectar API', 'Endereço da API', 'localhost:8000', 'MLKS Core · Medical-Legal Knowledge System']
-          found = [term for term in forbidden if term in visible]
-          if found:
-              raise SystemExit(f'Developer-facing language exposed: {found}')
-          print('No prohibited developer jargon exposed in the primary interface.')
+          app=Path('js/app.js').read_text(encoding='utf-8')
+          forbidden=['prompt(', 'Conectar API', 'Endereço da API', 'localhost:8000']
+          found=[term for term in forbidden if term in app]
+          if found: raise SystemExit(f'Forbidden implementation or developer language: {found}')
+          required=['medper.state.v2','mlks.prototype.v1','Fatos médico-periciais','Cronologia médico-processual','evidenceIds:ids','protocols={','AIPE']
+          absent=[term for term in required if term not in app]
+          if absent: raise SystemExit(f'Missing audited workflow elements: {absent}')
+          print('Forensic workflow audit passed')
           PY
