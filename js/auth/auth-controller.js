@@ -88,7 +88,8 @@ export async function createAuthController({root}) {
   let appStarted=false;
   const listeners=new Set();
 
-  const notify=()=>listeners.forEach(listener=>listener({configured,session,workspace}));
+  const snapshot=()=>({configured,session,workspace,appStarted});
+  const notify=()=>listeners.forEach(listener=>listener(snapshot()));
   const subscribe=listener=>{listeners.add(listener);return()=>listeners.delete(listener)};
 
   function ensureAccountDialog(){
@@ -174,6 +175,7 @@ export async function createAuthController({root}) {
     session=nextSession;
     if(!session){
       workspace=null;
+      appStarted=false;
       if(configured){root.innerHTML=authShell();bindAuthScreen()}
       notify();
       return;
@@ -185,8 +187,10 @@ export async function createAuthController({root}) {
       appStarted=true;
       notify();
     }catch(error){
+      appStarted=false;
       root.innerHTML=authShell(`Não foi possível preparar a conta: ${error.message}`);
       bindAuthScreen();
+      notify();
     }
   }
 
@@ -198,7 +202,7 @@ export async function createAuthController({root}) {
   if(!configured){
     root.innerHTML=setupShell();
     bindAuthScreen();
-    return {configured:false,subscribe,getState:()=>({configured:false,session:null,workspace:null,appStarted}),openAccount};
+    return {configured:false,subscribe,getState:snapshot,openAccount};
   }
 
   const module=await import('https://esm.sh/@supabase/supabase-js@2');
@@ -214,7 +218,7 @@ export async function createAuthController({root}) {
     configured:true,
     supabase,
     subscribe,
-    getState:()=>({configured:true,session,workspace,appStarted}),
+    getState:snapshot,
     openAccount,
     signOut
   };
