@@ -1,162 +1,70 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b1720">
-  <meta name="description" content="MLKS — plataforma de apoio ao raciocínio médico-legal com rastreabilidade de evidências.">
-  <title>MLKS · Medical-Legal Knowledge System</title>
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" href="./icon.jpeg" type="image/jpeg">
-  <link rel="stylesheet" href="./css/styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1720">
+<meta name="description" content="MedPer — plataforma médico-pericial com raciocínio estruturado, AIPE, quesitos e montagem de laudo.">
+<title>MedPer · Plataforma Médico-Pericial</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#workspace">Ir para o conteúdo</a>
-
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand" aria-label="MLKS">
-        <div class="brand-mark" aria-hidden="true">M</div>
-        <div>
-          <strong>MLKS</strong>
-          <span>Medical-Legal Knowledge System</span>
-        </div>
-      </div>
-
-      <div class="topbar-actions">
-        <span id="connectionStatus" class="status-chip" role="status">verificando conexão</span>
-        <button id="newCaseButton" class="button button-ghost" type="button">Novo caso</button>
-        <button id="exportButton" class="button button-primary" type="button">Exportar JSON</button>
-      </div>
-    </header>
-
-    <aside class="sidebar" aria-label="Navegação principal">
-      <nav id="mainNavigation">
-        <button class="nav-item is-active" data-view="overview" type="button">
-          <span aria-hidden="true">◫</span><span>Visão geral</span>
-        </button>
-        <button class="nav-item" data-view="case" type="button">
-          <span aria-hidden="true">◉</span><span>Caso e objeto</span>
-        </button>
-        <button class="nav-item" data-view="evidence" type="button">
-          <span aria-hidden="true">▤</span><span>Evidências</span>
-        </button>
-        <button class="nav-item" data-view="observations" type="button">
-          <span aria-hidden="true">⌁</span><span>Observações</span>
-        </button>
-        <button class="nav-item" data-view="findings" type="button">
-          <span aria-hidden="true">◆</span><span>Achados</span>
-        </button>
-        <button class="nav-item" data-view="graph" type="button">
-          <span aria-hidden="true">⌘</span><span>Grafo médico-legal</span>
-        </button>
-        <button class="nav-item" data-view="reasoning" type="button">
-          <span aria-hidden="true">∴</span><span>Raciocínio pericial</span>
-        </button>
-        <button class="nav-item" data-view="scope" type="button">
-          <span aria-hidden="true">⌖</span><span>Delimitação</span>
-        </button>
-        <button class="nav-item" data-view="timeline" type="button">
-          <span aria-hidden="true">◷</span><span>Cronologia</span>
-        </button>
-        <button class="nav-item" data-view="exam" type="button">
-          <span aria-hidden="true">⊙</span><span>Exame</span>
-        </button>
-        <button class="nav-item" data-view="aesthetic" type="button">
-          <span aria-hidden="true">◈</span><span>Dano estético</span>
-        </button>
-        <button class="nav-item" data-view="questions" type="button">
-          <span aria-hidden="true">?</span><span>Quesitos</span>
-        </button>
-        <button class="nav-item" data-view="report" type="button">
-          <span aria-hidden="true">▧</span><span>Laudo</span>
-        </button>
-        <button class="nav-item" data-view="validation" type="button">
-          <span aria-hidden="true">✓</span><span>Validação</span>
-        </button>
-        <button class="nav-item" data-view="traceability" type="button">
-          <span aria-hidden="true">↳</span><span>Rastreabilidade</span>
-        </button>
-      </nav>
-
-      <div class="sidebar-note">
-        <strong>Princípio operacional</strong>
-        <p>O sistema organiza fatos. A conclusão permanece sob validação humana.</p>
-      </div>
-    </aside>
-
-    <main id="workspace" class="workspace" tabindex="-1">
-      <noscript>
-        <section class="panel">
-          <h1>JavaScript necessário</h1>
-          <p>Ative o JavaScript para utilizar o protótipo MLKS.</p>
-        </section>
-      </noscript>
-    </main>
-  </div>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <dialog id="newCaseDialog" class="dialog">
-    <form id="newCaseForm" method="dialog">
-      <div class="dialog-header">
-        <div>
-          <span class="eyebrow">Novo registro</span>
-          <h2>Criar caso</h2>
-        </div>
-        <button class="icon-button" value="cancel" aria-label="Fechar" type="submit">×</button>
-      </div>
-
-      <label class="field">
-        <span>Título interno</span>
-        <input name="title" required maxlength="100" placeholder="Ex.: Avaliação de dano corporal">
-      </label>
-
-      <label class="field">
-        <span>Número do processo ou referência</span>
-        <input name="reference" maxlength="80" placeholder="Opcional">
-      </label>
-
-      <label class="field">
-        <span>Objeto pericial</span>
-        <select name="objectType" required>
-          <option value="">Selecione</option>
-          <option>Dano corporal</option>
-          <option>Dano estético</option>
-          <option>Incapacidade</option>
-          <option>Nexo causal</option>
-          <option>Erro médico</option>
-          <option>Responsabilidade profissional</option>
-          <option>Acidente de trabalho</option>
-          <option>Acidente de trânsito</option>
-        </select>
-      </label>
-
-      <div class="dialog-actions">
-        <button class="button button-ghost" value="cancel" type="submit">Cancelar</button>
-        <button class="button button-primary" value="default" type="submit">Criar caso</button>
-      </div>
-    </form>
-  </dialog>
-
-  <template id="emptyStateTemplate">
-    <section class="empty-state">
-      <div class="empty-symbol" aria-hidden="true">M</div>
-      <span class="eyebrow">MLKS Core</span>
-      <h1>O caso começa pelos fatos.</h1>
-      <p>Crie um caso ou carregue o caso demonstrativo para visualizar o fluxo completo de evidência, achado, raciocínio e conclusão rastreável.</p>
-      <div class="button-row">
-        <button class="button button-primary" data-action="new-case" type="button">Criar primeiro caso</button>
-        <button class="button button-ghost" data-action="load-demo" type="button">Carregar demonstração</button>
-      </div>
-    </section>
-  </template>
-
-  <script src="./js/case-schema.js" defer></script>
-  <script src="./js/storage.js" defer></script>
-  <script src="./js/aipe.js" defer></script>
-  <script src="./js/quesitos.js" defer></script>
-  <script src="./js/report-builder.js" defer></script>
-  <script src="./js/app.js" defer></script>
+<a class="skip-link" href="#workspace">Ir para o conteúdo</a>
+<div class="app-shell">
+<header class="topbar">
+<div class="brand" aria-label="MedPer">
+<div class="brand-mark" aria-hidden="true">M</div>
+<div>
+<strong>MedPer</strong>
+<span>MLKS Core · Medical-Legal Knowledge System</span>
+</div>
+</div>
+<div class="topbar-actions">
+<span id="connectionStatus" class="status-chip" role="status">verificando conexão</span>
+<button id="newCaseButton" class="button button-ghost" type="button">Novo caso</button>
+<button id="exportButton" class="button button-primary" type="button">Exportar JSON</button>
+</div>
+</header>
+<aside class="sidebar" aria-label="Navegação principal">
+<nav id="mainNavigation">
+<button class="nav-item is-active" data-view="overview" type="button"><span aria-hidden="true">◫</span><span>Visão geral</span></button>
+<button class="nav-item" data-view="case" type="button"><span aria-hidden="true">◉</span><span>Caso e objeto</span></button>
+<button class="nav-item" data-view="evidence" type="button"><span aria-hidden="true">▤</span><span>Evidências</span></button>
+<button class="nav-item" data-view="observations" type="button"><span aria-hidden="true">⌁</span><span>Observações</span></button>
+<button class="nav-item" data-view="findings" type="button"><span aria-hidden="true">◆</span><span>Achados</span></button>
+<button class="nav-item" data-view="graph" type="button"><span aria-hidden="true">⌘</span><span>Grafo médico-legal</span></button>
+<button class="nav-item" data-view="reasoning" type="button"><span aria-hidden="true">∴</span><span>Raciocínio pericial</span></button>
+<button class="nav-item" data-view="scope" type="button"><span aria-hidden="true">⌖</span><span>Delimitação</span></button>
+<button class="nav-item" data-view="timeline" type="button"><span aria-hidden="true">◷</span><span>Cronologia</span></button>
+<button class="nav-item" data-view="exam" type="button"><span aria-hidden="true">⊙</span><span>Exame</span></button>
+<button class="nav-item" data-view="aesthetic" type="button"><span aria-hidden="true">◈</span><span>Dano estético</span></button>
+<button class="nav-item" data-view="questions" type="button"><span aria-hidden="true">?</span><span>Quesitos</span></button>
+<button class="nav-item" data-view="report" type="button"><span aria-hidden="true">▧</span><span>Laudo</span></button>
+<button class="nav-item" data-view="validation" type="button"><span aria-hidden="true">✓</span><span>Validação</span></button>
+<button class="nav-item" data-view="traceability" type="button"><span aria-hidden="true">↳</span><span>Rastreabilidade</span></button>
+</nav>
+<div class="sidebar-note"><strong>Princípio operacional</strong><p>O sistema organiza fatos. A conclusão permanece sob validação humana.</p></div>
+</aside>
+<main id="workspace" class="workspace" tabindex="-1"><noscript><section class="panel"><h1>JavaScript necessário</h1><p>Ative o JavaScript para utilizar o MedPer.</p></section></noscript></main>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<dialog id="newCaseDialog" class="dialog">
+<form id="newCaseForm" method="dialog">
+<div class="dialog-header"><div><span class="eyebrow">Novo registro</span><h2>Criar caso</h2></div><button class="icon-button" value="cancel" aria-label="Fechar" type="submit">×</button></div>
+<label class="field"><span>Título interno</span><input name="title" required maxlength="100" placeholder="Ex.: Avaliação de dano corporal"></label>
+<label class="field"><span>Número do processo ou referência</span><input name="reference" maxlength="80" placeholder="Opcional"></label>
+<label class="field"><span>Objeto pericial</span><select name="objectType" required><option value="">Selecione</option><option>Dano corporal</option><option>Dano estético</option><option>Incapacidade</option><option>Nexo causal</option><option>Erro médico</option><option>Responsabilidade profissional</option><option>Acidente de trabalho</option><option>Acidente de trânsito</option></select></label>
+<div class="dialog-actions"><button class="button button-ghost" value="cancel" type="submit">Cancelar</button><button class="button button-primary" value="default" type="submit">Criar caso</button></div>
+</form>
+</dialog>
+<template id="emptyStateTemplate"><section class="empty-state"><div class="empty-symbol" aria-hidden="true">M</div><span class="eyebrow">MedPer · MLKS Core</span><h1>O caso começa pelos fatos.</h1><p>Crie um caso ou carregue o caso demonstrativo para visualizar o fluxo completo de evidência, achado, raciocínio, AIPE, quesitos e laudo rastreável.</p><div class="button-row"><button class="button button-primary" data-action="new-case" type="button">Criar primeiro caso</button><button class="button button-ghost" data-action="load-demo" type="button">Carregar demonstração</button></div></section></template>
+<script src="./js/case-schema.js" defer></script>
+<script src="./js/storage.js" defer></script>
+<script src="./js/aipe.js" defer></script>
+<script src="./js/quesitos.js" defer></script>
+<script src="./js/report-builder.js" defer></script>
+<script src="./js/app.js" defer></script>
 </body>
 </html>
