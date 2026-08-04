@@ -1,0 +1,79 @@
+name: Authentication audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/auth/**'
+      - 'js/config/**'
+      - 'css/auth.css'
+      - 'supabase/**'
+      - 'js/main.js'
+      - 'index.html'
+      - 'sw.js'
+      - '.github/workflows/auth-audit.yml'
+  pull_request:
+    paths:
+      - 'js/auth/**'
+      - 'js/config/**'
+      - 'css/auth.css'
+      - 'supabase/**'
+      - 'js/main.js'
+      - 'index.html'
+      - 'sw.js'
+      - '.github/workflows/auth-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check authentication module syntax
+        run: |
+          set -euo pipefail
+          node --check js/auth/auth-controller.js
+          node --check js/config/supabase-config.js
+          node --check js/main.js
+      - name: Check browser key safety and auth wiring
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          auth=Path('js/auth/auth-controller.js').read_text(encoding='utf-8')
+          config=Path('js/config/supabase-config.js').read_text(encoding='utf-8')
+          main=Path('js/main.js').read_text(encoding='utf-8')
+          sw=Path('sw.js').read_text(encoding='utf-8')
+          index=Path('index.html').read_text(encoding='utf-8')
+          forbidden=['service_role','SUPABASE_SERVICE_ROLE','secretKey']
+          exposed=[x for x in forbidden if x in config]
+          if exposed: raise SystemExit(f'Secret-like values in browser config: {exposed}')
+          required_auth=['signInWithPassword','signUp','signInWithOAuth','getSession','onAuthStateChange','create_personal_organization','signOut']
+          missing=[x for x in required_auth if x not in auth]
+          if missing: raise SystemExit(f'Authentication behavior missing: {missing}')
+          required_main=['createAuthController','handleAuthState','createApp']
+          missing=[x for x in required_main if x not in main]
+          if missing: raise SystemExit(f'Authentication gate missing: {missing}')
+          required_assets=['./css/auth.css','./js/auth/auth-controller.js','./js/config/supabase-config.js']
+          missing=[x for x in required_assets if x not in sw]
+          if missing: raise SystemExit(f'Auth assets absent from PWA shell: {missing}')
+          if './css/auth.css' not in index: raise SystemExit('Authentication stylesheet not loaded.')
+          print('Authentication gate, public-key safety and PWA assets validated.')
+          PY
+      - name: Check database schema isolation
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          schema=Path('supabase/schema.sql').read_text(encoding='utf-8')
+          bootstrap=Path('supabase/002_bootstrap_organization.sql').read_text(encoding='utf-8')
+          required=['create table public.profiles','create table public.organizations','create table public.organization_members','create table public.cases','enable row level security','auth.uid()','cases_select_allowed','cases_insert_owner','organization_can_use']
+          missing=[x for x in required if x not in schema]
+          if missing: raise SystemExit(f'Database protections missing: {missing}')
+          if 'security definer' not in bootstrap or 'create_personal_organization' not in bootstrap:
+              raise SystemExit('Organization bootstrap RPC is missing or unsafe.')
+          print('Multi-tenant schema and RLS safeguards validated.')
+          PY
