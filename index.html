@@ -6,9 +6,10 @@
   <meta name="theme-color" content="#f4f1e9">
   <meta name="description" content="MedPer — perícia médica estruturada, dos autos ao laudo.">
   <title>MedPer · Perícia médica estruturada</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=20260804.5">
-  <link rel="icon" href="./icon.svg?v=20260804.5" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/styles.css?v=20260804.5">
+  <link rel="manifest" href="./manifest.webmanifest?v=20260804.6">
+  <link rel="icon" href="./icon.svg?v=20260804.6" type="image/svg+xml">
+  <link rel="stylesheet" href="./css/styles.css?v=20260804.6">
+  <link rel="stylesheet" href="./css/audit-fixes.css?v=20260804.6">
 </head>
 <body>
   <a class="skip-link" href="#workspace">Ir para o conteúdo</a>
@@ -17,77 +18,30 @@
 
   <dialog id="wizardDialog" class="modal" aria-labelledby="wizardTitle">
     <form id="wizardForm" novalidate>
-      <header class="modal-header">
-        <div>
-          <span class="eyebrow">Nova perícia</span>
-          <h2 id="wizardTitle">Em qual esfera ocorre este trabalho?</h2>
-          <p id="wizardHelp">A esfera define o enquadramento e o fluxo principal.</p>
-        </div>
-        <button class="icon-button" type="button" data-close="wizardDialog" aria-label="Fechar">×</button>
-      </header>
-      <div id="wizardBody"></div>
-      <p id="wizardError" class="form-error" role="alert"></p>
-      <footer class="modal-footer">
-        <button class="button button-secondary" type="button" id="wizardBack">Voltar</button>
-        <div class="step-dots" id="wizardDots" aria-label="Progresso da criação"></div>
-        <button class="button button-primary" type="button" id="wizardNext">Continuar</button>
-      </footer>
+      <header class="modal-header"><div><span class="eyebrow">Nova perícia</span><h2 id="wizardTitle">Em qual esfera ocorre este trabalho?</h2><p id="wizardHelp">A esfera define o enquadramento e o fluxo principal.</p></div><button class="icon-button" type="button" data-close="wizardDialog" aria-label="Fechar">×</button></header>
+      <div id="wizardBody"></div><p id="wizardError" class="form-error" role="alert"></p>
+      <footer class="modal-footer"><button class="button button-secondary" type="button" id="wizardBack">Voltar</button><div class="step-dots" id="wizardDots" aria-label="Progresso da criação"></div><button class="button button-primary" type="button" id="wizardNext">Continuar</button></footer>
     </form>
   </dialog>
 
   <dialog id="entityDialog" class="modal" aria-labelledby="entityTitle">
     <form id="entityForm" novalidate>
-      <header class="modal-header">
-        <div>
-          <span class="eyebrow" id="entityEyebrow">Novo registro</span>
-          <h2 id="entityTitle">Adicionar</h2>
-          <p id="entityHelp"></p>
-        </div>
-        <button class="icon-button" type="button" data-close="entityDialog" aria-label="Fechar">×</button>
-      </header>
-      <div id="entityBody"></div>
-      <p id="entityError" class="form-error" role="alert"></p>
-      <footer class="modal-footer modal-footer-end">
-        <button class="button button-secondary" type="button" data-close="entityDialog">Cancelar</button>
-        <button class="button button-primary" type="submit">Salvar</button>
-      </footer>
+      <header class="modal-header"><div><span class="eyebrow" id="entityEyebrow">Novo registro</span><h2 id="entityTitle">Adicionar</h2><p id="entityHelp"></p></div><button class="icon-button" type="button" data-close="entityDialog" aria-label="Fechar">×</button></header>
+      <div id="entityBody"></div><p id="entityError" class="form-error" role="alert"></p>
+      <footer class="modal-footer modal-footer-end"><button class="button button-secondary" type="button" data-close="entityDialog">Cancelar</button><button class="button button-primary" type="submit">Salvar</button></footer>
     </form>
   </dialog>
 
   <dialog id="confirmDialog" class="modal modal-small" aria-labelledby="confirmTitle" aria-describedby="confirmText">
-    <form method="dialog">
-      <header class="modal-header">
-        <div>
-          <span class="eyebrow">Confirmação</span>
-          <h2 id="confirmTitle">Excluir registro?</h2>
-          <p id="confirmText">Esta ação não poderá ser desfeita.</p>
-        </div>
-      </header>
-      <footer class="modal-footer modal-footer-end">
-        <button class="button button-secondary" value="cancel">Cancelar</button>
-        <button class="button button-danger" value="confirm">Excluir</button>
-      </footer>
-    </form>
+    <form method="dialog"><header class="modal-header"><div><span class="eyebrow">Confirmação</span><h2 id="confirmTitle">Excluir registro?</h2><p id="confirmText">Esta ação poderá ser desfeita por alguns segundos.</p></div></header><footer class="modal-footer modal-footer-end"><button class="button button-secondary" value="cancel">Cancelar</button><button class="button button-danger" value="confirm">Excluir</button></footer></form>
   </dialog>
 
   <dialog id="accountDialog" class="modal modal-small" aria-labelledby="accountTitle">
-    <form method="dialog">
-      <header class="modal-header">
-        <div>
-          <span class="eyebrow">Conta MedPer</span>
-          <h2 id="accountTitle">Entrar</h2>
-          <p>O modo local continua ativo. O login será liberado quando a API pública e o Google OAuth estiverem configurados.</p>
-        </div>
-        <button class="icon-button" value="cancel" aria-label="Fechar">×</button>
-      </header>
-      <div class="account-state">
-        <strong>Por enquanto: salvo neste dispositivo</strong>
-        <p>Use apenas dados fictícios ou desidentificados. A sincronização em nuvem ainda não está disponível.</p>
-      </div>
-    </form>
+    <form method="dialog"><header class="modal-header"><div><span class="eyebrow">Conta MedPer</span><h2 id="accountTitle">Salvamento em nuvem</h2><p>O modo local continua ativo. O login será liberado quando a API pública e o Google OAuth estiverem configurados.</p></div><button class="icon-button" value="cancel" aria-label="Fechar">×</button></header><div class="account-state"><strong>Por enquanto: salvo neste dispositivo</strong><p>Use apenas dados fictícios ou desidentificados. A sincronização em nuvem ainda não está disponível.</p></div></form>
   </dialog>
 
-  <script src="./js/app.js?v=20260804.5" defer></script>
+  <script src="./js/app.js?v=20260804.6" defer></script>
+  <script src="./js/runtime-fixes.js?v=20260804.6" defer></script>
   <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
 </body>
 </html>
