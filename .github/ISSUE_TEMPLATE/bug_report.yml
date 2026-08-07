@@ -1,0 +1,83 @@
+name: Relatar falha
+about: Registrar comportamento incorreto ou regressão no MedPer
+title: "[Bug] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Não inclua dados de pacientes, documentos reais, credenciais ou informações processuais sigilosas.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Resumo
+      description: Descreva objetivamente o comportamento incorreto.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área afetada
+      options:
+        - Site público
+        - Autenticação / modo local
+        - Casos e persistência
+        - Metodologia
+        - Quesitos
+        - Documento final
+        - PWA / cache / offline
+        - Supabase / banco
+        - Documentação
+        - Outro
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. Abrir...
+        2. Clicar...
+        3. Preencher...
+        4. Observar...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Resultado observado
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Ambiente
+      placeholder: macOS 26 / Safari, iPhone / Safari, Chrome etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: regression
+    attributes:
+      label: Impacto e risco de regressão
+      description: Informe se houve perda de dados, bloqueio de fluxo, alteração metodológica ou problema apenas visual.
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Segurança do material
+      options:
+        - label: Confirmo que não incluí dados reais, sigilosos ou credenciais.
+          required: true
