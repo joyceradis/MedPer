@@ -1,62 +1,425 @@
+<div align="center">
+
 # MedPer
 
-**Plataforma médico-pericial com MLKS Core** — ambiente de trabalho orientado por casos, evidências, achados estruturados, métodos de avaliação, quesitos e conclusões rastreáveis.
+### Método médico-pericial estruturado, rastreável e orientado ao objeto
 
-> O sistema organiza o raciocínio e monta a estrutura documental. A conclusão, a valoração e a assinatura permanecem sob responsabilidade do médico perito.
+[![Aplicação](https://img.shields.io/badge/GitHub%20Pages-Acessar%20MedPer-173f36?style=for-the-badge)](https://joyceradis.github.io/MedPer/)
+[![Status](https://img.shields.io/badge/status-protótipo%20em%20desenvolvimento-b18a4b?style=for-the-badge)](#estado-atual)
+[![PWA](https://img.shields.io/badge/PWA-offline--first-253238?style=for-the-badge)](#arquitetura-atual)
 
-## Estrutura funcional
+**Plataforma de apoio à organização do raciocínio médico-pericial, das evidências e do documento técnico final.**
 
-O caso reúne, em um único fluxo:
+> O MedPer não substitui o juízo médico. O sistema estrutura informações, explicita o método, identifica lacunas e produz uma base documental rastreável. A análise, a valoração, a conclusão e a assinatura permanecem sob responsabilidade exclusiva da médica ou do médico perito.
 
-- delimitação literal do objeto determinado pelo juízo;
-- dados processuais e limites da atuação pericial;
-- inventário de fontes e evidências;
+</div>
+
+---
+
+## Visão do produto
+
+A perícia médica não começa pelo laudo. Começa pela compreensão da missão pericial.
+
+O MedPer foi concebido para conduzir o trabalho na sequência em que um raciocínio técnico consistente deve ocorrer:
+
+```text
+Contexto e esfera
+        ↓
+Delimitação do objeto
+        ↓
+Autos, fontes e fatos
+        ↓
+Cronologia
+        ↓
+Hipóteses e diligências
+        ↓
+Exame e método aplicável
+        ↓
+Fundamentação técnico-científica
+        ↓
+Conclusão proporcional à prova
+        ↓
+Quesitos
+        ↓
+Documento final
+```
+
+O produto busca reduzir três riscos recorrentes:
+
+1. começar a escrever antes de delimitar o objeto;
+2. misturar fato, hipótese, interpretação e conclusão;
+3. formular conclusões sem explicitar as evidências, limitações e o grau de sustentação.
+
+---
+
+## Princípios invariantes
+
+- **Objeto antes do protocolo:** a matéria e o contexto determinam a metodologia aplicável.
+- **Fatos antes de conclusões:** documentos, eventos, observações e achados permanecem separados da interpretação.
+- **Nenhuma conclusão sem sustentação:** bloqueios e ressalvas metodológicas devem ser visíveis.
+- **Proporcionalidade epistêmica:** a linguagem da conclusão deve refletir a suficiência real dos elementos disponíveis.
+- **Rastreabilidade:** o documento final deve derivar do estado estruturado do caso.
+- **Metodologias contextualizadas:** AIPE é aplicada somente ao dano estético; outros objetos utilizam protocolos próprios.
+- **IA assistiva, nunca decisória:** recursos futuros de IA poderão organizar e revisar, mas não valorar dano, afirmar nexo ou substituir exame.
+- **Validação humana obrigatória:** nenhuma saída é considerada laudo ou parecer válido sem revisão e assinatura profissional.
+
+---
+
+## Estado atual
+
+O MedPer está em fase de **protótipo funcional e engenharia cognitiva**.
+
+### Implementado
+
+- site público separado da aplicação interna;
+- PWA estático compatível com GitHub Pages;
+- execução local e funcionamento offline;
+- criação, abertura e persistência de casos no navegador;
+- migração retrocompatível das versões antigas do armazenamento;
+- definição de esfera, ramo, papel profissional, matéria e modalidade;
+- delimitação do objeto pericial;
+- inventário de fontes e fatos médico-periciais;
 - cronologia;
-- entrevista e exame médico-pericial;
-- observações e achados independentes;
-- grafo e matriz de rastreabilidade;
-- raciocínio sobre nexo, temporalidade, consolidação e repercussões;
-- avaliação do dano estético pelo AIPE;
-- classificação e resposta aos quesitos;
-- montagem do laudo;
-- validação final de escopo e fundamentação;
-- exportação JSON e funcionamento offline.
+- metodologia geral obrigatória;
+- protocolos guiados para dano estético, incapacidade, nexo causal/concausal e responsabilidade profissional;
+- AIPE restrita ao dano estético;
+- matriz de decisão pericial;
+- bloqueios e ressalvas metodológicas;
+- quesitos;
+- prévia do documento final;
+- exportação JSON;
+- autenticação e modelo multiusuário preparados, ainda não conectados a ambiente real;
+- testes de regressão para migração, persistência e compatibilidade do objeto pericial.
+
+### Em desenvolvimento
+
+- reorganização da aplicação conforme o fluxo cognitivo da perícia;
+- identificadores estáveis para respostas metodológicas;
+- redução do acoplamento do módulo de interface;
+- validação manual em desktop e mobile;
+- projeto Supabase real;
+- sincronização remota dos casos;
+- testes de isolamento e permissões;
+- assinatura, limites de uso e comercialização.
+
+### Não disponível para produção
+
+A versão pública atual **não deve ser utilizada com dados reais, identificáveis, sigilosos, assistenciais ou processuais**.
+
+O modo local utiliza `localStorage`, sem as garantias necessárias de autenticação, segregação, criptografia, backup, controle de acesso e resposta a incidentes exigidas para operação real.
+
+---
+
+## Acessos
+
+| Ambiente | Endereço | Finalidade |
+|---|---|---|
+| Site público | [`/MedPer/`](https://joyceradis.github.io/MedPer/) | apresentação institucional do produto |
+| Aplicação | [`/MedPer/app.html`](https://joyceradis.github.io/MedPer/app.html) | protótipo operacional e modo local |
+| Roadmap | [`ROADMAP.md`](./ROADMAP.md) | fonte de verdade das etapas do produto |
+| Método | [`docs/MEDPER_METHOD.md`](./docs/MEDPER_METHOD.md) | especificação cognitiva e metodológica |
+| Auditoria | [`docs/AUDIT_REGRESSION.md`](./docs/AUDIT_REGRESSION.md) | baseline e gates de regressão |
+
+---
+
+## Arquitetura atual
+
+```text
+Navegador
+│
+├── index.html                  site público
+├── app.html                    aplicação médico-pericial
+│
+├── js/main.js                  composição e inicialização
+│   ├── core/store.js           estado, normalização, migração e persistência
+│   ├── auth/                   autenticação preparada
+│   ├── methodology/            protocolos e motor de auditoria
+│   └── ui/                     renderização, interação e diálogos
+│
+├── css/                        sistemas visuais público e interno
+├── supabase/                   schema multiusuário e bootstrap
+├── tests/                      testes de regressão
+├── docs/                       especificações técnicas e metodológicas
+│
+├── manifest.webmanifest        metadados do PWA
+└── sw.js                       cache, atualização e fallback offline
+```
+
+### Propriedade do estado
+
+O arquivo `js/core/store.js` é o único proprietário do estado persistido no navegador.
+
+```text
+entrada do usuário
+      ↓
+normalização do caso
+      ↓
+persistência local
+      ↓
+notificação controlada da interface
+```
+
+As atualizações narrativas são persistidas sem reconstruir toda a interface a cada caractere. A atualização visual ocorre no encerramento da edição ou em respostas estruturadas que alterem imediatamente a auditoria metodológica.
+
+### Compatibilidade de dados
+
+O store atual reconhece:
+
+- `medper.state.v4`;
+- `medper.state.v3`;
+- `medper.state.v2`;
+- `mlks.prototype.v1`.
+
+Quando uma chave antiga é encontrada, o conteúdo original é copiado para uma chave de backup antes da normalização.
+
+---
+
+## Estrutura do repositório
+
+```text
+MedPer/
+├── index.html
+├── app.html
+├── README.md
+├── ROADMAP.md
+├── manifest.webmanifest
+├── sw.js
+├── icon.svg
+│
+├── css/
+│   ├── marketing.css
+│   ├── styles.css
+│   ├── methodology.css
+│   ├── guided-methodology.css
+│   └── auth.css
+│
+├── js/
+│   ├── main.js
+│   ├── auth/
+│   │   └── auth-controller.js
+│   ├── config/
+│   │   └── supabase-config.js
+│   ├── core/
+│   │   └── store.js
+│   ├── methodology/
+│   │   ├── protocols.js
+│   │   └── engine.js
+│   └── ui/
+│       ├── app.js
+│       └── dialog-controller.js
+│
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── AUDIT_REGRESSION.md
+│   ├── FIELD_MIGRATION_MATRIX.md
+│   └── MEDPER_METHOD.md
+│
+├── supabase/
+│   ├── schema.sql
+│   └── 002_bootstrap_organization.sql
+│
+├── tests/
+│   └── store-regression.test.mjs
+│
+└── .github/workflows/
+    └── auditorias automatizadas
+```
+
+---
 
 ## Executar localmente
 
-O projeto é um PWA estático. Execute por HTTP:
+O projeto não exige build para a versão atual. Como utiliza módulos ES, deve ser servido por HTTP.
+
+### Python
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Abra `http://localhost:8080`.
+Acesse:
 
-## Publicação
+```text
+http://localhost:8080/
+http://localhost:8080/app.html
+```
 
-A branch `main`, servida a partir da raiz, é compatível com GitHub Pages.
+### Node.js
 
-## Segurança
+```bash
+npx serve .
+```
 
-O protótipo grava dados no `localStorage` do navegador. **Não utilize dados reais, identificáveis, sigilosos ou assistenciais.** Autenticação, criptografia, segregação de acesso, trilha de auditoria imutável e backend seguro pertencem à fase de produção.
+Não abra os arquivos diretamente com `file://`, pois imports ES, Service Worker e algumas APIs do navegador dependem de um contexto HTTP válido.
 
-## Organização
+---
 
-- `index.html` — entrada única da aplicação;
-- `css/styles.css` — identidade visual MedPer/MLKS Core;
-- `js/` — domínio, persistência, AIPE, quesitos, laudo e aplicação;
-- `pages/` — rotas estáticas para os módulos do caso;
-- `casos/` — rotas de entrada para visão geral e caso ativo;
-- `data/mlks.schema.json` — esquema de exportação;
-- `docs/ARCHITECTURE.md` — arquitetura e princípios do MLKS Core;
-- `manifest.webmanifest`, `sw.js` e `icon.svg` — PWA.
+## Verificação técnica
 
-## Princípios
+### Sintaxe dos módulos
 
-- objeto pericial antes do protocolo;
-- fatos antes de conclusões;
-- nenhuma conclusão sem evidência;
-- rastreabilidade integral;
-- IA assistiva, nunca decisória;
-- métodos como AIPE desacoplados do núcleo clínico;
-- validação humana obrigatória.
+```bash
+node --check js/main.js
+node --check js/core/store.js
+node --check js/methodology/protocols.js
+node --check js/methodology/engine.js
+node --check js/ui/app.js
+node --check js/ui/dialog-controller.js
+node --check js/auth/auth-controller.js
+node --check sw.js
+```
+
+### Testes de regressão
+
+```bash
+node tests/store-regression.test.mjs
+```
+
+Os testes atuais cobrem:
+
+- migração do objeto pericial legado;
+- sincronização entre o alias histórico e o campo canônico;
+- conflito entre versões do objeto;
+- atualização silenciosa e notificação explícita;
+- preservação de coleções durante migração;
+- backup das chaves antigas;
+- recuperação segura após JSON inválido.
+
+---
+
+## Metodologia médico-pericial
+
+O núcleo metodológico é composto por duas camadas.
+
+### Método geral
+
+Aplicável a todos os objetos:
+
+1. delimitação;
+2. material analisado;
+3. execução técnica;
+4. avaliação de consistência;
+5. hipóteses e alternativas;
+6. limitações;
+7. grau de sustentação;
+8. conclusão admissível.
+
+### Protocolos específicos
+
+| Matéria | Foco do protocolo |
+|---|---|
+| Dano estético | consolidação, descrição morfológica, percepção, fotografia, AIPE e fundamentação |
+| Incapacidade | diagnóstico, déficit funcional, atividade habitual, capacidade residual e temporalidade |
+| Nexo causal e concausa | evento, compatibilidade temporal/anatômica, plausibilidade, estado anterior e alternativas |
+| Responsabilidade profissional | contexto assistencial, indicação, execução, acompanhamento, dano e nexo |
+| Outras matérias | protocolo genérico estruturado, até existir módulo específico validado |
+
+A documentação integral está em [`docs/MEDPER_METHOD.md`](./docs/MEDPER_METHOD.md).
+
+---
+
+## Modelo de dados futuro
+
+O schema preparado para Supabase/PostgreSQL contempla:
+
+```text
+profiles
+organizations
+organization_members
+plans
+subscriptions
+cases
+case_collaborators
+audit_events
+```
+
+A arquitetura futura prevê:
+
+```text
+Frontend PWA
+    ↓
+Supabase Auth
+    ↓
+PostgreSQL + Row-Level Security
+    ↓
+casos por usuário e organização
+    ↓
+armazenamento de arquivos
+    ↓
+auditoria, backup e retenção
+```
+
+Esse modelo ainda não está conectado à aplicação pública.
+
+---
+
+## Segurança e privacidade
+
+Antes de produção, são obrigatórios:
+
+- autenticação real;
+- confirmação e recuperação de conta;
+- segregação por usuário e organização;
+- Row-Level Security testada com múltiplas identidades;
+- criptografia em trânsito e em repouso;
+- armazenamento seguro de documentos;
+- trilha de auditoria;
+- política de retenção e exclusão;
+- backup e restauração testados;
+- monitoramento e resposta a incidentes;
+- termos de uso, política de privacidade e definição dos papéis de tratamento de dados.
+
+Nunca devem ser incluídas no frontend:
+
+- `service_role` do Supabase;
+- chaves privadas de provedores;
+- segredos de cobrança;
+- credenciais de serviços de IA.
+
+---
+
+## Roadmap oficial
+
+1. separar site público de dashboard — **concluído**;
+2. projetar a experiência cognitiva e a identidade do produto — **em andamento**;
+3. conectar Supabase real;
+4. sincronizar casos;
+5. testar isolamento e permissões;
+6. implementar assinatura e limites;
+7. criar onboarding;
+8. publicar planos;
+9. executar piloto fechado;
+10. abrir venda pública.
+
+A especificação completa e os critérios de aceite estão em [`ROADMAP.md`](./ROADMAP.md).
+
+---
+
+## Governança de mudanças
+
+Nenhuma alteração estrutural deve ser considerada concluída sem:
+
+1. escopo declarado;
+2. preservação dos dados legados;
+3. teste de regressão;
+4. revisão do impacto metodológico;
+5. validação manual da experiência afetada;
+6. atualização da documentação correspondente.
+
+Mudanças de interface, autenticação, persistência remota e cobrança não devem ser misturadas no mesmo conjunto de commits.
+
+---
+
+## Autoria e responsabilidade técnica do produto
+
+O MedPer é idealizado e dirigido por **Dra. Joyce Radis de Souza de Oliveira — CRM-ES 21188**, médica e perita judicial.
+
+O projeto encontra-se em desenvolvimento privado de produto, embora o protótipo técnico esteja publicado em repositório aberto. A presença do código no GitHub não representa autorização para uso clínico, pericial, comercial ou institucional sem validação própria e observância das normas aplicáveis.
+
+---
+
+<div align="center">
+
+**MedPer — o método antes do documento.**
+
+</div>
