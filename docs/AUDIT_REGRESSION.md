@@ -26,7 +26,7 @@ Nenhuma refatoração da fase 2 deve:
 3. Continuação em modo local.
 4. Criação e cancelamento de nova perícia.
 5. Abertura de caso existente.
-6. Edição e persistência local.
+6. Edição e persistência local sem reconstrução a cada caractere.
 7. Cadastro de fonte, fato, evento e quesito.
 8. Navegação entre as etapas.
 9. Aplicação do protocolo correspondente à matéria.
@@ -46,9 +46,11 @@ O objeto existia em `case.scope` e `case.methodology.general.object`. A interfac
 ### AR-02 — reconstrução integral durante digitação
 
 **Risco:** alto.  
-**Estado:** pendente de teste e correção antes da nova navegação.
+**Estado:** correção aplicada; testes de store adicionados; validação manual ainda pendente.
 
-Cada alteração de input atualiza o store, emite evento e reconstrói a aplicação. Deve ser verificado foco, cursor, seleção, desempenho e persistência em textos extensos.
+Campos narrativos agora atualizam e persistem o estado sem notificar os renderizadores a cada evento `input`. Ao finalizar a edição, o evento `change` emite a atualização para recalcular progresso, auditoria e documento. Respostas discretas, como radio buttons, continuam notificando imediatamente.
+
+Essa divisão preserva o conteúdo digitado e evita perder foco, cursor ou seleção pela substituição integral do DOM em cada caractere.
 
 ### AR-03 — regras dependentes de rótulos textuais
 
@@ -85,12 +87,21 @@ O schema contém políticas, mas elas não foram executadas contra usuários dis
 
 As branches `frontend-pericial-audit-fixes`, `performance-improvements` e `refactor-modular-v4` estão atrás da `main` e não possuem commits exclusivos à frente.
 
+## Política de persistência durante edição
+
+- `input` em campos narrativos: persistir com `{ notify: false }`;
+- `change` em campos narrativos: notificar renderizadores e recalcular indicadores;
+- respostas de escolha: persistir e notificar imediatamente;
+- qualquer atualização silenciosa continua sendo gravada em `medper.state.v4`;
+- o store disponibiliza `notify()` para sincronização explícita sem nova mutação.
+
 ## Gates antes da fase 2
 
 - [x] Testes de migração das chaves legadas.
 - [x] Testes de sincronização do objeto pericial.
 - [x] Auditoria automática de sintaxe e arquitetura.
-- [ ] Teste de foco/cursor em campos extensos.
+- [x] Persistência silenciosa sem notificação de renderização.
+- [ ] Teste manual de foco/cursor em campos extensos.
 - [ ] Identificadores estáveis para respostas metodológicas.
 - [ ] Matriz de compatibilidade entre dados atuais e novas etapas.
 - [ ] Teste manual desktop.
@@ -99,7 +110,7 @@ As branches `frontend-pericial-audit-fixes`, `performance-improvements` e `refac
 
 ## Política de merge
 
-A fase 2 será desenvolvida em branch própria. O merge só ocorrerá quando:
+A fase 2 deverá ser desenvolvida em branch própria quando o conector confirmar a criação efetiva da referência. O merge só ocorrerá quando:
 
 1. a suíte automática estiver verde;
 2. o diff estiver limitado ao escopo declarado;
