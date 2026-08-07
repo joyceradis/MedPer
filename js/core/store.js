@@ -5,7 +5,43 @@ function now() {
   return new Date().toISOString();
 }
 
-function normalizeCase(caseData = {}) {
+function text(value) {
+  return typeof value === 'string' ? value : '';
+}
+
+function synchronizePericialObject(caseData, previousCase = null) {
+  caseData.methodology ||= {};
+  caseData.methodology.general ||= {};
+
+  const currentScope = text(caseData.scope);
+  const currentMethodObject = text(caseData.methodology.general.object);
+
+  if (!previousCase) {
+    const canonical = currentMethodObject || currentScope;
+    caseData.scope = canonical;
+    caseData.methodology.general.object = canonical;
+    return;
+  }
+
+  const previousScope = text(previousCase.scope);
+  const previousMethodObject = text(previousCase.methodology?.general?.object);
+  const scopeChanged = currentScope !== previousScope;
+  const methodObjectChanged = currentMethodObject !== previousMethodObject;
+
+  let canonical;
+  if (scopeChanged && !methodObjectChanged) {
+    canonical = currentScope;
+  } else if (methodObjectChanged && !scopeChanged) {
+    canonical = currentMethodObject;
+  } else {
+    canonical = currentMethodObject || currentScope;
+  }
+
+  caseData.scope = canonical;
+  caseData.methodology.general.object = canonical;
+}
+
+function normalizeCase(caseData = {}, previousCase = null) {
   const c = structuredClone(caseData);
   c.id ||= `case_${crypto.randomUUID?.() || Date.now()}`;
   c.title ||= 'Caso sem título';
@@ -27,16 +63,25 @@ function normalizeCase(caseData = {}) {
   c.methodology.decision ||= {
     claim: '', favorable: '', contrary: '', alternatives: '', limits: '', certainty: '', admissibleConclusion: ''
   };
+  synchronizePericialObject(c, previousCase);
   return c;
 }
 
-function normalizeState(input = {}) {
+function normalizeState(input = {}, previousState = null) {
+  const previousCases = new Map(
+    Array.isArray(previousState?.cases)
+      ? previousState.cases.map(caseData => [caseData.id, caseData])
+      : []
+  );
+
   return {
     version: 4,
     updatedAt: input.updatedAt || now(),
     currentCaseId: input.currentCaseId || null,
     currentTab: input.currentTab || 'summary',
-    cases: Array.isArray(input.cases) ? input.cases.map(normalizeCase) : []
+    cases: Array.isArray(input.cases)
+      ? input.cases.map(caseData => normalizeCase(caseData, previousCases.get(caseData.id) || null))
+      : []
   };
 }
 
@@ -83,7 +128,7 @@ export function createStore() {
     update(mutator) {
       const next = structuredClone(state);
       mutator(next);
-      state = normalizeState(next);
+      state = normalizeState(next, state);
       persist(state);
       emit();
     },
@@ -95,4 +140,4 @@ export function createStore() {
   };
 }
 
-export { normalizeCase };
+export { normalizeCase, normalizeState, synchronizePericialObject };
