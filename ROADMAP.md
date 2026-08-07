@@ -7,7 +7,7 @@ Este documento é a fonte de verdade para a evolução do produto. Novas funcion
 | Etapa | Status | Resultado esperado |
 |---|---|---|
 | 1. Separar site público de dashboard | **Concluída** | Landing pública independente da aplicação interna |
-| 2. Projetar experiência cognitiva e identidade própria | **Em andamento** | Produto guiado pelo raciocínio pericial, com linguagem visual reconhecível |
+| 2. Projetar experiência cognitiva e identidade própria | **Em andamento** | Interface alinhada ao raciocínio médico-pericial e identidade reconhecível |
 | 3. Conectar Supabase real | Preparada | Autenticação e organização operando em ambiente real |
 | 4. Sincronizar casos | Não iniciada | Banco remoto como fonte principal, com suporte offline |
 | 5. Testar isolamento e permissões | Não iniciada | Matriz de autorização validada e automatizada |
@@ -19,68 +19,65 @@ Este documento é a fonte de verdade para a evolução do produto. Novas funcion
 
 ---
 
-## 1. Separar site público de dashboard — concluída
+## 1. Separar site público de dashboard
 
 **Objetivo:** distinguir claramente aquisição/comunicação comercial de operação médico-pericial.
 
-### Entregue
+### Escopo concluído
 
-- [x] Landing page pública na raiz do projeto.
-- [x] Aplicação em entrada própria (`app.html`).
-- [x] Casos, controles internos e mensagens de armazenamento removidos da página pública.
-- [x] Autenticação, dashboard e PWA restritos à entrada da aplicação.
-- [x] Links de entrada, redirecionamento de autenticação e cache atualizados.
-- [x] Fallbacks offline separados entre site e aplicação.
+- [x] Criar uma landing page pública na raiz do projeto.
+- [x] Mover a aplicação para uma entrada própria (`app.html`).
+- [x] Remover casos, controles internos e mensagens de armazenamento da página pública.
+- [x] Manter autenticação, dashboard e PWA restritos à entrada da aplicação.
+- [x] Atualizar links de entrada, redirecionamento de autenticação e cache.
+- [x] Revisar experiência de navegação entre site público e aplicação.
+- [x] Validar publicação no GitHub Pages em desktop.
 
-### Critérios atendidos
+### Critérios de conclusão
 
 - Visitante anônimo encontra somente conteúdo institucional na raiz.
 - Casos e controles operacionais aparecem apenas em `app.html`.
 - O botão “Entrar” leva para a aplicação.
 - O PWA abre a aplicação, não a landing page.
-- O Service Worker distingue a landing da área interna.
+- O Service Worker não substitui a landing por uma tela interna em falha de rede.
 
 ---
 
-## 2. Projetar experiência cognitiva e identidade própria — em andamento
+## 2. Projetar experiência cognitiva e identidade própria
 
-**Objetivo:** fazer a interface reproduzir o processo mental de uma perícia tecnicamente bem conduzida e estabelecer uma identidade visual própria.
+**Objetivo:** materializar o Método MedPer na aplicação e estabelecer uma identidade médico-pericial própria.
 
-### Princípio de produto
+### Método-alvo
 
-O MedPer não deve parecer um gerenciador de arquivos, um formulário genérico ou um gerador automático de laudos. Deve conduzir a médica da missão recebida até a conclusão admissível, preservando fontes, hipóteses, limitações e responsabilidade profissional.
+1. Delimitação.
+2. Autos e evidências.
+3. Cronologia.
+4. Hipóteses e diligências.
+5. Exame e método.
+6. Fundamentação.
+7. Conclusão.
+8. Quesitos.
+9. Documento.
 
-### Fonte metodológica
+### Gates de regressão já concluídos
 
-- [x] Criar `docs/MEDPER_METHOD.md` como especificação inicial do método.
-- [ ] Validar a sequência cognitiva com casos periciais reais e simulados.
-- [ ] Converter a navegação atual para as etapas do Método MedPer.
-- [ ] Revisar textos de interface para perguntas operacionais, não rótulos abstratos.
-- [ ] Redesenhar o dashboard como espaço de trabalho, não página promocional.
-- [ ] Definir tipografia, paleta, iconografia, espaçamento e componentes internos.
-- [ ] Documentar o sistema visual mínimo.
-- [ ] Validar desktop e mobile.
+- [x] Baseline de auditoria documentada.
+- [x] Sincronização retrocompatível entre `scope` e objeto metodológico.
+- [x] Testes de migração e preservação de casos legados.
+- [x] Persistência de textos longos sem reconstrução a cada caractere.
+- [x] Matriz de migração entre campos atuais e novo fluxo.
 
-### Arquitetura cognitiva prevista
+### Entregáveis ainda pendentes
 
-1. Delimitação
-2. Autos e evidências
-3. Cronologia
-4. Hipóteses e diligências
-5. Exame e método
-6. Fundamentação
-7. Conclusão
-8. Quesitos
-9. Documento
+- IDs estáveis separados dos rótulos visíveis nos protocolos.
+- Nova navegação cognitiva.
+- Redesenho do espaço de trabalho interno.
+- Guia visual mínimo.
+- Testes manuais em desktop e mobile.
 
-### Critérios de conclusão
+### Critério de conclusão
 
-- A usuária sabe onde está e qual é o próximo passo.
-- Cada tela corresponde a uma decisão ou tarefa pericial reconhecível.
-- O documento final deriva do raciocínio estruturado.
-- Protocolos específicos aparecem apenas quando pertinentes.
-- A identidade é reconhecível sem depender do logotipo.
-- A interface não promete automação de juízo médico.
+Uma médica deve reconhecer a sequência do trabalho pericial, saber em qual etapa está e compreender o próximo passo sem treinamento individual. Os casos existentes devem permanecer íntegros.
 
 ---
 
@@ -89,7 +86,6 @@ O MedPer não deve parecer um gerenciador de arquivos, um formulário genérico 
 - Criar ambientes de desenvolvimento e produção.
 - Aplicar migrations.
 - Configurar URL, publishable key, redirect URLs e SMTP.
-- Adotar e-mail/senha ou link mágico sem depender de Google Workspace.
 - Validar cadastro, confirmação de e-mail, login, recuperação e logout.
 - Confirmar criação automática de perfil e organização pessoal.
 
