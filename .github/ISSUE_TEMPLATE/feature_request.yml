@@ -1,0 +1,83 @@
+name: Propor melhoria
+about: Registrar melhoria de produto, metodologia ou engenharia
+title: "[Proposta] "
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema observado
+      description: Descreva o problema antes de sugerir a solução.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: roadmap
+    attributes:
+      label: Etapa do roadmap
+      options:
+        - 2. Experiência cognitiva e identidade
+        - 3. Supabase real
+        - 4. Sincronização de casos
+        - 5. Isolamento e permissões
+        - 6. Assinatura e limites
+        - 7. Onboarding
+        - 8. Planos
+        - 9. Piloto fechado
+        - 10. Venda pública
+        - Backlog / não classificado
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Natureza da proposta
+      options:
+        - Fluxo cognitivo
+        - Metodologia médico-pericial
+        - Interface e acessibilidade
+        - Persistência e migração
+        - Segurança e privacidade
+        - Autenticação e organizações
+        - Documento e exportação
+        - PWA e offline
+        - Comercial
+        - Documentação
+        - Outro
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Solução proposta
+      description: Explique como a proposta resolveria o problema sem assumir que já é a solução definitiva.
+    validations:
+      required: true
+
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Critérios de aceite
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Riscos e compatibilidade
+      description: Considere dados legados, regras metodológicas, mobile, PWA, segurança e documento final.
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Restrições
+      options:
+        - label: A proposta não automatiza o juízo médico.
+          required: true
+        - label: A proposta não inclui dados reais ou sigilosos.
+          required: true
