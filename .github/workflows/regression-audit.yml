@@ -1,0 +1,111 @@
+name: Regression audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/**'
+      - 'tests/**'
+      - 'app.html'
+      - 'index.html'
+      - 'sw.js'
+      - 'manifest.webmanifest'
+      - '.github/workflows/regression-audit.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'js/**'
+      - 'tests/**'
+      - 'app.html'
+      - 'index.html'
+      - 'sw.js'
+      - 'manifest.webmanifest'
+      - '.github/workflows/regression-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check JavaScript syntax
+        run: |
+          set -euo pipefail
+          find js tests -type f \( -name '*.js' -o -name '*.mjs' \) -print0 \
+            | xargs -0 -n1 node --check
+
+      - name: Run store migration and compatibility tests
+        run: |
+          set -euo pipefail
+          node tests/store-regression.test.mjs
+
+      - name: Verify application entrypoints and storage ownership
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          app = Path('app.html').read_text(encoding='utf-8')
+          public = Path('index.html').read_text(encoding='utf-8')
+          js_files = list(Path('js').rglob('*.js'))
+
+          scripts = re.findall(r'<script[^>]+src="([^"?#]+)"', app)
+          if scripts != ['./js/main.js']:
+              raise SystemExit(f'Unexpected app entrypoints: {scripts}')
+
+          if './js/main.js' in public:
+              raise SystemExit('Public home must not load the internal application.')
+
+          storage_owners = [
+              str(path) for path in js_files
+              if 'localStorage.' in path.read_text(encoding='utf-8')
+          ]
+          if storage_owners != ['js/core/store.js']:
+              raise SystemExit(
+                  f'localStorage must remain owned by store.js only: {storage_owners}'
+              )
+
+          forbidden = ['MutationObserver', 'window.MedPer', 'window.MedPerMethodology']
+          combined = '\n'.join(path.read_text(encoding='utf-8') for path in js_files)
+          found = [item for item in forbidden if item in combined]
+          if found:
+              raise SystemExit(f'Forbidden architecture patterns found: {found}')
+
+          print('Entrypoints, storage ownership and modular architecture validated.')
+          PY
+
+      - name: Verify canonical pericial object compatibility
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          store = Path('js/core/store.js').read_text(encoding='utf-8')
+          engine = Path('js/methodology/engine.js').read_text(encoding='utf-8')
+          app = Path('js/ui/app.js').read_text(encoding='utf-8')
+
+          required_store = [
+              'synchronizePericialObject',
+              'caseData.methodology.general.object',
+              'caseData.scope = canonical',
+              'normalizeState(next, state)',
+          ]
+          missing = [item for item in required_store if item not in store]
+          if missing:
+              raise SystemExit(f'Canonical object migration safeguards missing: {missing}')
+
+          if "has(g,'object')" not in engine:
+              raise SystemExit('Methodology audit no longer checks the canonical object.')
+
+          if "textarea('scope'" not in app:
+              raise SystemExit(
+                  'Legacy interface binding changed without a compatibility migration.'
+              )
+
+          print('Legacy scope and canonical methodology object remain synchronized.')
+          PY
