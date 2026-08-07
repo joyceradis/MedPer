@@ -139,6 +139,54 @@ test('updates scope when the new cognitive flow edits the canonical object', () 
   );
 });
 
+test('persists a silent edit without notifying render subscribers', () => {
+  const initial = normalizeState({
+    cases: [{ id: 'case_silent', scope: 'Objeto inicial' }]
+  });
+  localStorage.setItem('medper.state.v4', JSON.stringify(initial));
+  const store = createStore();
+  let notifications = 0;
+  store.subscribe(() => {
+    notifications += 1;
+  });
+
+  store.update(state => {
+    state.cases[0].scope = 'Texto digitado sem reconstrução';
+  }, { notify: false });
+
+  assert.equal(notifications, 0);
+  assert.equal(
+    store.getState().cases[0].methodology.general.object,
+    'Texto digitado sem reconstrução'
+  );
+
+  const persisted = JSON.parse(localStorage.getItem('medper.state.v4'));
+  assert.equal(
+    persisted.cases[0].scope,
+    'Texto digitado sem reconstrução'
+  );
+});
+
+test('notifies subscribers explicitly after deferred field editing', () => {
+  const initial = normalizeState({
+    cases: [{ id: 'case_notify', scope: 'Objeto inicial' }]
+  });
+  localStorage.setItem('medper.state.v4', JSON.stringify(initial));
+  const store = createStore();
+  let notifications = 0;
+  store.subscribe(() => {
+    notifications += 1;
+  });
+
+  store.update(state => {
+    state.cases[0].scope = 'Texto final';
+  }, { notify: false });
+  store.notify();
+
+  assert.equal(notifications, 1);
+  assert.equal(store.getState().cases[0].scope, 'Texto final');
+});
+
 test('backs up and migrates a v3 state without losing case collections', () => {
   const legacyState = {
     version: 3,
