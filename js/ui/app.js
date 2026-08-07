@@ -36,10 +36,29 @@ function demoCase(){return normalizeCase({id:uid('case'),title:'Caso demonstrati
 export function createApp({store,root,toast}){
   let wizard=null;
   const render=()=>{const state=store.getState(),r=route(),c=r.caseId?findCase(state,r.caseId):null;root.innerHTML=c?renderCase(c,r.tab):renderHome(state);};
+  const commitBoundValue=(target,{notify=true}={})=>{
+    const path=target?.dataset?.bind;
+    if(!path)return;
+    const r=route();
+    store.update(s=>{
+      const c=findCase(s,r.caseId);
+      if(!c)return;
+      setPath(c,path,target.value);
+    },{notify});
+  };
   store.subscribe(render);
   const notify=msg=>{toast.textContent=msg;toast.classList.add('is-visible');setTimeout(()=>toast.classList.remove('is-visible'),2200);};
   root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.home!==undefined){location.hash='';render();return;}if(b.dataset.openCase){location.hash=`#/case/${b.dataset.openCase}/summary`;return;}if(b.dataset.tab){const r=route();location.hash=`#/case/${r.caseId}/${b.dataset.tab}`;return;}if(b.dataset.newCase!==undefined){openWizard();return;}if(b.dataset.demo!==undefined){store.update(s=>{const c=demoCase();s.cases.unshift(c);s.currentCaseId=c.id;});location.hash=`#/case/${store.getState().cases[0].id}/summary`;return;}if(b.dataset.add){addEntity(b.dataset.add);return;}if(b.dataset.export!==undefined){const r=route(),c=findCase(store.getState(),r.caseId);const blob=new Blob([JSON.stringify(c,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${c.id}.json`;a.click();URL.revokeObjectURL(a.href);}});
-  root.addEventListener('input',e=>{const path=e.target.dataset.bind;if(!path)return;const r=route();store.update(s=>{const c=findCase(s,r.caseId);if(!c)return;const value=e.target.type==='radio'?e.target.value:e.target.value;setPath(c,path,value);});});
+  root.addEventListener('input',e=>{
+    const path=e.target?.dataset?.bind;
+    if(!path)return;
+    commitBoundValue(e.target,{notify:e.target.type==='radio'});
+  });
+  root.addEventListener('change',e=>{
+    const path=e.target?.dataset?.bind;
+    if(!path||e.target.type==='radio')return;
+    commitBoundValue(e.target,{notify:true});
+  });
   window.addEventListener('hashchange',render);
 
   function openWizard(){wizard={sphere:'Judicial',branch:'Cível',role:'Perita do juízo',matter:'Dano estético',mode:'Presencial e documental',title:'',reference:''};showWizard();}
