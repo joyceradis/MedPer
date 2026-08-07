@@ -125,11 +125,15 @@ export function createStore() {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
-    update(mutator) {
+    update(mutator, options = {}) {
+      const { notify = true } = options;
       const next = structuredClone(state);
       mutator(next);
       state = normalizeState(next, state);
       persist(state);
+      if (notify) emit();
+    },
+    notify() {
       emit();
     },
     replace(nextState) {
