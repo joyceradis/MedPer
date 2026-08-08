@@ -82,6 +82,34 @@ test('preserves a methodology object when legacy scope is absent', () => {
   );
 });
 
+test('normalizes legacy preparation status to the active lifecycle without losing case data', () => {
+  const normalized = normalizeCase({
+    id: 'case_legacy_status',
+    title: 'Perícia preservada',
+    status: 'Em preparação',
+    evidence: [{ id: 'ev_status', title: 'Prontuário' }]
+  });
+
+  assert.equal(normalized.status, 'Em andamento');
+  assert.equal(normalized.title, 'Perícia preservada');
+  assert.equal(normalized.evidence[0].title, 'Prontuário');
+});
+
+test('preserves canonical completed and trash lifecycle states', () => {
+  assert.equal(normalizeCase({ status: 'Concluída' }).status, 'Concluída');
+  assert.equal(normalizeCase({ status: 'Lixeira' }).status, 'Lixeira');
+});
+
+test('initializes adaptive protocol controls without changing the legacy primary matter', () => {
+  const normalized = normalizeCase({
+    context: { matter: 'Dano estético' }
+  });
+
+  assert.equal(normalized.context.matter, 'Dano estético');
+  assert.deepEqual(normalized.methodology.activeProtocolIds, []);
+  assert.deepEqual(normalized.methodology.dismissedProtocolIds, []);
+});
+
 test('prefers the canonical methodology object when imported fields conflict', () => {
   const normalized = normalizeCase({
     id: 'case_conflict',

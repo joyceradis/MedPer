@@ -117,6 +117,8 @@ O arquivo possui proteção contra inicialização duplicada.
 - atualizações silenciosas durante digitação;
 - notificação explícita ao encerrar uma edição.
 
+`js/core/case-lifecycle.js` mantém as transições de andamento, conclusão, lixeira e restauração. A persistência continua exclusiva do store.
+
 Fluxo de atualização narrativa:
 
 ```text
@@ -168,6 +170,8 @@ O campo histórico `scope` é mantido como alias de compatibilidade durante a fa
 - protocolos específicos;
 - protocolo genérico de fallback.
 
+Os protocolos são endereçados internamente por IDs estáveis (`aesthetic`, `capacity`, `causation`, `liability`), separados dos rótulos visíveis e com mapa de compatibilidade para matérias legadas. O mesmo módulo resolve protocolos aplicáveis combinando a matéria primária, módulos adicionais escolhidos pela médica e sugestões conservadoras derivadas do objeto. A matéria primária legada não é reescrita. `js/methodology/aipe.js` contém somente tabelas declarativas de referência AIPE e não executa decisão ou pontuação automática.
+
 `js/methodology/engine.js` executa:
 
 - auditoria do caso;
@@ -175,9 +179,11 @@ O campo histórico `scope` é mantido como alias de compatibilidade durante a fa
 - avaliação de completude;
 - salvaguardas específicas por matéria.
 
-As regras atuais ainda dependem parcialmente de rótulos textuais. Essa dependência está registrada como dívida técnica de alto risco e será substituída por identificadores estáveis com migração dos valores antigos.
+Algumas respostas estruturadas ainda comparam rótulos de opções legadas. A identidade dos protocolos, entretanto, já não depende desses rótulos.
 
 ### 4.6 Interface
+
+`js/ui/workflow.js` define as nove etapas cognitivas do Método MedPer e traduz rotas antigas (`summary`, `documents`, `analysis`) para a navegação atual sem invalidar links legados.
 
 `js/ui/app.js` ainda concentra:
 

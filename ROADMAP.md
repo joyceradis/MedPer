@@ -69,9 +69,12 @@ Este documento é a fonte de verdade para a evolução do produto. Novas funcion
 
 ### Entregáveis ainda pendentes
 
-- IDs estáveis separados dos rótulos visíveis nos protocolos.
-- Nova navegação cognitiva.
-- Redesenho do espaço de trabalho interno.
+- [x] IDs estáveis separados dos rótulos visíveis nos protocolos, com compatibilidade dos rótulos legados.
+- [x] Navegação cognitiva alinhada às nove etapas do Método MedPer.
+- [x] Navegação operacional por estado do caso: em andamento, concluídas e lixeira.
+- [x] Resolução adaptativa de múltiplos protocolos com controle médico sobre sugestões.
+- [x] AIPE de referência aberta no dano estético, sem automatismo decisório.
+- Redesenho visual definitivo e identidade de marca.
 - Guia visual mínimo.
 - Testes manuais em desktop e mobile.
 

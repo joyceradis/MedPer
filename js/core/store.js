@@ -9,6 +9,11 @@ function text(value) {
   return typeof value === 'string' ? value : '';
 }
 
+function normalizeCaseStatus(value) {
+  if (value === 'Concluída' || value === 'Lixeira') return value;
+  return 'Em andamento';
+}
+
 function synchronizePericialObject(caseData, previousCase = null) {
   caseData.methodology ||= {};
   caseData.methodology.general ||= {};
@@ -46,7 +51,7 @@ function normalizeCase(caseData = {}, previousCase = null) {
   c.id ||= `case_${crypto.randomUUID?.() || Date.now()}`;
   c.title ||= 'Caso sem título';
   c.reference ||= '';
-  c.status ||= 'Em preparação';
+  c.status = normalizeCaseStatus(c.status);
   c.context ||= {};
   c.person ||= { initials: '', birthDate: '', role: 'Periciando(a)' };
   c.scope ||= '';
@@ -60,6 +65,12 @@ function normalizeCase(caseData = {}, previousCase = null) {
   c.methodology.general ||= {};
   c.methodology.specific ||= {};
   c.methodology.guided ||= {};
+  c.methodology.activeProtocolIds = Array.isArray(c.methodology.activeProtocolIds)
+    ? [...new Set(c.methodology.activeProtocolIds)]
+    : [];
+  c.methodology.dismissedProtocolIds = Array.isArray(c.methodology.dismissedProtocolIds)
+    ? [...new Set(c.methodology.dismissedProtocolIds)]
+    : [];
   c.methodology.decision ||= {
     claim: '', favorable: '', contrary: '', alternatives: '', limits: '', certainty: '', admissibleConclusion: ''
   };

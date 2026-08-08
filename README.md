@@ -75,6 +75,7 @@ O MedPer está em fase de **protótipo funcional e engenharia cognitiva**.
 - PWA estático compatível com GitHub Pages;
 - execução local e funcionamento offline;
 - criação, abertura e persistência de casos no navegador;
+- organização de perícias em andamento, concluídas e lixeira recuperável;
 - migração retrocompatível das versões antigas do armazenamento;
 - definição de esfera, ramo, papel profissional, matéria e modalidade;
 - delimitação do objeto pericial;
@@ -82,7 +83,8 @@ O MedPer está em fase de **protótipo funcional e engenharia cognitiva**.
 - cronologia;
 - metodologia geral obrigatória;
 - protocolos guiados para dano estético, incapacidade, nexo causal/concausal e responsabilidade profissional;
-- AIPE restrita ao dano estético;
+- múltiplos protocolos aplicáveis no mesmo caso, com sugestão conservadora a partir do objeto e controle médico explícito;
+- AIPE restrita ao dano estético, com tabelas de impressão, categorias 0–50 e critérios complementares abertas quando aplicável;
 - matriz de decisão pericial;
 - bloqueios e ressalvas metodológicas;
 - quesitos;
@@ -132,8 +134,9 @@ Navegador
 │
 ├── js/main.js                  composição e inicialização
 │   ├── core/store.js           estado, normalização, migração e persistência
+│   ├── core/case-lifecycle.js  andamento, conclusão, lixeira e restauração
 │   ├── auth/                   autenticação preparada
-│   ├── methodology/            protocolos e motor de auditoria
+│   ├── methodology/            protocolos, resolução adaptativa, AIPE e auditoria
 │   └── ui/                     renderização, interação e diálogos
 │
 ├── css/                        sistemas visuais público e interno
@@ -200,11 +203,14 @@ MedPer/
 │   ├── config/
 │   │   └── supabase-config.js
 │   ├── core/
-│   │   └── store.js
+│   │   ├── store.js
+│   │   └── case-lifecycle.js
 │   ├── methodology/
 │   │   ├── protocols.js
-│   │   └── engine.js
+│   │   ├── engine.js
+│   │   └── aipe.js
 │   └── ui/
+│       ├── workflow.js
 │       ├── app.js
 │       └── dialog-controller.js
 │
@@ -261,8 +267,10 @@ Não abra os arquivos diretamente com `file://`, pois imports ES, Service Worker
 ```bash
 node --check js/main.js
 node --check js/core/store.js
+node --check js/core/case-lifecycle.js
 node --check js/methodology/protocols.js
 node --check js/methodology/engine.js
+node --check js/methodology/aipe.js
 node --check js/ui/app.js
 node --check js/ui/dialog-controller.js
 node --check js/auth/auth-controller.js
@@ -272,7 +280,7 @@ node --check sw.js
 ### Testes de regressão
 
 ```bash
-node tests/store-regression.test.mjs
+npm test
 ```
 
 Os testes atuais cobrem:
