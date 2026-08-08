@@ -47,11 +47,11 @@ function caseActions(caseData) {
 function renderCaseList(caseData) {
   const context = caseData.context || {};
   return `<article class="dashboard-case-card">
-    <button class="dashboard-case-open" type="button" data-open-case="${esc(caseData.id)}">
-      <div class="dashboard-case-topline"><span>${esc(context.role || context.sphere || 'Perícia')}</span><span>${esc(caseData.status)}</span></div>
+    <button class="dashboard-case-open" type="button" data-inspect-case="${esc(caseData.id)}">
+      <div class="dashboard-case-topline"><span>${esc(context.role || context.setting || context.sphere || 'Perícia')}</span><span>${esc(caseData.status)}</span></div>
       <h3>${esc(caseData.title)}</h3>
       <p>${esc(caseData.reference || 'Sem referência')}</p>
-      <div class="dashboard-case-meta"><span>${esc(context.unit || context.tribunal || 'Unidade a definir')}</span>${context.feeRegime ? `<span>${esc(context.feeRegime)}</span>` : ''}</div>
+      <div class="dashboard-case-meta"><span>${esc(context.unit || context.tribunal || 'Unidade a definir')}</span>${context.legalSphere || context.branch ? `<span>${esc(context.legalSphere || context.branch)}</span>` : ''}${context.feeRegime ? `<span>${esc(context.feeRegime)}</span>` : ''}</div>
     </button>
     <div class="dashboard-case-actions" aria-label="Ações do caso">${caseActions(caseData)}</div>
   </article>`;
@@ -80,7 +80,7 @@ export function renderDashboardHome(state, filter = 'active', options = {}) {
     <div class="continue-card-kicker">${esc(continueCase.context?.role || 'Atuação médico-pericial')}</div>
     <h3>${esc(continueCase.title)}</h3>
     <p>${esc(continueCase.reference || 'Sem referência')}</p>
-    <div class="continue-card-meta"><span>${esc(continueCase.context?.unit || continueCase.context?.tribunal || 'Unidade a definir')}</span>${continueCase.context?.feeRegime ? `<span>${esc(continueCase.context.feeRegime)}</span>` : ''}</div>
+    <div class="continue-card-meta"><span>${esc(continueCase.context?.unit || continueCase.context?.tribunal || 'Unidade a definir')}</span>${continueCase.context?.legalSphere || continueCase.context?.branch ? `<span>${esc(continueCase.context?.legalSphere || continueCase.context?.branch)}</span>` : ''}${continueCase.context?.feeRegime ? `<span>${esc(continueCase.context.feeRegime)}</span>` : ''}</div>
     <button type="button" class="dashboard-primary-action" data-open-case="${esc(continueCase.id)}">Abrir perícia ${icons.arrow}</button>
   </article>` : '<div class="dashboard-empty-state"><strong>Nenhuma perícia em andamento</strong><span>Crie uma nova perícia para iniciar o fluxo estruturado.</span></div>';
 
