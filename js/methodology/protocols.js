@@ -78,8 +78,7 @@ export function getApplicableProtocols(caseData={}){
   const primary=getProtocol(caseData.context?.matter);
   const ids=[
     primary.id,
-    ...(Array.isArray(caseData.methodology?.activeProtocolIds)?caseData.methodology.activeProtocolIds:[]),
-    ...getSuggestedProtocolIds(caseData)
+    ...(Array.isArray(caseData.methodology?.activeProtocolIds)?caseData.methodology.activeProtocolIds:[])
   ];
   const seen=new Set();
   return ids.flatMap(id=>{
