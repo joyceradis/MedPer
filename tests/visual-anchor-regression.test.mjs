@@ -42,9 +42,16 @@ test('auth is part of the same MedPer design system and contains no legacy green
   assert.doesNotMatch(authCss, /#eef5f1|#29483f|#263d37|35,57,52/);
 });
 
+test('development auth does not expose infrastructure configuration instructions to the user', () => {
+  assert.doesNotMatch(authJs, /Preencha js\/config\/supabase-config\.js/i);
+  assert.doesNotMatch(authJs, /service_role key no navegador/i);
+  assert.match(authJs, /Acesso online ainda não ativado/);
+  assert.match(authJs, /Continuar em modo local/);
+});
+
 test('dashboard keeps restrained institutional density rather than bright SaaS styling', () => {
   assert.match(dashboard, /linear-gradient\(180deg,var\(--medper-sidebar-top\).*var\(--medper-sidebar-bottom\)/);
-  assert.match(dashboard, /background:var\(--medper-accent\)/);
+  assert.match(dashboard, /background:var\(--medper-sidebar-bottom\)/);
   assert.doesNotMatch(dashboard, /background:#2e73bd|background:#124f8b/i);
 });
 
