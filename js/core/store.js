@@ -53,6 +53,8 @@ function normalizeCase(caseData = {}, previousCase = null) {
   c.reference ||= '';
   c.status = normalizeCaseStatus(c.status);
   c.context ||= {};
+  c.context.setting = text(c.context.setting) || text(c.context.sphere);
+  c.context.legalSphere = text(c.context.legalSphere) || text(c.context.branch);
   c.context.tribunal = text(c.context.tribunal);
   c.context.unit = text(c.context.unit);
   c.context.feeRegime = text(c.context.feeRegime);
