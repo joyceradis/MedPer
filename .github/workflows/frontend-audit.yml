@@ -3,9 +3,9 @@ name: Frontend audit
 on:
   push:
     branches: [main]
-    paths: ['index.html','app.html','ROADMAP.md','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/frontend-audit.yml']
+    paths: ['index.html','app.html','ROADMAP.md','docs/**','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/frontend-audit.yml']
   pull_request:
-    paths: ['index.html','app.html','ROADMAP.md','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/frontend-audit.yml']
+    paths: ['index.html','app.html','ROADMAP.md','docs/**','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/frontend-audit.yml']
 
 permissions:
   contents: read
@@ -16,186 +16,79 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Check module syntax
+      - name: Run canonical syntax and regression audit
+        run: npm run audit
+
+      - name: Validate application shell and Phase 2 composition
         shell: bash
         run: |
           set -euo pipefail
-          node --check js/main.js
-          node --check js/core/store.js
-          node --check js/core/case-lifecycle.js
-          node --check js/methodology/protocols.js
-          node --check js/methodology/engine.js
-          node --check js/methodology/aipe.js
-          node --check js/knowledge/library.js
-          node --check js/ui/workflow.js
-          node --check js/ui/dashboard-model.js
-          node --check js/ui/dashboard-view.js
-          node --check js/ui/case-inspector.js
-          node --check js/ui/inspector-controller.js
-          node --check js/ui/app.js
-          node --check js/ui/dialog-controller.js
-          node --check js/auth/auth-controller.js
-          node --check js/config/supabase-config.js
-          node --check sw.js
-
-      - name: Check public and application entrypoints
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat <<'PYTHON_EOF' | python -u -
+          python - <<'PY'
           from pathlib import Path
           import re
 
-          public_html = Path('index.html').read_text(encoding='utf-8')
-          app_html = Path('app.html').read_text(encoding='utf-8')
+          app = Path('app.html').read_text(encoding='utf-8')
           sw = Path('sw.js').read_text(encoding='utf-8')
-          manifest = Path('manifest.webmanifest').read_text(encoding='utf-8')
-
-          def local_path(ref):
-              return ref.split('?', 1)[0].split('#', 1)[0]
-
-          public_scripts = [local_path(item) for item in re.findall(r'<script[^>]+src="([^"]+)"', public_html)]
-          if public_scripts:
-              raise SystemExit(f'Public site must not load the application bundle: {public_scripts}')
-          if './app.html' not in public_html:
-              raise SystemExit('Public site has no link to the application entrypoint.')
-          if 'Seus casos' in public_html or 'Salvo neste dispositivo' in public_html:
-              raise SystemExit('Operational dashboard content leaked into public site.')
-
-          app_scripts = [local_path(item) for item in re.findall(r'<script[^>]+src="([^"]+)"', app_html)]
-          if app_scripts != ['./js/main.js']:
-              raise SystemExit(f'Expected one application module entrypoint, found: {app_scripts}')
-          if 'type="module"' not in app_html:
-              raise SystemExit('main.js is not loaded as an ES module in app.html.')
-          if 'noindex,nofollow' not in app_html:
-              raise SystemExit('Application entrypoint must be excluded from search indexing.')
-          if '#0d3159' not in app_html:
-              raise SystemExit('Application theme-color drifted from the approved MedPer shell.')
-
-          required = [
-              './index.html','./app.html','./css/marketing.css','./css/design-system.css','./css/styles.css','./css/dashboard.css','./css/inspector.css',
-              './css/methodology.css','./css/guided-methodology.css','./css/knowledge.css','./css/auth.css',
-              './js/main.js','./js/core/store.js','./js/core/case-lifecycle.js',
-              './js/methodology/protocols.js','./js/methodology/engine.js','./js/methodology/aipe.js',
-              './js/knowledge/library.js',
-              './js/ui/workflow.js','./js/ui/dashboard-model.js','./js/ui/dashboard-view.js','./js/ui/case-inspector.js','./js/ui/inspector-controller.js','./js/ui/app.js','./js/ui/dialog-controller.js',
-              './js/auth/auth-controller.js','./js/config/supabase-config.js',
-              './manifest.webmanifest','./icon.svg'
-          ]
-          absent = [item for item in required if item not in sw]
-          if absent:
-              raise SystemExit(f'Assets absent from service worker shell: {absent}')
-
-          for filename, html in [('index.html', public_html), ('app.html', app_html)]:
-              refs = [local_path(item) for item in re.findall(r'(?:href|src)="([^"]+)', html)]
-              missing = [
-                  ref for ref in refs
-                  if not ref.startswith(('http:', 'https:', 'mailto:', '#'))
-                  and not Path(ref.removeprefix('./')).exists()
-              ]
-              if missing:
-                  raise SystemExit(f'Missing local assets in {filename}: {missing}')
-              ids = re.findall(r'\bid="([^"]+)"', html)
-              duplicates = sorted({item for item in ids if ids.count(item) > 1})
-              if duplicates:
-                  raise SystemExit(f'Duplicate HTML ids in {filename}: {duplicates}')
-
-          if '"start_url": "./app.html"' not in manifest:
-              raise SystemExit('PWA must start from app.html.')
-          if '"theme_color": "#0d3159"' not in manifest:
-              raise SystemExit('PWA theme-color drifted from the approved MedPer shell.')
-          if "isAppNavigation?'./app.html':'./index.html'" not in sw:
-              raise SystemExit('Service worker does not separate offline fallbacks.')
-
-          print('Public site and application shell validated.')
-          PYTHON_EOF
-
-      - name: Check roadmap stage one
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat <<'PYTHON_EOF' | python -u -
-          from pathlib import Path
-          roadmap = Path('ROADMAP.md').read_text(encoding='utf-8')
-          required = [
-              '1. Separar site público de dashboard',
-              '**Em andamento**',
-              'Criar uma landing page pública',
-              'Mover a aplicação para uma entrada própria',
-              'Critérios de conclusão'
-          ]
-          missing = [item for item in required if item not in roadmap]
-          if missing:
-              raise SystemExit(f'Roadmap stage one is incomplete: {missing}')
-          print('Official roadmap and active stage validated.')
-          PYTHON_EOF
-
-      - name: Check state ownership and DOM architecture
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat <<'PYTHON_EOF' | python -u -
-          from pathlib import Path
-
-          loaded = [
-              Path('js/main.js'),Path('js/core/store.js'),Path('js/core/case-lifecycle.js'),
-              Path('js/methodology/protocols.js'),Path('js/methodology/engine.js'),Path('js/methodology/aipe.js'),
-              Path('js/knowledge/library.js'),
-              Path('js/ui/workflow.js'),Path('js/ui/dashboard-model.js'),Path('js/ui/dashboard-view.js'),Path('js/ui/case-inspector.js'),Path('js/ui/inspector-controller.js'),Path('js/ui/app.js'),Path('js/ui/dialog-controller.js'),
-              Path('js/auth/auth-controller.js')
-          ]
-          text = '\n'.join(path.read_text(encoding='utf-8') for path in loaded)
-          forbidden = ['MutationObserver','window.MedPer','window.MedPerMethodology','prompt(','innerHTML +=']
-          found = [item for item in forbidden if item in text]
-          if found:
-              raise SystemExit(f'Forbidden layered architecture patterns: {found}')
-          storage_users = [str(path) for path in loaded if 'localStorage.' in path.read_text(encoding='utf-8')]
-          if storage_users != ['js/core/store.js']:
-              raise SystemExit(f'localStorage must be owned by store.js only: {storage_users}')
-          if text.count('export function createStore') != 1:
-              raise SystemExit('Single store implementation not found.')
-          if "import { createStore }" not in Path('js/main.js').read_text(encoding='utf-8'):
-              raise SystemExit('main.js does not import the store explicitly.')
-          if 'installInspectorController' not in Path('js/main.js').read_text(encoding='utf-8'):
-              raise SystemExit('Contextual inspector exists but is not connected to the application composition root.')
-          print('State ownership and composition architecture validated.')
-          PYTHON_EOF
-
-      - name: Check dialog cancellation safeguards
-        shell: bash
-        run: |
-          set -euo pipefail
-          cat <<'PYTHON_EOF' | python -u -
-          from pathlib import Path
-          controller = Path('js/ui/dialog-controller.js').read_text(encoding='utf-8')
           main = Path('js/main.js').read_text(encoding='utf-8')
-          source = controller + '\n' + main
-          required = ['button[value="cancel"]','event.preventDefault()',"dialog.close('cancel')",'installDialogController(document)']
-          missing = [item for item in required if item not in source]
-          if missing:
-              raise SystemExit(f'Dialog cancellation safeguards missing: {missing}')
-          print('Dialog cancellation safeguards validated.')
-          PYTHON_EOF
+          dashboard = Path('js/ui/dashboard-view.js').read_text(encoding='utf-8')
+          surfaces = Path('js/ui/surface-controller.js').read_text(encoding='utf-8')
+          phase2 = Path('css/phase2.css').read_text(encoding='utf-8')
+          anchor = Path('docs/PRODUCT_ANCHOR.md').read_text(encoding='utf-8')
+          sitemap = Path('docs/SITE_MAP.md').read_text(encoding='utf-8')
 
-      - name: Check medical-pericial protocols
+          if '#071d37' not in app:
+              raise SystemExit('Application theme-color drifted from canonical navy.')
+          required_assets = ['./css/phase2.css','./js/ui/surface-controller.js','./js/ui/dashboard-view.js','./js/methodology/aipe.js','./icon.svg']
+          missing = [x for x in required_assets if x not in sw]
+          if missing:
+              raise SystemExit(f'Assets absent from service worker shell: {missing}')
+          if 'installSurfaceController' not in main or 'installInspectorController' not in main:
+              raise SystemExit('Composition root is missing surface or inspector controller.')
+          for surface in ['overview','cases','deadlines','references','models']:
+              if f"'{surface}'" not in dashboard and f'"{surface}"' not in dashboard:
+                  raise SystemExit(f'Dashboard surface missing: {surface}')
+          if 'data-scroll-target' in dashboard:
+              raise SystemExit('Legacy scroll-only dashboard navigation remains active.')
+          if '#/dashboard/' not in surfaces:
+              raise SystemExit('Dashboard surface routing is not hash-addressable.')
+          if 'AIPE' not in Path('js/ui/app.js').read_text(encoding='utf-8'):
+              raise SystemExit('AIPE workspace reference disappeared from pericial workspace.')
+          if 'Dashboard gere. Inspector reconhece. Workspace trabalha' not in sitemap:
+              raise SystemExit('Canonical surface map is missing its architectural rule.')
+          if 'CONTEXTO JURÍDICO-PERICIAL' not in anchor:
+              raise SystemExit('Product anchor lost contextual methodology architecture.')
+          if 'app-shell-dashboard' not in phase2 or '.shell .main.case-layout' not in phase2:
+              raise SystemExit('Phase 2 visual layer does not cover dashboard and workspace.')
+          print('Phase 2 application composition validated.')
+          PY
+
+      - name: Validate public/application separation and offline shell
         shell: bash
         run: |
           set -euo pipefail
-          cat <<'PYTHON_EOF' | python -u -
+          python - <<'PY'
           from pathlib import Path
-          protocols = Path('js/methodology/protocols.js').read_text(encoding='utf-8')
-          engine = Path('js/methodology/engine.js').read_text(encoding='utf-8')
-          required = ['Dano estético','AIPE — impressão do impacto','Incapacidade','Atividade habitual','Nexo causal e concausa','Compatibilidades','Responsabilidade profissional','Nexo entre eventual desvio e dano']
-          absent = [item for item in required if item not in protocols]
-          if absent:
-              raise SystemExit(f'Protocols missing: {absent}')
-          safeguards = ['Sem consolidação fundamentada','Diagnóstico isolado não demonstra incapacidade','Resultado adverso não equivale a erro','Grau de sustentação']
-          absent = [item for item in safeguards if item not in engine]
-          if absent:
-              raise SystemExit(f'Methodological safeguards missing: {absent}')
-          print('Guided protocols and methodological safeguards validated.')
-          PYTHON_EOF
+          import re
 
-      - name: Run frontend regression suites
-        run: npm test
+          public_html=Path('index.html').read_text(encoding='utf-8')
+          app_html=Path('app.html').read_text(encoding='utf-8')
+          manifest=Path('manifest.webmanifest').read_text(encoding='utf-8')
+          sw=Path('sw.js').read_text(encoding='utf-8')
+          def local(ref): return ref.split('?',1)[0].split('#',1)[0]
+          scripts=[local(x) for x in re.findall(r'<script[^>]+src="([^"]+)"',app_html)]
+          if scripts != ['./js/main.js']:
+              raise SystemExit(f'Unexpected application entrypoints: {scripts}')
+          if re.findall(r'<script[^>]+src="([^"]+)"',public_html):
+              raise SystemExit('Public site loads application scripts.')
+          if './app.html' not in public_html:
+              raise SystemExit('Public site has no application link.')
+          if '"start_url": "./app.html"' not in manifest:
+              raise SystemExit('PWA start_url must remain app.html.')
+          if "isAppNavigation?'./app.html':'./index.html'" not in sw:
+              raise SystemExit('Offline fallbacks are not separated.')
+          print('Public/application separation validated.')
+          PY
