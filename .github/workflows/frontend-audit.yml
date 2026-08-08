@@ -31,6 +31,8 @@ jobs:
           node --check js/ui/workflow.js
           node --check js/ui/dashboard-model.js
           node --check js/ui/dashboard-view.js
+          node --check js/ui/case-inspector.js
+          node --check js/ui/inspector-controller.js
           node --check js/ui/app.js
           node --check js/ui/dialog-controller.js
           node --check js/auth/auth-controller.js
@@ -65,14 +67,16 @@ jobs:
               raise SystemExit('main.js is not loaded as an ES module in app.html.')
           if 'noindex,nofollow' not in app_html:
               raise SystemExit('Application entrypoint must be excluded from search indexing.')
+          if '#0d3159' not in app_html:
+              raise SystemExit('Application theme-color drifted from the approved MedPer shell.')
 
           required = [
-              './index.html','./app.html','./css/marketing.css','./css/design-system.css','./css/styles.css','./css/dashboard.css',
+              './index.html','./app.html','./css/marketing.css','./css/design-system.css','./css/styles.css','./css/dashboard.css','./css/inspector.css',
               './css/methodology.css','./css/guided-methodology.css','./css/knowledge.css','./css/auth.css',
               './js/main.js','./js/core/store.js','./js/core/case-lifecycle.js',
               './js/methodology/protocols.js','./js/methodology/engine.js','./js/methodology/aipe.js',
               './js/knowledge/library.js',
-              './js/ui/workflow.js','./js/ui/dashboard-model.js','./js/ui/dashboard-view.js','./js/ui/app.js','./js/ui/dialog-controller.js',
+              './js/ui/workflow.js','./js/ui/dashboard-model.js','./js/ui/dashboard-view.js','./js/ui/case-inspector.js','./js/ui/inspector-controller.js','./js/ui/app.js','./js/ui/dialog-controller.js',
               './js/auth/auth-controller.js','./js/config/supabase-config.js',
               './manifest.webmanifest','./icon.svg'
           ]
@@ -96,10 +100,12 @@ jobs:
 
           if '"start_url": "./app.html"' not in manifest:
               raise SystemExit('PWA must start from app.html.')
+          if '"theme_color": "#0d3159"' not in manifest:
+              raise SystemExit('PWA theme-color drifted from the approved MedPer shell.')
           if "isAppNavigation?'./app.html':'./index.html'" not in sw:
               raise SystemExit('Service worker does not separate offline fallbacks.')
 
-          print('Public site and application dashboard are separated.')
+          print('Public site and application shell validated.')
           PYTHON_EOF
 
       - name: Check roadmap stage one
@@ -133,7 +139,7 @@ jobs:
               Path('js/main.js'),Path('js/core/store.js'),Path('js/core/case-lifecycle.js'),
               Path('js/methodology/protocols.js'),Path('js/methodology/engine.js'),Path('js/methodology/aipe.js'),
               Path('js/knowledge/library.js'),
-              Path('js/ui/workflow.js'),Path('js/ui/dashboard-model.js'),Path('js/ui/dashboard-view.js'),Path('js/ui/app.js'),Path('js/ui/dialog-controller.js'),
+              Path('js/ui/workflow.js'),Path('js/ui/dashboard-model.js'),Path('js/ui/dashboard-view.js'),Path('js/ui/case-inspector.js'),Path('js/ui/inspector-controller.js'),Path('js/ui/app.js'),Path('js/ui/dialog-controller.js'),
               Path('js/auth/auth-controller.js')
           ]
           text = '\n'.join(path.read_text(encoding='utf-8') for path in loaded)
@@ -148,7 +154,9 @@ jobs:
               raise SystemExit('Single store implementation not found.')
           if "import { createStore }" not in Path('js/main.js').read_text(encoding='utf-8'):
               raise SystemExit('main.js does not import the store explicitly.')
-          print('No layered observers, no application globals and one storage owner.')
+          if 'installInspectorController' not in Path('js/main.js').read_text(encoding='utf-8'):
+              raise SystemExit('Contextual inspector exists but is not connected to the application composition root.')
+          print('State ownership and composition architecture validated.')
           PYTHON_EOF
 
       - name: Check dialog cancellation safeguards
