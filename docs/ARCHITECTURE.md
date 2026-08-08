@@ -1,41 +1,44 @@
 # Arquitetura do MedPer
 
-## 1. Escopo deste documento
+## 1. Escopo
 
-Este documento descreve:
+Este documento descreve a arquitetura efetivamente utilizada pelo protótipo atual, seus invariantes e os limites entre estado, metodologia, conhecimento, interface e infraestrutura futura.
 
-- a arquitetura efetivamente utilizada pelo protótipo atual;
-- os limites de segurança e operação da versão pública;
-- os invariantes que devem permanecer durante refatorações;
-- a arquitetura-alvo para autenticação, sincronização e comercialização.
-
-Não descreve funcionalidades hipotéticas como se já estivessem disponíveis.
+Não descreve funcionalidades hipotéticas como se já estivessem operacionais.
 
 ---
 
 ## 2. Decisão arquitetural central
 
-O MedPer não é um editor de texto com formulários anexos e não deve evoluir para um gerador automático de laudos.
-
-O sistema é uma aplicação orientada por estado estruturado. O documento final é uma projeção desse estado.
+O MedPer é uma aplicação orientada por estado estruturado e por raciocínio médico-pericial contextual. O documento final é uma projeção desse estado; não é o ponto de partida.
 
 ```text
-Caso estruturado
-│
-├── contexto
-├── objeto pericial
-├── fontes e fatos
-├── cronologia
-├── método geral
-├── protocolo específico
-├── matriz de decisão
-├── quesitos
-└── conclusão admissível
+NÚCLEO MÉDICO-PERICIAL TRANSVERSAL
         ↓
-renderização documental
+CONTEXTO DA ATUAÇÃO
+        ↓
+ESFERA / FINALIDADE
+        ↓
+PAPEL / MISSÃO / QUESITOS
+        ↓
+OBJETO MÉDICO-PERICIAL
+        ↓
+PERFIL CONTEXTUAL
+        ↓
+MÉTODO GERAL
++ PROTOCOLO(S)
++ INSTRUMENTO(S) POSSÍVEIS
+        ↓
+EVIDÊNCIAS / EXAME / ANÁLISE
+        ↓
+CONCLUSÃO MÉDICA PROPORCIONAL
+        ↓
+DOCUMENTO
 ```
 
-A interface pode ser reorganizada. O significado e a compatibilidade dos dados precisam permanecer.
+A mesma matéria pode exigir protocolos, perguntas, limites e linguagem conclusiva diferentes conforme contexto, finalidade, papel profissional e quesitos.
+
+**Inteligência de enquadramento, não inteligência de conclusão.**
 
 ---
 
@@ -43,104 +46,83 @@ A interface pode ser reorganizada. O significado e a compatibilidade dos dados p
 
 ### 3.1 Domínio médico-pericial
 
-1. o contexto precede a seleção do protocolo;
-2. o objeto precede exame e conclusão;
-3. fatos e fontes não são conclusões;
-4. hipótese, fundamento e conclusão são entidades cognitivamente distintas;
-5. a conclusão deve ser proporcional à suficiência da prova;
-6. AIPE é restrita ao dano estético;
-7. resultado adverso não equivale automaticamente a erro;
-8. diagnóstico isolado não demonstra incapacidade;
-9. ausência de consolidação impede conclusão estética permanente definitiva;
-10. a decisão técnica permanece humana.
+1. contexto e missão precedem seleção metodológica específica;
+2. objeto precede exame e conclusão;
+3. fatos, achados, hipóteses e conclusões permanecem distinguíveis;
+4. conclusão é proporcional à suficiência dos elementos;
+5. sugestão de protocolo ou instrumento não equivale a adoção;
+6. instrumento não equivale a protocolo;
+7. AIPE é instrumento possível para dano estético quando pertinente, não regra universal;
+8. resultado adverso não equivale automaticamente a erro;
+9. diagnóstico isolado não demonstra incapacidade;
+10. ausência de consolidação impede conclusão estética permanente definitiva;
+11. combinações contextuais não validadas usam método geral + seleção manual;
+12. a decisão técnica permanece humana.
 
 ### 3.2 Engenharia
 
 1. `js/core/store.js` é o único proprietário do estado persistido no navegador;
-2. não deve existir um segundo acesso concorrente ao `localStorage`;
-3. casos legados não podem ser apagados ou renomeados sem migração;
-4. rótulos visíveis não devem ser utilizados como contrato permanente do domínio;
+2. casos legados não podem ser apagados sem migração;
+3. labels visíveis não são contratos permanentes do domínio;
+4. IDs internos estáveis devem sobreviver à mudança de redação da UI;
 5. site público e aplicação são entradas distintas;
-6. Service Worker não pode trocar o fallback da landing pelo da aplicação;
-7. mudanças cognitivas não devem incluir simultaneamente autenticação, cobrança ou sincronização remota;
+6. UI não pode alterar regras médicas por conveniência visual;
+7. knowledge layer não controla o motor decisório;
 8. nenhum segredo pode existir no frontend;
-9. conclusão de tarefa exige evidência de teste compatível com o risco;
-10. documentação e código devem descrever o mesmo estado do produto.
+9. Service Worker deve conter todos os assets canônicos necessários ao offline shell;
+10. mudança metodológica exige regressão compatível com o risco;
+11. documentação e código devem descrever o mesmo estado real.
 
 ---
 
-## 4. Arquitetura atual
-
-### 4.1 Visão geral
+## 4. Composição atual
 
 ```text
 GitHub Pages
 │
-├── index.html
-│     └── site público
+├── index.html                 site público
 │
-└── app.html
-      └── js/main.js
+└── app.html                   aplicação
+      └── js/main.js           composition root
             ├── core/store.js
+            ├── core/case-lifecycle.js
             ├── auth/auth-controller.js
+            ├── methodology/context-resolver.js
             ├── methodology/protocols.js
             ├── methodology/engine.js
+            ├── methodology/aipe.js
             ├── knowledge/library.js
-            ├── ui/app.js
-            └── ui/dialog-controller.js
+            └── ui/
+                ├── app.js
+                ├── workflow.js
+                ├── surface-controller.js
+                ├── inspector-controller.js
+                ├── method-context-controller.js
+                └── dialog-controller.js
 ```
 
-A aplicação é um PWA estático, sem servidor próprio e sem banco conectado.
+A aplicação continua um PWA estático. Backend e banco remoto não são parte do runtime público atual.
 
-### 4.2 Inicialização
+---
 
-`js/main.js` atua como composition root:
+## 5. Estado e persistência
 
-1. localiza os elementos principais da página;
-2. cria o store;
-3. instala o controlador de diálogos;
-4. inicializa o controlador de autenticação;
-5. libera a aplicação em modo local ou após sessão válida;
-6. registra o Service Worker.
-
-O arquivo possui proteção contra inicialização duplicada.
-
-### 4.3 Estado e persistência
+### 5.1 Ownership
 
 `js/core/store.js` é responsável por:
 
-- leitura do estado;
-- migração de chaves legadas;
-- normalização dos casos;
-- sincronização de campos compatíveis;
+- leitura;
+- migração;
+- normalização;
+- compatibilidade entre campos legados e canônicos;
 - persistência em `localStorage`;
 - assinatura de alterações;
-- atualizações silenciosas durante digitação;
-- notificação explícita ao encerrar uma edição.
+- atualização silenciosa durante digitação;
+- notificação controlada.
 
-`js/core/case-lifecycle.js` mantém as transições de andamento, conclusão, lixeira e restauração. A persistência continua exclusiva do store.
+`js/core/case-lifecycle.js` mantém andamento, conclusão, lixeira e restauração, sem possuir persistência própria.
 
-Fluxo de atualização narrativa:
-
-```text
-input
-  ↓
-store.update(..., { notify: false })
-  ↓
-normalização
-  ↓
-persistência
-  ↓
-change / blur
-  ↓
-store.notify()
-  ↓
-reavaliação da interface
-```
-
-Isso evita reconstrução integral do DOM a cada caractere.
-
-### 4.4 Compatibilidade
+### 5.2 Compatibilidade
 
 Chaves reconhecidas:
 
@@ -151,323 +133,256 @@ medper.state.v2
 mlks.prototype.v1
 ```
 
-Uma versão antiga é copiada para uma chave de backup antes da migração.
-
-O objeto pericial possui um campo canônico em:
+O objeto pericial canônico permanece em:
 
 ```text
 methodology.general.object
 ```
 
-O campo histórico `scope` é mantido como alias de compatibilidade durante a fase de transição.
+`scope` continua como alias de compatibilidade durante a transição.
 
-### 4.5 Motor metodológico
+---
 
-`js/methodology/protocols.js` define:
+## 6. Modelo contextual canônico
+
+O schema preserva labels históricos e acrescenta IDs estáveis:
+
+```text
+context
+├── setting / settingId
+├── legalSphere / legalSphereId
+├── role / roleId
+├── purposeId
+├── matter / matterId
+├── tribunal
+├── unit
+├── feeRegime
+└── mode
+```
+
+Exemplo:
+
+```text
+setting       = Judicial
+settingId     = judicial
+legalSphere   = Cível
+legalSphereId = civil
+role          = Perita do juízo
+roleId        = court_expert
+matter        = Dano estético
+matterId      = aesthetic_damage
+```
+
+Os campos legados `sphere` e `branch` continuam preservados para compatibilidade. A especificação integral está em `docs/CONTEXT_MODEL.md`.
+
+---
+
+## 7. Motor metodológico
+
+### 7.1 Método geral e protocolos-base
+
+`js/methodology/protocols.js` mantém:
 
 - método geral;
-- perguntas narrativas;
-- perguntas estruturadas;
-- protocolos específicos;
-- protocolo genérico de fallback.
+- perguntas estruturadas/narrativas;
+- protocolos-base por IDs estáveis (`aesthetic`, `capacity`, `causation`, `liability`);
+- fallback genérico;
+- compatibilidade com labels históricos.
 
-Os protocolos são endereçados internamente por IDs estáveis (`aesthetic`, `capacity`, `causation`, `liability`), separados dos rótulos visíveis e com mapa de compatibilidade para matérias legadas. O mesmo módulo resolve protocolos aplicáveis combinando a matéria primária, módulos adicionais escolhidos pela médica e sugestões conservadoras derivadas do objeto. A matéria primária legada não é reescrita. `js/methodology/aipe.js` contém somente tabelas declarativas de referência AIPE e não executa decisão ou pontuação automática.
+Esses protocolos-base não são suficientes, isoladamente, para expressar todo o contexto jurídico-pericial.
+
+### 7.2 Resolução contextual
+
+`js/methodology/context-resolver.js` é a camada entre o contexto do caso e o método específico.
+
+Responsabilidades:
+
+- resolver/sugerir finalidade;
+- identificar perfil contextual;
+- declarar prioridades e cautelas;
+- separar perfil contextual de protocolo-base;
+- sugerir instrumentos auxiliares;
+- preservar escolha médica explícita.
+
+Perfis iniciais:
+
+```text
+civil + aesthetic_damage
+→ aesthetic_damage_civil
+→ base aesthetic
+→ AIPE sugerida como instrumento possível
+
+criminal + aesthetic_damage
+→ aesthetic_damage_criminal
+→ base aesthetic
+→ AIPE não sugerida por padrão
+
+labor + capacity
+→ capacity_labor
+→ base capacity
+
+social_security + capacity
+→ capacity_social_security
+→ base capacity
+```
+
+Combinações não validadas recebem perfil genérico. O sistema não inventa regras contextuais.
+
+### 7.3 Protocolos × instrumentos
+
+Controles separados:
+
+```text
+methodology.activeProtocolIds
+methodology.dismissedProtocolIds
+methodology.activeInstrumentIds
+methodology.dismissedInstrumentIds
+```
+
+Isso impede que uma escala auxiliar seja confundida com protocolo ou conclusão.
+
+### 7.4 Audit engine
 
 `js/methodology/engine.js` executa:
 
-- auditoria do caso;
-- contagem de bloqueios e ressalvas;
-- avaliação de completude;
-- salvaguardas específicas por matéria.
+- bloqueios e ressalvas;
+- completude;
+- salvaguardas por protocolo;
+- verificação contextual de instrumentos.
 
-`js/knowledge/library.js` é uma camada declarativa separada do motor metodológico. Ela classifica fontes por natureza, autoridade, versão, âmbito e tema; mantém localizadores exatos e divergências; e resolve apenas quais referências são pertinentes ao assunto e à etapa cognitiva. Não importa nem modifica `engine.js` ou `protocols.js`, não persiste estado e não gera conclusões. A governança dessa camada está em `docs/KNOWLEDGE_REFERENCES.md`.
+No dano estético, AIPE só gera a salvaguarda de fundamentação quando está ativa para o contexto. Se houver registro AIPE sem instrumento ativo, o motor produz ressalva para revisão da pertinência.
 
-Algumas respostas estruturadas ainda comparam rótulos de opções legadas. A identidade dos protocolos, entretanto, já não depende desses rótulos.
+---
 
-### 4.6 Interface
+## 8. Knowledge layer
 
-`js/ui/workflow.js` define as nove etapas cognitivas do Método MedPer e traduz rotas antigas (`summary`, `documents`, `analysis`) para a navegação atual sem invalidar links legados.
+`js/knowledge/library.js` permanece declarativa e separada do motor decisório.
 
-`js/ui/app.js` ainda concentra:
+Ela contém provenance e governança de fontes, incluindo natureza, autoridade, versão, âmbito, tema, localizador, finalidade e limitações.
 
-- roteamento por hash;
-- renderização;
-- navegação;
-- eventos;
-- modais de criação;
-- mutações de entidades;
-- exportação JSON.
+Referência não vira regra automaticamente.
 
-Esse arquivo é funcional, porém monolítico. A decomposição será incremental, sem reescrita ampla e sem alteração simultânea do schema dos casos.
+---
 
-### 4.7 PWA
+## 9. Interface e superfícies
+
+### 9.1 Superfícies
+
+- Dashboard — localizar e priorizar;
+- Meus casos — gerir lifecycle e casos;
+- Agenda e prazos — gerir temporalidade;
+- Referências — consultar conhecimento;
+- Inspector — reconhecer rapidamente um caso;
+- Workspace — executar raciocínio médico-pericial.
+
+### 9.2 Workspace
+
+`js/ui/workflow.js` preserva nove etapas cognitivas:
+
+1. Delimitação
+2. Autos e evidências
+3. Cronologia
+4. Hipóteses e diligências
+5. Exame e método
+6. Fundamentação
+7. Conclusão
+8. Quesitos
+9. Documento
+
+### 9.3 Contexto metodológico na UI
+
+`js/ui/method-context-controller.js` acrescenta à etapa `Exame e método` uma camada visual sem assumir persistência própria.
+
+Exibe:
+
+- finalidade;
+- perfil contextual;
+- papel profissional;
+- prioridades e cautelas;
+- instrumentos auxiliares;
+- aceitação/rejeição explícitas.
+
+A sugestão contextual não é silenciosamente convertida em decisão médica.
+
+`js/ui/app.js` permanece responsável pelo workspace e pelos formulários existentes. A decomposição continua incremental.
+
+---
+
+## 10. PWA
 
 `sw.js` utiliza:
 
 - precache do shell;
+- network-first para HTML/CSS/JS;
 - limpeza de caches antigos;
-- network-first para HTML, CSS e JavaScript;
-- cache para demais assets;
-- fallback separado entre `index.html` e `app.html`.
+- fallback separado entre landing e aplicação.
 
-O nome do cache deve ser alterado quando assets críticos forem modificados.
-
-### 4.8 Autenticação preparada
-
-O controlador atual contém fluxos para:
-
-- e-mail e senha;
-- cadastro;
-- Google OAuth;
-- sessão persistente;
-- logout;
-- modo local;
-- preparação do espaço organizacional.
-
-Entretanto, o Supabase não está conectado a um projeto real. Portanto, autenticação e segregação não devem ser anunciadas como operacionais.
+O shell inclui `context-resolver.js`, `method-context-controller.js` e `context-methodology.css`.
 
 ---
 
-## 5. Estrutura de domínio atual
-
-Representação simplificada de um caso:
-
-```text
-Case
-├── id
-├── title
-├── reference
-├── status
-├── context
-│   ├── sphere
-│   ├── branch
-│   ├── role
-│   ├── matter
-│   └── mode
-├── person
-├── scope
-├── documentGaps
-├── evidence[]
-├── facts[]
-├── events[]
-├── questions[]
-├── conclusions[]
-└── methodology
-    ├── general
-    ├── specific
-    ├── guided
-    └── decision
-```
-
-A matriz completa de reorganização dos campos está em `docs/FIELD_MIGRATION_MATRIX.md`.
-
----
-
-## 6. Fronteiras de responsabilidade
+## 11. Fronteiras de responsabilidade
 
 | Módulo | Responsabilidade | Não deve assumir |
 |---|---|---|
-| `main.js` | composição e inicialização | regras periciais |
-| `store.js` | estado, migração e persistência | renderização |
-| `protocols.js` | definição declarativa dos métodos | acesso ao DOM |
-| `engine.js` | auditoria e completude | redação visual |
-| `auth-controller.js` | sessão e acesso | persistência dos casos |
-| `ui/app.js` | apresentação e interação | armazenamento direto |
-| `dialog-controller.js` | comportamento transversal de diálogos | regras de domínio |
-| `sw.js` | cache e offline | autorização ou dados |
+| `main.js` | composição | regras periciais |
+| `store.js` | estado/migração/persistência | renderização |
+| `context-resolver.js` | enquadramento metodológico contextual | conclusão jurídica |
+| `protocols.js` | método geral e protocolos-base | DOM |
+| `engine.js` | audit/completude/salvaguardas | apresentação |
+| `aipe.js` | referência declarativa AIPE | decisão/pontuação automática |
+| `knowledge/library.js` | provenance e pertinência documental | alterar método |
+| `method-context-controller.js` | apresentar contexto e registrar escolha explícita | persistência direta |
+| `ui/app.js` | workspace/interação | `localStorage` direto |
+| `sw.js` | cache/offline | autorização/dados |
 
 ---
 
-## 7. Testes e gates
+## 12. Testes e evidência
 
-### 7.1 Testes automatizados atuais
+A suíte automatizada cobre atualmente, entre outros:
 
-A suíte `tests/store-regression.test.mjs` verifica:
+- migração e compatibilidade de store;
+- contexto operacional;
+- IDs contextuais estáveis;
+- diferenciação cível/criminal em dano estético;
+- AIPE contextual;
+- aceitação/rejeição explícita de instrumentos;
+- lifecycle;
+- dashboard e superfícies;
+- design system/brand;
+- inspector;
+- knowledge layer;
+- metodologia;
+- PWA/entrypoints.
 
-- migração de objeto legado;
-- preservação do objeto canônico;
-- resolução de conflitos;
-- sincronização bidirecional durante transição;
-- backup de estado antigo;
-- preservação das coleções;
-- recuperação após JSON inválido;
-- persistência sem notificação;
-- notificação explícita.
-
-### 7.2 Gates obrigatórios
-
-Antes de mudança estrutural:
-
-1. executar verificação de sintaxe;
-2. executar testes de regressão;
-3. revisar compatibilidade do JSON;
-4. validar o risco metodológico;
-5. testar manualmente o fluxo afetado;
-6. registrar limitação não coberta.
+Auditoria específica da resolução contextual: `docs/AUDIT_CONTEXTUAL_METHODOLOGY_2026-08-08.md`.
 
 ---
 
-## 8. Arquitetura-alvo
+## 13. Limites atuais
 
-### 8.1 Visão geral
-
-```text
-Site público
-
-Aplicação PWA
-    │
-    ├── camada de apresentação
-    ├── casos de uso
-    ├── domínio médico-pericial
-    ├── repositórios
-    └── sincronização offline
-            │
-            ▼
-Supabase Auth
-PostgreSQL + RLS
-Object Storage
-Audit Log
-Funções server-side
-Provedor de cobrança
-Monitoramento
-```
-
-### 8.2 Banco multiusuário
-
-Tabelas já modeladas:
-
-- `profiles`;
-- `organizations`;
-- `organization_members`;
-- `plans`;
-- `subscriptions`;
-- `cases`;
-- `case_collaborators`;
-- `audit_events`.
-
-O schema contém políticas iniciais de RLS, mas elas precisam ser aplicadas e testadas com múltiplas identidades antes de uso real.
-
-### 8.3 Sincronização
-
-Fluxo pretendido:
-
-```text
-edição local
-  ↓
-rascunho persistido
-  ↓
-salvamento remoto versionado
-  ↓
-confirmação do servidor
-  ↓
-atualização do estado de sincronização
-```
-
-Requisitos:
-
-- versionamento otimista;
-- prevenção de sobrescrita silenciosa;
-- tratamento de conflito;
-- fila offline;
-- idempotência;
-- migração assistida do armazenamento local;
-- rastreabilidade das alterações.
-
-### 8.4 Arquivos
-
-Documentos e fotografias não devem ser incluídos diretamente no JSON do caso.
-
-Arquitetura prevista:
-
-```text
-objeto no storage
-+ hash
-+ metadados
-+ associação ao caso
-+ controle de acesso
-+ política de retenção
-```
-
-### 8.5 Assinaturas e limites
-
-O acesso comercial deverá depender de estado server-side:
-
-- plano;
-- assinatura;
-- status de pagamento;
-- quantidade de assentos;
-- limite de casos;
-- permissões da organização.
-
-Bloqueios exclusivamente visuais não são mecanismos de licenciamento.
+- o protótipo público não deve receber dados reais sensíveis;
+- algumas telas de criação ainda exibem labels históricos (`sphere/branch`), embora o store normalize para campos/IDs canônicos;
+- nem toda combinação esfera × objeto possui perfil validado;
+- backend FastAPI e schema Supabase ainda precisam de decisão arquitetural canônica antes da sincronização remota;
+- segurança multiusuário ainda não está operacional ponta a ponta.
 
 ---
 
-## 9. Segurança
+## 14. Arquitetura futura
 
-### 9.1 Frontend
+Antes da produção serão necessários:
 
-Permitido:
-
-- URL pública do projeto;
-- publishable key do Supabase;
-- configurações não secretas.
-
-Proibido:
-
-- `service_role`;
-- credenciais privadas;
-- chaves de IA;
-- segredos de cobrança;
-- tokens administrativos.
-
-### 9.2 Produção
-
-Requisitos mínimos:
-
-- RLS validada;
-- sessões e revogação;
-- recuperação de conta;
-- SMTP próprio;
-- controle de arquivos;
-- auditoria;
-- backup e restauração;
-- política de retenção;
-- logs centralizados;
+- autenticação real;
+- persistência remota canônica;
+- RLS/isolamento validado;
+- storage seguro de arquivos;
+- auditoria server-side;
+- backups/restauração;
+- observabilidade;
 - gestão de incidentes;
-- documentação LGPD.
+- governança LGPD;
+- sincronização offline/versionada.
 
----
-
-## 10. Estratégia de evolução
-
-A ordem oficial é:
-
-1. separar site e aplicação;
-2. projetar experiência cognitiva e identidade;
-3. conectar Supabase;
-4. sincronizar casos;
-5. validar isolamento;
-6. implementar cobrança e limites;
-7. criar onboarding;
-8. publicar planos;
-9. executar piloto fechado;
-10. abrir venda pública.
-
-A fase ativa deve ser concluída pelos critérios de aceite antes de a seguinte ser declarada pronta.
-
----
-
-## 11. Decisões pendentes
-
-- formato definitivo dos identificadores estáveis das respostas;
-- decomposição gradual de `ui/app.js`;
-- modelo de conflito de sincronização;
-- estratégia de importação/exportação em produção;
-- granularidade da auditoria;
-- política de visibilidade entre membro, administrador e proprietário;
-- modelo comercial e limites;
-- infraestrutura de processamento de arquivos;
-- papel futuro de IA e suas salvaguardas.
-
-Esses itens são decisões arquiteturais; não devem ser resolvidos incidentalmente dentro de alterações visuais.
+Essas etapas não devem ser misturadas com alterações metodológicas ou visuais sem gates próprios.
