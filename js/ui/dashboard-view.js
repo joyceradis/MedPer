@@ -1,168 +1,43 @@
 import { CASE_FILTERS, filterCasesByLifecycle } from '../core/case-lifecycle.js';
 import { buildDashboardModel } from './dashboard-model.js';
+import { KNOWLEDGE_SOURCES, REFERENCE_CLASSES } from '../knowledge/library.js';
 
-const esc = (value = '') => String(value ?? '').replace(/[&<>"']/g, character => ({
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-}[character]));
+const esc=(value='')=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
 
-const icons = {
-  overview: '<i class="fa-solid fa-house" aria-hidden="true"></i>',
-  cases: '<i class="fa-solid fa-briefcase" aria-hidden="true"></i>',
-  calendar: '<i class="fa-regular fa-calendar-days" aria-hidden="true"></i>',
-  book: '<i class="fa-solid fa-book-open" aria-hidden="true"></i>',
-  checklist: '<i class="fa-regular fa-clipboard" aria-hidden="true"></i>',
-  settings: '<i class="fa-solid fa-gear" aria-hidden="true"></i>',
-  search: '<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>',
-  arrow: '<i class="fa-solid fa-arrow-right" aria-hidden="true"></i>',
-  bell: '<i class="fa-regular fa-bell" aria-hidden="true"></i>',
-  gavel: '<i class="fa-solid fa-gavel" aria-hidden="true"></i>',
-  document: '<i class="fa-regular fa-file-lines" aria-hidden="true"></i>',
-  exam: '<i class="fa-solid fa-stethoscope" aria-hidden="true"></i>',
-  report: '<i class="fa-solid fa-file-signature" aria-hidden="true"></i>'
+const svg=(paths,cls='')=>`<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths}</svg>`;
+const icons={
+  overview:svg('<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/>'),
+  cases:svg('<rect x="3.5" y="6.5" width="17" height="13" rx="2"/><path d="M8 6.5V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5"/><path d="M3.5 11.5h17"/>'),
+  calendar:svg('<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M7.5 3v4M16.5 3v4M3.5 9.5h17"/><path d="M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01"/>'),
+  book:svg('<path d="M4 4.5A3.5 3.5 0 0 1 7.5 4H11v16H7.5A3.5 3.5 0 0 0 4 20.5z"/><path d="M20 4.5A3.5 3.5 0 0 0 16.5 4H13v16h3.5a3.5 3.5 0 0 1 3.5.5z"/>'),
+  checklist:svg('<rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M9 8h6M9 12h6M9 16h6"/><path d="m7 8 .5.5L8.5 7.5m-1.5 4.5.5.5 1-1m-1.5 4.5.5.5 1-1"/>'),
+  settings:svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.18.35.4.69.6 1 .18.3.5.55.9.6h.1v4h-.1a1.7 1.7 0 0 0-1.5.4z"/>'),
+  search:svg('<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>'),
+  arrow:svg('<path d="M5 12h14M14 7l5 5-5 5"/>'),
+  bell:svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>'),
+  document:svg('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/>'),
+  exam:svg('<path d="M5 4v6a5 5 0 0 0 10 0V4"/><path d="M8 4v4M12 4v4M15 15v1a4 4 0 0 0 4 4"/><circle cx="19" cy="17" r="2"/>'),
+  report:svg('<path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h4"/>')
 };
 
-function formatDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return { day: '--', month: '---', time: '--:--' };
-  return {
-    day: new Intl.DateTimeFormat('pt-BR', { day: '2-digit' }).format(date),
-    month: new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(date).replace('.', '').toUpperCase(),
-    time: new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false }).format(date)
-  };
-}
+function formatDate(value){const d=new Date(value);if(Number.isNaN(d.getTime()))return{day:'--',month:'---',time:'--:--'};return{day:new Intl.DateTimeFormat('pt-BR',{day:'2-digit'}).format(d),month:new Intl.DateTimeFormat('pt-BR',{month:'short'}).format(d).replace('.','').toUpperCase(),time:new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(d)};}
+function relativeDays(value,now){const due=new Date(value),base=now instanceof Date?now:new Date(now);if(Number.isNaN(due.getTime())||Number.isNaN(base.getTime()))return'';const days=Math.max(0,Math.ceil((due-base)/864e5));return days===0?'hoje':days===1?'1 dia':`${days} dias`;}
 
-function relativeDays(value, now) {
-  const due = new Date(value);
-  const base = now instanceof Date ? now : new Date(now);
-  if (Number.isNaN(due.getTime()) || Number.isNaN(base.getTime())) return '';
-  const days = Math.max(0, Math.ceil((due.getTime() - base.getTime()) / 864e5));
-  return days === 1 ? '1 dia' : `${days} dias`;
-}
+function caseActions(c){if(c.status==='Lixeira')return `<button type="button" data-case-action="restore" data-case-id="${esc(c.id)}">Restaurar</button><button type="button" class="is-danger" data-case-action="delete" data-case-id="${esc(c.id)}">Excluir</button>`;if(c.status==='Concluída')return `<button type="button" data-case-action="reopen" data-case-id="${esc(c.id)}">Reabrir</button><button type="button" data-case-action="trash" data-case-id="${esc(c.id)}">Lixeira</button>`;return `<button type="button" data-case-action="complete" data-case-id="${esc(c.id)}">Concluir</button><button type="button" data-case-action="trash" data-case-id="${esc(c.id)}">Lixeira</button>`;}
+function renderCase(c){const ctx=c.context||{};return `<article class="dashboard-case-card"><button class="dashboard-case-open" type="button" data-inspect-case="${esc(c.id)}"><div class="dashboard-case-topline"><span>${esc(ctx.role||ctx.setting||'Perícia')}</span><span>${esc(c.status)}</span></div><h3>${esc(c.title)}</h3><p>${esc(c.reference||'Sem referência')}</p><div class="dashboard-case-meta"><span>${esc(ctx.unit||ctx.tribunal||'Unidade a definir')}</span>${ctx.legalSphere||ctx.branch?`<span>${esc(ctx.legalSphere||ctx.branch)}</span>`:''}${ctx.feeRegime?`<span>${esc(ctx.feeRegime)}</span>`:''}${ctx.matter?`<span>${esc(ctx.matter)}</span>`:''}</div></button><div class="dashboard-case-actions">${caseActions(c)}</div></article>`;}
+function renderDeadline(d,now){const date=formatDate(d.dueAt);return `<article class="deadline-row"><span class="deadline-indicator is-${esc(d.severity)}" aria-hidden="true"></span><div class="deadline-date"><strong>${date.day}</strong><span>${date.month}</span></div><div class="deadline-copy"><strong>${esc(d.type||'Prazo')}</strong><span>${esc(d.caseTitle||'')}</span></div><div class="deadline-remaining"><strong>${esc(relativeDays(d.dueAt,now))}</strong><span>${date.time}</span></div></article>`;}
+function renderProgress(){return `<div class="continue-progress"><div class="continue-progress-head"><span>Exame e método</span><strong>Etapa 5 de 9</strong></div><div class="continue-progress-track" aria-hidden="true">${Array.from({length:9},(_,i)=>`<span class="${i<4?'is-complete':i===4?'is-current':''}"></span>`).join('')}</div><div class="continue-milestones"><div>${icons.document}<span><small>Etapa 1</small><strong>Revisão de documentos</strong></span></div><div>${icons.exam}<span><small>Etapa 2</small><strong>Exame</strong></span></div><div>${icons.report}<span><small>Etapa 3</small><strong>Laudo</strong></span></div></div></div>`;}
 
-function caseActions(caseData) {
-  if (caseData.status === 'Lixeira') {
-    return '<button type="button" data-case-action="restore" data-case-id="' + esc(caseData.id) + '">Restaurar</button><button type="button" class="is-danger" data-case-action="delete" data-case-id="' + esc(caseData.id) + '">Excluir</button>';
-  }
-  if (caseData.status === 'Concluída') {
-    return '<button type="button" data-case-action="reopen" data-case-id="' + esc(caseData.id) + '">Reabrir</button><button type="button" data-case-action="trash" data-case-id="' + esc(caseData.id) + '">Lixeira</button>';
-  }
-  return '<button type="button" data-case-action="complete" data-case-id="' + esc(caseData.id) + '">Concluir</button><button type="button" data-case-action="trash" data-case-id="' + esc(caseData.id) + '">Lixeira</button>';
-}
+function nav(active){const items=[['overview','Visão geral',icons.overview],['cases','Meus casos',icons.cases],['deadlines','Agenda e prazos',icons.calendar],['references','Referências técnicas',icons.book],['models','Modelos e checklists',icons.checklist]];return `<nav class="dashboard-navigation" aria-label="Navegação principal">${items.map(([id,label,icon])=>`<button type="button" data-surface="${id}" class="${active===id?'is-active':''}">${icon}<span>${label}</span></button>`).join('')}<button type="button" data-account>${icons.settings}<span>Configurações</span></button></nav>`;}
+function shell(content,active,displayName){return `<div class="app-shell-dashboard" data-dashboard-surface="${active}"><aside class="dashboard-sidebar"><div class="dashboard-brand"><img class="brand-logomark" src="./icon.svg" alt=""><div><strong><span class="wordmark-med">Med</span><span class="wordmark-per">Per</span></strong><span>Perícia estruturada</span></div></div>${nav(active)}<div class="dashboard-profile"><span class="profile-avatar">JR</span><div><strong>${esc(displayName)}</strong><span>Perita médica</span></div></div></aside><main id="workspace" class="dashboard-workspace">${content}</main></div>`;}
+function pageHeader(title,subtitle,{search=true,newCase=true}={}){return `<header class="dashboard-toolbar"><div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><div class="dashboard-toolbar-actions">${search?`<label class="dashboard-search">${icons.search}<span class="sr-only">Pesquisar</span><input type="search" placeholder="Pesquisar casos, processos, partes..." disabled></label>`:''}${newCase?'<button class="dashboard-new-case" type="button" data-new-case>+ Nova perícia</button>':''}</div></header>`;}
 
-function renderCaseList(caseData) {
-  const context = caseData.context || {};
-  return `<article class="dashboard-case-card">
-    <button class="dashboard-case-open" type="button" data-inspect-case="${esc(caseData.id)}">
-      <div class="dashboard-case-topline"><span>${esc(context.role || context.setting || context.sphere || 'Perícia')}</span><span>${esc(caseData.status)}</span></div>
-      <h3>${esc(caseData.title)}</h3>
-      <p>${esc(caseData.reference || 'Sem referência')}</p>
-      <div class="dashboard-case-meta"><span>${esc(context.unit || context.tribunal || 'Unidade a definir')}</span>${context.legalSphere || context.branch ? `<span>${esc(context.legalSphere || context.branch)}</span>` : ''}${context.feeRegime ? `<span>${esc(context.feeRegime)}</span>` : ''}</div>
-    </button>
-    <div class="dashboard-case-actions" aria-label="Ações do caso">${caseActions(caseData)}</div>
-  </article>`;
-}
+function overview(state,filter,options){const now=options.now||new Date(),model=buildDashboardModel(state.cases||[],now),c=model.continueCase,deadlines=model.deadlines.slice(0,3);const continueCard=c?`<article class="continue-card"><div class="continue-case-main"><div class="continue-case-symbol" aria-hidden="true"></div><div><span class="continue-card-kicker">${esc(c.context?.role||'Perita do juízo')}</span><h3>${esc(c.title||'Queimadura e sequela cicatricial')}</h3><p>Processo ${esc(c.reference||'')}</p><p>${esc(c.context?.unit||c.context?.tribunal||'Unidade a definir')}${c.context?.feeRegime?` · <strong>${esc(c.context.feeRegime)}</strong>`:''}</p></div></div>${renderProgress()}<button type="button" class="dashboard-primary-action" data-open-case="${esc(c.id)}">Abrir perícia ${icons.arrow}</button></article>`:'<div class="dashboard-empty-state"><strong>Nenhuma perícia em andamento</strong><span>Crie uma perícia para iniciar o fluxo estruturado.</span></div>';return `${pageHeader(`Boa noite, ${options.displayName||'Dra. Joyce'}`,'Priorize o trabalho sem perder o contexto médico-pericial.')}<section class="dashboard-shortcuts"><button data-surface="cases">${icons.cases}<span><strong>Meus casos</strong><small>Acompanhe suas perícias</small></span>${icons.arrow}</button><button data-surface="deadlines">${icons.calendar}<span><strong>Agenda e prazos</strong><small>Prazos e compromissos</small></span>${icons.arrow}</button><button data-surface="references">${icons.book}<span><strong>Referências técnicas</strong><small>Biblioteca e normas</small></span>${icons.arrow}</button></section><section class="dashboard-operational-grid"><article class="dashboard-panel"><header><div><h2>Continuar trabalhando</h2><p>Seu último acesso</p></div></header>${continueCard}</article><article class="dashboard-panel"><header><div><h2>Próximos prazos</h2><p>Prioridade temporal</p></div><span>${model.deadlines.length}</span></header>${deadlines.length?deadlines.map(d=>renderDeadline(d,now)).join(''):'<div class="dashboard-empty-state"><strong>Nenhum prazo registrado</strong><span>Os compromissos aparecerão aqui.</span></div>'}</article></section><section class="dashboard-pending"><span class="pending-icon">${icons.bell}</span><div><strong>${model.pendingCount?`Você tem ${model.pendingCount} pendência${model.pendingCount===1?'':'s'}`:'Sem pendências registradas'}</strong><span>${model.pendingCount?'Quesitos, exames ou providências aguardam ação.':'O que exigir ação aparecerá aqui.'}</span></div><button type="button" data-surface="cases">Ver pendências ${icons.arrow}</button></section>`;}
 
-function renderDeadline(deadline, now) {
-  const date = formatDate(deadline.dueAt);
-  return `<article class="deadline-row">
-    <span class="deadline-indicator is-${esc(deadline.severity)}" aria-hidden="true"></span>
-    <div class="deadline-date"><strong>${date.day}</strong><span>${date.month}</span></div>
-    <div class="deadline-copy"><strong>${esc(deadline.type || 'Prazo')}</strong><span>${esc(deadline.caseTitle || '')}</span></div>
-    <div class="deadline-remaining"><strong>${esc(relativeDays(deadline.dueAt, now))}</strong><span>${date.time}</span></div>
-  </article>`;
-}
+function casesSurface(state,filter,options){const model=buildDashboardModel(state.cases||[],options.now||new Date()),visible=filterCasesByLifecycle(state.cases||[],filter);return `${pageHeader('Meus casos','Organize por estado do trabalho, atuação, esfera e unidade.')}<section class="surface-panel"><header class="dashboard-section-head"><div><h2>Perícias</h2><p>${visible.length} nesta visão</p></div><nav class="case-filters">${CASE_FILTERS.map(i=>`<button class="case-filter ${filter===i.id?'is-active':''}" data-case-filter="${i.id}"><span>${esc(i.label)}</span><small>${model.counts[i.id]}</small></button>`).join('')}</nav></header><div class="dashboard-case-grid">${visible.length?visible.map(renderCase).join(''):'<div class="dashboard-empty-state dashboard-empty-wide"><strong>Nenhum caso nesta visão</strong><span>Altere o filtro ou crie uma nova perícia.</span></div>'}</div></section>`;}
+function deadlinesSurface(state,filter,options){const now=options.now||new Date(),model=buildDashboardModel(state.cases||[],now);return `${pageHeader('Agenda e prazos','Compromissos periciais ordenados por criticidade.',{search:false})}<section class="surface-panel surface-deadlines"><header class="dashboard-section-head"><div><h2>Próximos compromissos</h2><p>${model.deadlines.length} prazo(s) registrado(s)</p></div></header>${model.deadlines.length?model.deadlines.map(d=>renderDeadline(d,now)).join(''):'<div class="dashboard-empty-state"><strong>Nenhum prazo registrado</strong><span>Adicione prazos aos casos para vê-los aqui.</span></div>'}</section>`;}
+function referencesSurface(state,filter,options){return `${pageHeader('Referências técnicas','Consulte a base documental sem misturá-la ao motor decisório.',{search:false,newCase:false})}<section class="reference-library"><header><span class="eyebrow">Biblioteca auditável</span><h2>Conhecimento contextual</h2><p>Natureza, autoridade, versão, âmbito e limitações permanecem explícitos. Uma referência não altera automaticamente o método nem produz conclusão.</p></header><div class="reference-library-grid">${KNOWLEDGE_SOURCES.map(s=>`<article class="reference-source-card"><div class="reference-source-class">${(s.classes||[]).map(c=>esc(REFERENCE_CLASSES[c]||c)).join(' · ')}</div><h3>${esc(s.title)}</h3><p>${esc(s.scope)}</p><dl><div><dt>Autoridade</dt><dd>${esc(s.authority)}</dd></div><div><dt>Versão</dt><dd>${esc(s.version)}</dd></div><div><dt>Limitação</dt><dd>${esc(s.limitation)}</dd></div></dl></article>`).join('')}</div></section>`;}
+function modelsSurface(){return `${pageHeader('Modelos e checklists','Recursos auxiliares sem interferência automática na conclusão.',{search:false,newCase:false})}<section class="surface-panel"><div class="dashboard-empty-state"><strong>Área reservada</strong><span>Modelos serão incorporados somente quando estiverem metodologicamente governados.</span></div></section>`;}
 
-function renderContinueProgress() {
-  return `<div class="continue-progress" aria-label="Progresso do caso: Etapa 5 de 9">
-    <div class="continue-progress-head"><span>Exame e método</span><strong>Etapa 5 de 9</strong></div>
-    <div class="continue-progress-track" aria-hidden="true">
-      <span class="is-complete"></span><span class="is-complete"></span><span class="is-complete"></span><span class="is-complete"></span><span class="is-current"></span><span></span><span></span><span></span><span></span>
-    </div>
-    <div class="continue-milestones">
-      <div class="continue-milestone"><span class="milestone-icon is-document">${icons.document}</span><span><small>Etapa 1</small><strong>Revisão de Documentos</strong></span></div>
-      <div class="continue-milestone"><span class="milestone-icon is-exam">${icons.exam}</span><span><small>Etapa 2</small><strong>Exame</strong></span></div>
-      <div class="continue-milestone"><span class="milestone-icon is-report">${icons.report}</span><span><small>Etapa 3</small><strong>Laudo</strong></span></div>
-    </div>
-  </div>`;
-}
-
-export function renderDashboardHome(state, filter = 'active', options = {}) {
-  const now = options.now || new Date();
-  const displayName = options.displayName || 'Dra. Joyce';
-  const model = buildDashboardModel(state.cases || [], now);
-  const visible = filterCasesByLifecycle(state.cases || [], filter);
-  const continueCase = model.continueCase;
-  const deadlines = model.deadlines.slice(0, 3);
-  const counts = model.counts;
-
-  const continueContent = continueCase ? `<article class="continue-card">
-    <div class="continue-case-main">
-      <span class="continue-case-icon" aria-hidden="true">${icons.gavel}</span>
-      <div class="continue-case-copy">
-        <span class="continue-card-kicker">Perita do juízo</span>
-        <h3>${esc(continueCase.title || 'Queimadura e sequela cicatricial')}</h3>
-        <p class="continue-process">Processo ${esc(continueCase.reference || '0002862-73.2019.8.08.0024')}</p>
-        <p class="continue-court">${esc(continueCase.context?.unit || continueCase.context?.tribunal || '1ª Vara Cível de Vila Velha')}${continueCase.context?.feeRegime ? ` <span>•</span> <strong>${esc(continueCase.context.feeRegime)}</strong>` : ''}</p>
-      </div>
-    </div>
-    ${renderContinueProgress()}
-    <button type="button" class="dashboard-primary-action" data-open-case="${esc(continueCase.id)}">Abrir perícia ${icons.arrow}</button>
-  </article>` : `<div class="dashboard-empty-state"><strong>Nenhuma perícia em andamento</strong><span>Crie uma nova perícia para iniciar o fluxo estruturado.</span></div>`;
-
-  const deadlineContent = deadlines.length
-    ? deadlines.map(deadline => renderDeadline(deadline, now)).join('')
-    : '<div class="dashboard-empty-state"><strong>Nenhum prazo registrado</strong><span>Os próximos compromissos aparecerão aqui.</span></div>';
-
-  const caseContent = visible.length
-    ? visible.map(renderCaseList).join('')
-    : '<div class="dashboard-empty-state dashboard-empty-wide"><strong>Nenhum caso nesta visão</strong><span>Altere o filtro ou crie uma nova perícia.</span></div>';
-
-  return `<div class="app-shell-dashboard">
-    <aside class="dashboard-sidebar">
-      <div class="dashboard-brand">
-        <img class="brand-logomark" src="./icon.svg" alt="">
-        <div><strong><span class="wordmark-med">Med</span><span class="wordmark-per">Per</span></strong><span>Perícia estruturada</span></div>
-      </div>
-      <nav class="dashboard-navigation" aria-label="Navegação principal">
-        <button class="is-active" type="button" data-scroll-target="dashboard-overview">${icons.overview}<span>Visão geral</span></button>
-        <button type="button" data-scroll-target="dashboard-cases">${icons.cases}<span>Meus casos</span></button>
-        <button type="button" data-scroll-target="dashboard-deadlines">${icons.calendar}<span>Agenda e prazos</span></button>
-        <button type="button" data-scroll-target="dashboard-references">${icons.book}<span>Referências técnicas</span></button>
-        <button type="button" data-scroll-target="dashboard-cases">${icons.checklist}<span>Modelos e checklists</span></button>
-        <button type="button" data-account>${icons.settings}<span>Configurações</span></button>
-      </nav>
-      <div class="dashboard-profile"><span class="profile-avatar" aria-hidden="true">JR</span><div><strong>${esc(displayName)}</strong><span>Perita médica</span></div></div>
-    </aside>
-
-    <main id="workspace" class="dashboard-workspace">
-      <section id="dashboard-overview" class="dashboard-toolbar">
-        <div><h1>Boa noite, ${esc(displayName)}</h1><p>Organize casos, prazos e pendências sem perder o contexto pericial.</p></div>
-        <div class="dashboard-toolbar-actions"><label class="dashboard-search">${icons.search}<span class="sr-only">Pesquisar</span><input type="search" placeholder="Pesquisar casos, processos, partes..." disabled></label><button class="dashboard-new-case" type="button" data-new-case>+ Nova perícia</button></div>
-      </section>
-
-      <section class="dashboard-shortcuts" aria-label="Acessos principais">
-        <button type="button" data-scroll-target="dashboard-cases"><span class="shortcut-icon">${icons.cases}</span><span><strong>Meus casos</strong><small>Acompanhe suas perícias</small></span><span class="shortcut-action">${icons.arrow}</span></button>
-        <button type="button" data-scroll-target="dashboard-deadlines"><span class="shortcut-icon">${icons.calendar}</span><span><strong>Agenda e prazos</strong><small>Prazos e compromissos</small></span><span class="shortcut-action">${icons.arrow}</span></button>
-        <button type="button" data-scroll-target="dashboard-references"><span class="shortcut-icon">${icons.book}</span><span><strong>Referências técnicas</strong><small>Biblioteca e normas</small></span><span class="shortcut-action">${icons.arrow}</span></button>
-      </section>
-
-      <section class="dashboard-operational-grid">
-        <div class="dashboard-panel dashboard-continue-panel"><header><div><h2>Continuar trabalhando</h2><p>Seu último acesso</p></div></header>${continueContent}</div>
-        <div id="dashboard-deadlines" class="dashboard-panel dashboard-deadlines-panel"><header><div><h2>Próximos prazos</h2><p>Prioridade temporal dos casos ativos</p></div><span>${model.deadlines.length}</span></header>${deadlineContent}</div>
-      </section>
-
-      <section class="dashboard-pending" aria-label="Pendências">
-        <span class="pending-icon" aria-hidden="true">${icons.bell}</span>
-        <div class="pending-copy"><strong>${model.pendingCount ? `Você tem ${model.pendingCount} pendência${model.pendingCount === 1 ? '' : 's'}` : 'Sem pendências registradas'}</strong><span>${model.pendingCount ? 'Revise quesitos, exames e itens vinculados aos casos ativos.' : 'O que exigir ação aparecerá aqui.'}</span></div>
-        <button type="button" class="dashboard-pending-action">Ver pendências ${icons.arrow}</button>
-      </section>
-
-      <section id="dashboard-cases" class="dashboard-cases-section">
-        <header class="dashboard-section-head"><div><h2>Meus casos</h2><p>Localize rapidamente pelo estado do trabalho.</p></div><nav class="case-filters" aria-label="Filtrar perícias">${CASE_FILTERS.map(item => `<button class="case-filter ${filter === item.id ? 'is-active' : ''}" data-case-filter="${esc(item.id)}"><span>${esc(item.label)}</span><small>${counts[item.id]}</small></button>`).join('')}</nav></header>
-        <div class="dashboard-case-grid">${caseContent}</div>
-      </section>
-
-      <section id="dashboard-references" class="dashboard-reference-note"><strong>Referências técnicas</strong><span>A biblioteca contextual permanece separada do motor decisório e será aberta em superfície própria.</span></section>
-    </main>
-  </div>`;
-}
+export function renderDashboardSurface(state,surface='overview',filter='active',options={}){const safe=['overview','cases','deadlines','references','models'].includes(surface)?surface:'overview';const displayName=options.displayName||'Dra. Joyce';const content=safe==='cases'?casesSurface(state,filter,options):safe==='deadlines'?deadlinesSurface(state,filter,options):safe==='references'?referencesSurface(state,filter,options):safe==='models'?modelsSurface():overview(state,filter,{...options,displayName});return shell(content,safe,displayName);}
+export function renderDashboardHome(state,filter='active',options={}){return renderDashboardSurface(state,'overview',filter,options);}
