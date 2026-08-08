@@ -1,5 +1,3 @@
-import { renderDashboardSurface } from './dashboard-view.js';
-
 const SURFACES=new Set(['overview','cases','deadlines','references','models']);
 
 function currentSurface(){
@@ -7,34 +5,46 @@ function currentSurface(){
   return match&&SURFACES.has(match[1])?match[1]:'overview';
 }
 
-export function installSurfaceController({root,store}){
-  let filter='active';
+function navigate(surface){
+  if(!SURFACES.has(surface))return;
+  const next=`#/dashboard/${surface}`;
+  if(window.location.hash===next){
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+    return;
+  }
+  window.location.hash=next;
+}
+
+export function installSurfaceController({root}){
   let destroyed=false;
 
-  const render=()=>{
-    if(destroyed||window.location.hash.startsWith('#/case/'))return;
-    root.innerHTML=renderDashboardSurface(store.getState(),currentSurface(),filter);
-  };
-
   const onClick=event=>{
-    const surfaceButton=event.target.closest('[data-surface]');
-    if(surfaceButton){
+    if(destroyed)return;
+
+    const backToCases=event.target.closest('.back-link[data-home]');
+    if(backToCases&&window.location.hash.startsWith('#/case/')){
       event.preventDefault();
-      window.location.hash=`#/dashboard/${surfaceButton.dataset.surface}`;
+      event.stopImmediatePropagation();
+      navigate('cases');
       return;
     }
-    const filterButton=event.target.closest('[data-case-filter]');
-    if(filterButton&&currentSurface()==='cases'){
-      filter=filterButton.dataset.caseFilter;
-      queueMicrotask(render);
-    }
+
+    const surfaceButton=event.target.closest('[data-surface]');
+    if(!surfaceButton)return;
+    const surface=surfaceButton.dataset.surface;
+    if(!SURFACES.has(surface))return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    navigate(surface);
   };
 
-  const onHash=()=>queueMicrotask(render);
-  root.addEventListener('click',onClick);
-  window.addEventListener('hashchange',onHash);
-  const unsubscribe=store.subscribe(()=>queueMicrotask(render));
-  queueMicrotask(render);
+  root.addEventListener('click',onClick,true);
 
-  return{destroy(){destroyed=true;root.removeEventListener('click',onClick);window.removeEventListener('hashchange',onHash);unsubscribe?.();}};
+  return{
+    currentSurface,
+    destroy(){
+      destroyed=true;
+      root.removeEventListener('click',onClick,true);
+    }
+  };
 }
