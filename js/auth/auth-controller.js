@@ -4,11 +4,15 @@ const escapeHtml=(value='')=>String(value??'').replace(/[&<>"']/g,char=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
 }[char]));
 
+function brandMarkup(subtitle) {
+  return `<div class="auth-brand"><img class="auth-logomark" src="./icon.svg" alt=""><div><strong><span class="wordmark-med">Med</span><span class="wordmark-per">Per</span></strong><span>${escapeHtml(subtitle)}</span></div></div>`;
+}
+
 function authShell(message='') {
   return `
     <main class="auth-shell" id="authShell">
       <section class="auth-card" aria-labelledby="authTitle">
-        <div class="auth-brand"><span class="brand-mark">M</span><div><strong>MedPer</strong><span>Método médico-pericial</span></div></div>
+        ${brandMarkup('Perícia estruturada')}
         <div class="auth-copy">
           <span class="eyebrow">Acesso profissional</span>
           <h1 id="authTitle">Entre na sua conta</h1>
@@ -35,17 +39,17 @@ function setupShell() {
   return `
     <main class="auth-shell auth-setup" id="authShell">
       <section class="auth-card" aria-labelledby="authTitle">
-        <div class="auth-brand"><span class="brand-mark">M</span><div><strong>MedPer</strong><span>Configuração de autenticação</span></div></div>
+        ${brandMarkup('Perícia estruturada')}
         <div class="auth-copy">
           <span class="eyebrow">Modo de desenvolvimento</span>
-          <h1 id="authTitle">Autenticação ainda não conectada</h1>
-          <p>O código de login e o banco já estão preparados. Falta inserir a URL e a chave pública do projeto Supabase.</p>
+          <h1 id="authTitle">Acesso online ainda não ativado</h1>
+          <p>Este ambiente está operando localmente. A estrutura de autenticação permanece preparada, mas ainda não está habilitada para uso real.</p>
         </div>
         <div class="auth-setup-box">
-          <strong>Para ativar o login</strong>
-          <p>Preencha <code>js/config/supabase-config.js</code> com a URL do projeto e a publishable key. Nunca coloque a service_role key no navegador.</p>
+          <strong>Ambiente local</strong>
+          <p>Continue para testar a aplicação sem sincronização de conta ou dados remotos.</p>
         </div>
-        <button class="button button-secondary" type="button" data-auth-local>Continuar em modo local</button>
+        <button class="button button-primary" type="button" data-auth-local>Continuar em modo local</button>
       </section>
     </main>`;
 }
