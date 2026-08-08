@@ -1,10 +1,16 @@
-.auth-shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;background:radial-gradient(circle at top,#fbfaf6 0,#f4f1e9 58%,#ece7dc 100%)}
-.auth-card{width:min(100%,460px);background:rgba(255,255,255,.92);border:1px solid rgba(35,57,52,.12);border-radius:26px;padding:30px;box-shadow:0 24px 70px rgba(35,57,52,.12)}
-.auth-brand{display:flex;align-items:center;gap:12px;margin-bottom:34px}.auth-brand>div{display:grid}.auth-brand strong{font-size:1.04rem}.auth-brand span:last-child{font-size:.82rem;color:var(--muted,#66736e)}
-.auth-copy h1{font-size:clamp(2rem,7vw,3rem);line-height:1.02;margin:8px 0 14px}.auth-copy p{color:var(--muted,#66736e);line-height:1.6}
-.button-google{width:100%;margin-top:24px;background:#fff;border:1px solid rgba(35,57,52,.2);color:#263d37}.button-google:hover{background:#f8f7f2}
-.auth-divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--muted,#66736e);font-size:.82rem}.auth-divider::before,.auth-divider::after{content:"";height:1px;flex:1;background:rgba(35,57,52,.14)}
+.auth-shell{min-height:100vh;display:grid;place-items:center;padding:32px 18px;background:linear-gradient(145deg,#f8f8f6 0,#f3f4f5 54%,#eceff2 100%)}
+.auth-card{width:min(100%,460px);background:rgba(255,255,255,.96);border:1px solid var(--medper-border);border-radius:22px;padding:30px;box-shadow:0 24px 70px rgba(7,29,55,.12)}
+.auth-brand{display:flex;align-items:center;gap:14px;margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid rgba(13,49,89,.08)}
+.auth-logomark{width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 7px 12px rgba(7,29,55,.11))}
+.auth-brand>div{display:grid;gap:3px}.auth-brand strong{font:600 1.32rem/1 Georgia,'Times New Roman',serif;letter-spacing:-.025em}.auth-brand>div>span{font-size:.78rem;color:var(--medper-muted)}
+.wordmark-med{color:var(--medper-sidebar-bottom)}.wordmark-per{color:var(--medper-brand-sky)}
+.auth-copy .eyebrow{color:var(--medper-accent);letter-spacing:.16em;font-size:.68rem;font-weight:800}
+.auth-copy h1{font:600 clamp(2rem,7vw,2.8rem)/1.02 Georgia,'Times New Roman',serif;letter-spacing:-.04em;color:var(--medper-text);margin:10px 0 14px}.auth-copy p{color:var(--medper-muted);line-height:1.6}
+.button-google{width:100%;margin-top:24px;background:#fff;border:1px solid var(--medper-border);color:var(--medper-sidebar-bottom)}.button-google:hover{background:var(--medper-surface-soft)}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--medper-muted);font-size:.82rem}.auth-divider::before,.auth-divider::after{content:"";height:1px;flex:1;background:var(--medper-border)}
 .auth-form{display:grid;gap:14px}.auth-form input{min-height:48px}.auth-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.auth-actions .button{width:100%}
-.auth-message,.auth-setup-box{padding:14px 16px;border-radius:14px;background:#eef5f1;color:#29483f;line-height:1.5}.auth-setup-box{margin:22px 0}.auth-setup-box code{font-size:.82rem;overflow-wrap:anywhere}.auth-legal{margin:18px 0 0;font-size:.76rem;line-height:1.5;color:var(--muted,#66736e)}
+.auth-message,.auth-setup-box{padding:15px 16px;border-radius:14px;background:var(--medper-accent-soft);border:1px solid rgba(18,63,107,.08);color:var(--medper-sidebar-bottom);line-height:1.5}.auth-setup-box{margin:22px 0}.auth-setup-box strong{display:block;margin-bottom:5px}.auth-setup-box p{margin:0;color:var(--medper-muted)}.auth-legal{margin:18px 0 0;font-size:.76rem;line-height:1.5;color:var(--medper-muted)}
+.auth-card .button-primary{background:var(--medper-sidebar-bottom);border-color:var(--medper-sidebar-bottom);color:var(--medper-brand-ivory);box-shadow:0 8px 20px rgba(7,29,55,.16)}
+.auth-card .button-primary:hover{background:var(--medper-sidebar-mid)}
 .auth-account-dialog .account-state{margin:8px 0 4px}.auth-account-dialog .account-state strong{display:block;margin-bottom:6px}
-@media(max-width:520px){.auth-card{padding:24px 18px;border-radius:20px}.auth-actions{grid-template-columns:1fr}.auth-shell{padding:18px 12px}}
+@media(max-width:520px){.auth-card{padding:24px 18px;border-radius:18px}.auth-actions{grid-template-columns:1fr}.auth-shell{padding:18px 12px}}
