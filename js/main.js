@@ -2,6 +2,7 @@ import { createStore } from './core/store.js';
 import { createApp } from './ui/app.js';
 import { installDialogController } from './ui/dialog-controller.js';
 import { installInspectorController } from './ui/inspector-controller.js';
+import { installSurfaceController } from './ui/surface-controller.js';
 import { createAuthController } from './auth/auth-controller.js';
 
 const root=document.querySelector('#app');
@@ -10,6 +11,7 @@ const store=createStore();
 let appStarted=false;
 let auth=null;
 let inspector=null;
+let surfaces=null;
 
 installDialogController(document);
 
@@ -19,6 +21,7 @@ function startApplication(){
   root.replaceChildren();
   createApp({store,root,toast,auth});
   inspector=installInspectorController({root,store});
+  surfaces=installSurfaceController({root,store});
 }
 
 auth=await createAuthController({
@@ -26,6 +29,7 @@ auth=await createAuthController({
   onAccessGranted:startApplication,
   onAccessRevoked:()=>{
     inspector?.destroy();
+    surfaces?.destroy();
     window.location.reload();
   }
 });
