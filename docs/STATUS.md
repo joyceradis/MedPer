@@ -5,17 +5,19 @@
 **Branch canônica:** `main`  
 **Estado:** AUTOMAÇÃO VERDE — VALIDAÇÃO VISUAL PÓS-DEPLOY PENDENTE
 
-Este arquivo é a âncora operacional para retomada do trabalho. Se houver conflito entre uma sessão de conversa e este documento, conferir `docs/PRODUCT_ANCHOR.md`, `docs/PRODUCT_MAP.md`, `docs/PRODUCT_AUDIT.md` e o estado real da `main` antes de alterar código.
+Este arquivo é a âncora operacional para retomada do trabalho. Se houver conflito entre uma sessão de conversa e este documento, conferir `docs/PRODUCT_ANCHOR.md`, `docs/PRODUCT_MAP.md`, `docs/PRODUCT_AUDIT.md`, `docs/CONTEXT_MODEL.md`, `docs/MEDPER_METHOD.md` e o estado real da `main` antes de alterar código.
 
 ## 1. O que está congelado
 
 Não reabrir sem decisão explícita:
 
 - MedPer é plataforma de apoio ao raciocínio médico-pericial, não gerador automático de conclusão.
-- Arquitetura cognitiva: núcleo transversal → contexto jurídico-pericial → objeto/domínio → métodos/instrumentos/fontes aplicáveis.
+- Arquitetura cognitiva: núcleo transversal → contexto da atuação → esfera/finalidade → papel/missão/quesitos → objeto médico-pericial → perfil contextual → protocolos/instrumentos possíveis → evidências/análise → conclusão médica proporcional.
+- A mesma matéria pode exigir protocolos, perguntas, limites e linguagem conclusiva distintos conforme contexto, finalidade, papel e quesitos.
+- Sugestão metodológica não equivale a escolha médica.
 - Dashboard, Meus casos, Agenda e prazos, Referências, Inspector e Workspace são superfícies distintas.
 - Workspace preserva as nove etapas cognitivas e continua sendo o local de trabalho pericial.
-- AIPE permanece instrumento específico para dano estético quando metodologicamente pertinente; não deve desaparecer nem ser generalizada.
+- AIPE é instrumento auxiliar específico para dano estético quando metodologicamente pertinente; não deve desaparecer nem ser generalizada.
 - Knowledge layer não altera automaticamente protocolo, pontuação ou conclusão.
 - `localStorage` permanece sob responsabilidade exclusiva de `js/core/store.js` no runtime canônico.
 - Lifecycle, importação/exportação, Inspector, PWA, autenticação em desenvolvimento e compatibilidade de casos legados são microfunções protegidas.
@@ -33,36 +35,54 @@ Não reabrir sem decisão explícita:
 
 ## 3. Estado atual confirmado
 
-### GREEN incorporado
+### GREEN — UX/arquitetura da Fase 2
 
-- navegação principal agora é dirigida pelo hash (`#/dashboard/overview`, `/cases`, `/deadlines`, `/references`, `/models`);
+- navegação principal dirigida pelo hash (`#/dashboard/overview`, `/cases`, `/deadlines`, `/references`, `/models`);
 - `renderDashboardHome()` resolve a superfície visível em vez de forçar `overview`;
-- `surface-controller` controla navegação e deixou de competir com `createApp` pela renderização do HTML;
-- `← Todos os casos` no workspace retorna para `Meus casos`;
+- `surface-controller` controla navegação e não compete com `createApp` pela renderização;
+- `← Todos os casos` retorna para `Meus casos`;
 - Dashboard, Meus casos, Agenda e Referências possuem superfícies distintas;
 - lifecycle e filtros permanecem no fluxo canônico;
 - logomark compacta possui gate contra geometria excessivamente estreita/losango;
-- sidebar recebeu navy mais profundo e malha geométrica discreta;
+- sidebar recebeu navy profundo e malha geométrica discreta;
 - símbolo decorativo artificial do card de continuidade foi removido;
-- breakpoint foi ajustado para preservar a sidebar lateral em desktop estreito;
-- módulos legados não alcançáveis que mantinham `localStorage`/globals próprios foram removidos (`js/api-client.js`, `js/preflight.js`, `js/app.js`, `js/guided-methodology.js`, `js/methodology-ui.js`, `js/methodology.js`);
-- código histórico continua recuperável pelo Git e nenhuma dessas unidades fazia parte do entrypoint ou APP_SHELL atual;
+- breakpoint preserva sidebar lateral em desktop estreito;
+- módulos legados não alcançáveis com `localStorage`/globals próprios foram removidos;
 - store migration e compatibilidade legada continuam verdes;
-- provenance/knowledge layer continuam desacoplados do motor decisório;
-- AIPE e salvaguardas metodológicas não foram alteradas no fechamento de UX.
+- provenance/knowledge layer continuam desacoplados do motor decisório.
+
+### GREEN — metodologia contextual
+
+Implementação documentada em `docs/AUDIT_CONTEXTUAL_METHODOLOGY_2026-08-08.md`.
+
+- store acrescenta IDs internos estáveis (`settingId`, `legalSphereId`, `roleId`, `matterId`, `purposeId`) sem apagar labels legados;
+- nova camada `js/methodology/context-resolver.js` resolve finalidade e perfil contextual antes de instrumentos;
+- perfis iniciais: dano estético cível, alteração estética/sequela criminal, incapacidade trabalhista e incapacidade previdenciária;
+- combinações ainda não validadas permanecem em perfil genérico, sem inferência inventada;
+- instrumentos são governados separadamente de protocolos (`activeInstrumentIds` / `dismissedInstrumentIds`);
+- AIPE é sugerida no perfil cível de dano estético, mas não no perfil criminal por padrão;
+- `engine.js` considera instrumentos ativos no audit metodológico;
+- novo `method-context-controller` expõe finalidade, perfil, cautelas e decisão explícita de aceitar/rejeitar instrumento na etapa `Exame e método`;
+- sugestão não é convertida silenciosamente em decisão médica.
 
 ### Evidência automatizada
 
-Auditoria independente final v2, PR de verificação `#30`:
+Fechamento UX anterior:
 
-- **Regression Audit — SUCCESS** (`run 92`);
-- **Frontend Audit — SUCCESS** (`run 176`).
+- Regression Audit run 92 — SUCCESS;
+- Frontend Audit run 176 — SUCCESS.
 
-O primeiro ciclo de auditoria falhou e não foi contornado: revelou módulos legados com ownership indevido de `localStorage` e um teste visual congelado na antiga cor navy. Os módulos mortos foram removidos e o contrato visual foi atualizado para a âncora vigente; somente então a segunda auditoria ficou verde.
+Metodologia contextual:
 
-## 4. Única pendência para saída formal da Fase 2
+- RED de domínio: PR #31;
+- GREEN de domínio: PR #32;
+- auditoria final do motor: Regression Audit run 104 + Frontend Audit run 192 — SUCCESS;
+- RED de UI: PR #34 falhou no gate esperado antes do controlador existir;
+- GREEN de UI: Regression Audit run 112 + Frontend Audit run 201 — SUCCESS.
 
-### Validação visual pós-deploy contra o mockup aprovado
+## 4. Pendências antes da saída formal da Fase 2
+
+### A. Validação visual pós-deploy contra o mockup aprovado
 
 A automação não substitui inspeção visual. Após o GitHub Pages publicar o estado atual:
 
@@ -70,16 +90,21 @@ A automação não substitui inspeção visual. Após o GitHub Pages publicar o 
 2. comparar logo, wordmark, navy, malha geométrica, proporção de sidebar, espaçamento, cards e densidade com o mockup aprovado;
 3. navegar Visão geral → Meus casos → Agenda → Referências → Workspace → Todos os casos;
 4. confirmar que o Inspector abre sem virar mini-workspace;
-5. abrir caso de dano estético e confirmar acesso à AIPE no contexto metodológico pertinente;
-6. checar Nova perícia, filtros/lifecycle e Exportar JSON;
-7. registrar qualquer divergência visual/funcional como achado antes de promover a versão.
+5. abrir caso de dano estético cível e confirmar perfil contextual + AIPE sugerida como instrumento possível;
+6. abrir/usar cenário criminal e confirmar que AIPE não é sugerida automaticamente;
+7. checar Nova perícia, filtros/lifecycle e Exportar JSON.
+
+### B. Migração de linguagem do wizard
+
+Alguns labels históricos do wizard ainda utilizam `sphere/branch` na interface. O store já normaliza para `setting/legalSphere` e IDs estáveis, mas a redação visual deve ser migrada posteriormente sem quebra de dados. Essa pendência não autoriza reabrir o modelo canônico.
 
 ## 5. Critério de saída da Fase 2
 
 A Fase 2 termina quando:
 
-- cada item principal abre uma superfície real e distinta — **GREEN**;
+- cada item principal abre superfície real e distinta — **GREEN**;
 - função médico-pericial e microfunções protegidas permanecem íntegras — **GREEN automatizado**;
+- resolução contextual e controle médico sobre instrumentos — **GREEN automatizado**;
 - nenhum gate crítico está vermelho — **GREEN**;
 - Frontend Audit e Regression Audit estão verdes — **GREEN**;
 - deploy publicado foi comparado visualmente ao mockup — **PENDENTE**.
