@@ -1,31 +1,19 @@
 {
   "name": "medper",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Plataforma de apoio ao método, à rastreabilidade e à elaboração médico-pericial.",
   "type": "module",
   "scripts": {
     "serve": "npx serve .",
-    "check": "node --check js/main.js && node --check js/core/store.js && node --check js/core/case-lifecycle.js && node --check js/methodology/protocols.js && node --check js/methodology/engine.js && node --check js/methodology/aipe.js && node --check js/knowledge/library.js && node --check js/ui/workflow.js && node --check js/ui/dashboard-model.js && node --check js/ui/dashboard-view.js && node --check js/ui/case-inspector.js && node --check js/ui/inspector-controller.js && node --check js/ui/app.js && node --check js/ui/dialog-controller.js && node --check js/auth/auth-controller.js && node --check sw.js",
-    "test": "node tests/store-regression.test.mjs && node tests/product-context-regression.test.mjs && node tests/dashboard-regression.test.mjs && node tests/dashboard-view-regression.test.mjs && node tests/case-inspector-regression.test.mjs && node tests/design-system-regression.test.mjs && node tests/brand-regression.test.mjs && node tests/visual-anchor-regression.test.mjs && node tests/methodology-regression.test.mjs && node tests/case-lifecycle.test.mjs && node tests/workflow-regression.test.mjs && node tests/knowledge-regression.test.mjs",
+    "check": "node --check js/main.js && node --check js/core/store.js && node --check js/core/case-lifecycle.js && node --check js/methodology/protocols.js && node --check js/methodology/engine.js && node --check js/methodology/aipe.js && node --check js/knowledge/library.js && node --check js/ui/workflow.js && node --check js/ui/dashboard-model.js && node --check js/ui/dashboard-view.js && node --check js/ui/surface-controller.js && node --check js/ui/case-inspector.js && node --check js/ui/inspector-controller.js && node --check js/ui/app.js && node --check js/ui/dialog-controller.js && node --check js/auth/auth-controller.js && node --check sw.js",
+    "test": "node tests/store-regression.test.mjs && node tests/product-context-regression.test.mjs && node tests/dashboard-regression.test.mjs && node tests/dashboard-view-regression.test.mjs && node tests/dashboard-surfaces-regression.test.mjs && node tests/case-inspector-regression.test.mjs && node tests/design-system-regression.test.mjs && node tests/brand-regression.test.mjs && node tests/visual-anchor-regression.test.mjs && node tests/methodology-regression.test.mjs && node tests/case-lifecycle.test.mjs && node tests/workflow-regression.test.mjs && node tests/knowledge-regression.test.mjs",
     "audit": "npm run check && npm test"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/joyceradis/MedPer.git"
-  },
+  "repository": {"type": "git", "url": "https://github.com/joyceradis/MedPer.git"},
   "homepage": "https://joyceradis.github.io/MedPer/",
-  "keywords": [
-    "medicina-pericial",
-    "pericia-medica",
-    "pwa",
-    "rastreabilidade",
-    "laudo-pericial",
-    "medico-legal"
-  ],
+  "keywords": ["medicina-pericial","pericia-medica","pwa","rastreabilidade","laudo-pericial","medico-legal"],
   "author": "Dra. Joyce Radis de Souza de Oliveira",
   "license": "UNLICENSED",
-  "engines": {
-    "node": ">=20"
-  }
+  "engines": {"node": ">=20"}
 }
