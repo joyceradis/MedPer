@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { renderDashboardSurface } from '../js/ui/dashboard-view.js';
+import { renderDashboardHome, renderDashboardSurface } from '../js/ui/dashboard-view.js';
 
 function test(name, fn){
   try{fn();console.log(`✓ ${name}`);}catch(error){console.error(`✗ ${name}`);throw error;}
@@ -53,6 +53,17 @@ test('overview preserves the approved operational hierarchy',()=>{
   assert.match(html,/Perita do juízo/);
   assert.match(html,/Etapa 5 de 9/);
   assert.match(html,/dashboard-pending/);
+});
+
+test('renderDashboardHome resolves the visible surface from the application hash',()=>{
+  const casesHtml=renderDashboardHome(state,'active',{now,hash:'#/dashboard/cases'});
+  const deadlinesHtml=renderDashboardHome(state,'active',{now,hash:'#/dashboard/deadlines'});
+  const referencesHtml=renderDashboardHome(state,'active',{now,hash:'#/dashboard/references'});
+
+  assert.match(casesHtml,/data-dashboard-surface="cases"/);
+  assert.match(casesHtml,/<h1>Meus casos<\/h1>/);
+  assert.match(deadlinesHtml,/data-dashboard-surface="deadlines"/);
+  assert.match(referencesHtml,/data-dashboard-surface="references"/);
 });
 
 console.log('Dashboard surfaces regression suite completed successfully.');
