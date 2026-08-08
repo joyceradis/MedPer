@@ -52,7 +52,10 @@ jobs:
           sw = Path('sw.js').read_text(encoding='utf-8')
           manifest = Path('manifest.webmanifest').read_text(encoding='utf-8')
 
-          public_scripts = re.findall(r'<script[^>]+src="([^"?#]+)"', public_html)
+          def local_path(ref):
+              return ref.split('?', 1)[0].split('#', 1)[0]
+
+          public_scripts = [local_path(item) for item in re.findall(r'<script[^>]+src="([^"]+)"', public_html)]
           if public_scripts:
               raise SystemExit(f'Public site must not load the application bundle: {public_scripts}')
           if './app.html' not in public_html:
@@ -60,7 +63,7 @@ jobs:
           if 'Seus casos' in public_html or 'Salvo neste dispositivo' in public_html:
               raise SystemExit('Operational dashboard content leaked into public site.')
 
-          app_scripts = re.findall(r'<script[^>]+src="([^"?#]+)"', app_html)
+          app_scripts = [local_path(item) for item in re.findall(r'<script[^>]+src="([^"]+)"', app_html)]
           if app_scripts != ['./js/main.js']:
               raise SystemExit(f'Expected one application module entrypoint, found: {app_scripts}')
           if 'type="module"' not in app_html:
@@ -85,7 +88,7 @@ jobs:
               raise SystemExit(f'Assets absent from service worker shell: {absent}')
 
           for filename, html in [('index.html', public_html), ('app.html', app_html)]:
-              refs = re.findall(r'(?:href|src)="([^"?#]+)', html)
+              refs = [local_path(item) for item in re.findall(r'(?:href|src)="([^"]+)', html)]
               missing = [
                   ref for ref in refs
                   if not ref.startswith(('http:', 'https:', 'mailto:', '#'))
