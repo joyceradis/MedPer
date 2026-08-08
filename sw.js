@@ -1,4 +1,4 @@
-const CACHE_NAME='medper-shell-v27-20260808';
+const CACHE_NAME='medper-shell-v28-20260808';
 const APP_SHELL=['./','./index.html','./app.html','./css/marketing.css','./css/design-system.css','./css/styles.css','./css/dashboard.css','./css/inspector.css','./css/methodology.css','./css/guided-methodology.css','./css/knowledge.css','./css/auth.css','./css/phase2.css','./js/main.js','./js/core/store.js','./js/core/case-lifecycle.js','./js/methodology/protocols.js','./js/methodology/engine.js','./js/methodology/aipe.js','./js/knowledge/library.js','./js/ui/workflow.js','./js/ui/dashboard-model.js','./js/ui/dashboard-view.js','./js/ui/surface-controller.js','./js/ui/case-inspector.js','./js/ui/inspector-controller.js','./js/ui/app.js','./js/ui/dialog-controller.js','./js/auth/auth-controller.js','./js/config/supabase-config.js','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',event=>{
@@ -13,7 +13,7 @@ self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
   const url=new URL(event.request.url);
   if(url.origin!==self.location.origin)return;
-  const isFreshAsset=url.pathname.endsWith('.js')||url.pathname.endsWith('.css')||url.pathname.endsWith('.html');
+  const isFreshAsset=url.pathname.endsWith('.js')||url.pathname.endsWith('.css')||url.pathname.endsWith('.html')||url.pathname.endsWith('.svg')||url.pathname.endsWith('.webmanifest');
   if(event.request.mode==='navigate'||isFreshAsset){
     event.respondWith(fetch(event.request,{cache:'no-store'}).then(response=>{
       const clone=response.clone();
