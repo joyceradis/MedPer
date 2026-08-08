@@ -53,6 +53,16 @@ function normalizeCase(caseData = {}, previousCase = null) {
   c.reference ||= '';
   c.status = normalizeCaseStatus(c.status);
   c.context ||= {};
+  c.context.tribunal = text(c.context.tribunal);
+  c.context.unit = text(c.context.unit);
+  c.context.feeRegime = text(c.context.feeRegime);
+  c.operations ||= {};
+  c.operations.deadlines = Array.isArray(c.operations.deadlines)
+    ? c.operations.deadlines
+    : [];
+  c.operations.pendingActions = Array.isArray(c.operations.pendingActions)
+    ? c.operations.pendingActions
+    : [];
   c.person ||= { initials: '', birthDate: '', role: 'Periciando(a)' };
   c.scope ||= '';
   c.documentGaps ||= '';
