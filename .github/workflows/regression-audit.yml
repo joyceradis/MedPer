@@ -54,7 +54,8 @@ jobs:
           public = Path('index.html').read_text(encoding='utf-8')
           js_files = list(Path('js').rglob('*.js'))
 
-          scripts = re.findall(r'<script[^>]+src="([^"?#]+)"', app)
+          raw_scripts = re.findall(r'<script[^>]+src="([^"]+)"', app)
+          scripts = [src.split('?', 1)[0].split('#', 1)[0] for src in raw_scripts]
           if scripts != ['./js/main.js']:
               raise SystemExit(f'Unexpected app entrypoints: {scripts}')
 
