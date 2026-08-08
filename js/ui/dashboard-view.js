@@ -6,14 +6,19 @@ const esc = (value = '') => String(value ?? '').replace(/[&<>"']/g, character =>
 }[character]));
 
 const icons = {
-  overview: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5v8a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H4.5A1.5 1.5 0 0 1 3 19.5z"/></svg>',
-  cases: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h5A1.5 1.5 0 0 1 16 4.5V6M3 11h18"/></svg>',
-  calendar: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"/></svg>',
-  book: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v18H7.5A3.5 3.5 0 0 0 4 23zM20 5.5A3.5 3.5 0 0 0 16.5 2H13v18h3.5A3.5 3.5 0 0 1 20 23z"/></svg>',
-  checklist: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8 9l1.5 1.5L12 8M8 14l1.5 1.5L12 13M14 9h2M14 14h2"/></svg>',
-  settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>',
-  search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>',
-  arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5"/></svg>'
+  overview: '<i class="fa-solid fa-house" aria-hidden="true"></i>',
+  cases: '<i class="fa-solid fa-briefcase" aria-hidden="true"></i>',
+  calendar: '<i class="fa-regular fa-calendar-days" aria-hidden="true"></i>',
+  book: '<i class="fa-solid fa-book-open" aria-hidden="true"></i>',
+  checklist: '<i class="fa-regular fa-clipboard" aria-hidden="true"></i>',
+  settings: '<i class="fa-solid fa-gear" aria-hidden="true"></i>',
+  search: '<i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>',
+  arrow: '<i class="fa-solid fa-arrow-right" aria-hidden="true"></i>',
+  bell: '<i class="fa-regular fa-bell" aria-hidden="true"></i>',
+  gavel: '<i class="fa-solid fa-gavel" aria-hidden="true"></i>',
+  document: '<i class="fa-regular fa-file-lines" aria-hidden="true"></i>',
+  exam: '<i class="fa-solid fa-stethoscope" aria-hidden="true"></i>',
+  report: '<i class="fa-solid fa-file-signature" aria-hidden="true"></i>'
 };
 
 function formatDate(value) {
@@ -67,6 +72,20 @@ function renderDeadline(deadline, now) {
   </article>`;
 }
 
+function renderContinueProgress() {
+  return `<div class="continue-progress" aria-label="Progresso do caso: Etapa 5 de 9">
+    <div class="continue-progress-head"><span>Exame e método</span><strong>Etapa 5 de 9</strong></div>
+    <div class="continue-progress-track" aria-hidden="true">
+      <span class="is-complete"></span><span class="is-complete"></span><span class="is-complete"></span><span class="is-complete"></span><span class="is-current"></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="continue-milestones">
+      <div class="continue-milestone"><span class="milestone-icon is-document">${icons.document}</span><span><small>Etapa 1</small><strong>Revisão de Documentos</strong></span></div>
+      <div class="continue-milestone"><span class="milestone-icon is-exam">${icons.exam}</span><span><small>Etapa 2</small><strong>Exame</strong></span></div>
+      <div class="continue-milestone"><span class="milestone-icon is-report">${icons.report}</span><span><small>Etapa 3</small><strong>Laudo</strong></span></div>
+    </div>
+  </div>`;
+}
+
 export function renderDashboardHome(state, filter = 'active', options = {}) {
   const now = options.now || new Date();
   const displayName = options.displayName || 'Dra. Joyce';
@@ -77,12 +96,18 @@ export function renderDashboardHome(state, filter = 'active', options = {}) {
   const counts = model.counts;
 
   const continueContent = continueCase ? `<article class="continue-card">
-    <div class="continue-card-kicker">${esc(continueCase.context?.role || 'Atuação médico-pericial')}</div>
-    <h3>${esc(continueCase.title)}</h3>
-    <p>${esc(continueCase.reference || 'Sem referência')}</p>
-    <div class="continue-card-meta"><span>${esc(continueCase.context?.unit || continueCase.context?.tribunal || 'Unidade a definir')}</span>${continueCase.context?.legalSphere || continueCase.context?.branch ? `<span>${esc(continueCase.context?.legalSphere || continueCase.context?.branch)}</span>` : ''}${continueCase.context?.feeRegime ? `<span>${esc(continueCase.context.feeRegime)}</span>` : ''}</div>
+    <div class="continue-case-main">
+      <span class="continue-case-icon" aria-hidden="true">${icons.gavel}</span>
+      <div class="continue-case-copy">
+        <span class="continue-card-kicker">Perita do juízo</span>
+        <h3>${esc(continueCase.title || 'Queimadura e sequela cicatricial')}</h3>
+        <p class="continue-process">Processo ${esc(continueCase.reference || '0002862-73.2019.8.08.0024')}</p>
+        <p class="continue-court">${esc(continueCase.context?.unit || continueCase.context?.tribunal || '1ª Vara Cível de Vila Velha')}${continueCase.context?.feeRegime ? ` <span>•</span> <strong>${esc(continueCase.context.feeRegime)}</strong>` : ''}</p>
+      </div>
+    </div>
+    ${renderContinueProgress()}
     <button type="button" class="dashboard-primary-action" data-open-case="${esc(continueCase.id)}">Abrir perícia ${icons.arrow}</button>
-  </article>` : '<div class="dashboard-empty-state"><strong>Nenhuma perícia em andamento</strong><span>Crie uma nova perícia para iniciar o fluxo estruturado.</span></div>';
+  </article>` : `<div class="dashboard-empty-state"><strong>Nenhuma perícia em andamento</strong><span>Crie uma nova perícia para iniciar o fluxo estruturado.</span></div>`;
 
   const deadlineContent = deadlines.length
     ? deadlines.map(deadline => renderDeadline(deadline, now)).join('')
@@ -116,17 +141,21 @@ export function renderDashboardHome(state, filter = 'active', options = {}) {
       </section>
 
       <section class="dashboard-shortcuts" aria-label="Acessos principais">
-        <button type="button" data-scroll-target="dashboard-cases"><span class="shortcut-icon">${icons.cases}</span><span><strong>Meus casos</strong><small>Acompanhe suas perícias</small></span>${icons.arrow}</button>
-        <button type="button" data-scroll-target="dashboard-deadlines"><span class="shortcut-icon">${icons.calendar}</span><span><strong>Agenda e prazos</strong><small>Prazos e compromissos</small></span>${icons.arrow}</button>
-        <button type="button" data-scroll-target="dashboard-references"><span class="shortcut-icon">${icons.book}</span><span><strong>Referências técnicas</strong><small>Biblioteca e normas</small></span>${icons.arrow}</button>
+        <button type="button" data-scroll-target="dashboard-cases"><span class="shortcut-icon">${icons.cases}</span><span><strong>Meus casos</strong><small>Acompanhe suas perícias</small></span><span class="shortcut-action">${icons.arrow}</span></button>
+        <button type="button" data-scroll-target="dashboard-deadlines"><span class="shortcut-icon">${icons.calendar}</span><span><strong>Agenda e prazos</strong><small>Prazos e compromissos</small></span><span class="shortcut-action">${icons.arrow}</span></button>
+        <button type="button" data-scroll-target="dashboard-references"><span class="shortcut-icon">${icons.book}</span><span><strong>Referências técnicas</strong><small>Biblioteca e normas</small></span><span class="shortcut-action">${icons.arrow}</span></button>
       </section>
 
       <section class="dashboard-operational-grid">
-        <div class="dashboard-panel"><header><div><h2>Continuar trabalhando</h2><p>Seu último caso ativo</p></div></header>${continueContent}</div>
-        <div id="dashboard-deadlines" class="dashboard-panel"><header><div><h2>Próximos prazos</h2><p>Prioridade temporal dos casos ativos</p></div><span>${model.deadlines.length}</span></header>${deadlineContent}</div>
+        <div class="dashboard-panel dashboard-continue-panel"><header><div><h2>Continuar trabalhando</h2><p>Seu último acesso</p></div></header>${continueContent}</div>
+        <div id="dashboard-deadlines" class="dashboard-panel dashboard-deadlines-panel"><header><div><h2>Próximos prazos</h2><p>Prioridade temporal dos casos ativos</p></div><span>${model.deadlines.length}</span></header>${deadlineContent}</div>
       </section>
 
-      <section class="dashboard-pending" aria-label="Pendências"><span class="pending-signal ${model.pendingCount ? 'has-pending' : ''}"></span><div><strong>${model.pendingCount ? `Você tem ${model.pendingCount} pendência${model.pendingCount === 1 ? '' : 's'}` : 'Sem pendências registradas'}</strong><span>${model.pendingCount ? 'Revise os itens vinculados aos casos ativos.' : 'O que exigir ação aparecerá aqui.'}</span></div></section>
+      <section class="dashboard-pending" aria-label="Pendências">
+        <span class="pending-icon" aria-hidden="true">${icons.bell}</span>
+        <div class="pending-copy"><strong>${model.pendingCount ? `Você tem ${model.pendingCount} pendência${model.pendingCount === 1 ? '' : 's'}` : 'Sem pendências registradas'}</strong><span>${model.pendingCount ? 'Revise quesitos, exames e itens vinculados aos casos ativos.' : 'O que exigir ação aparecerá aqui.'}</span></div>
+        <button type="button" class="dashboard-pending-action">Ver pendências ${icons.arrow}</button>
+      </section>
 
       <section id="dashboard-cases" class="dashboard-cases-section">
         <header class="dashboard-section-head"><div><h2>Meus casos</h2><p>Localize rapidamente pelo estado do trabalho.</p></div><nav class="case-filters" aria-label="Filtrar perícias">${CASE_FILTERS.map(item => `<button class="case-filter ${filter === item.id ? 'is-active' : ''}" data-case-filter="${esc(item.id)}"><span>${esc(item.label)}</span><small>${counts[item.id]}</small></button>`).join('')}</nav></header>
