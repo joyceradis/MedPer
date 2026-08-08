@@ -1,12 +1,63 @@
 const STORAGE_KEY = 'medper.state.v4';
 const LEGACY_KEYS = ['medper.state.v3', 'medper.state.v2', 'mlks.prototype.v1'];
 
+const SETTING_IDS = new Map([
+  ['Judicial','judicial'],
+  ['Administrativa','administrative'],
+  ['Administrativo','administrative'],
+  ['Previdenciária','social_security'],
+  ['Trabalhista e ocupacional','occupational'],
+  ['Securitária','insurance'],
+  ['Ético-profissional','professional_ethics'],
+  ['Extrajudicial / particular','extrajudicial'],
+  ['Extrajudicial','extrajudicial']
+]);
+
+const LEGAL_SPHERE_IDS = new Map([
+  ['Cível','civil'],
+  ['Civil','civil'],
+  ['Criminal','criminal'],
+  ['Trabalhista','labor'],
+  ['Previdenciário','social_security'],
+  ['Previdenciária','social_security'],
+  ['Família','family'],
+  ['Fazenda Pública','public_law'],
+  ['Justiça Federal','federal']
+]);
+
+const ROLE_IDS = new Map([
+  ['Perita do juízo','court_expert'],
+  ['Assistente técnica da parte autora','claimant_technical_assistant'],
+  ['Assistente técnica da parte ré','defendant_technical_assistant'],
+  ['Parecerista independente','independent_reviewer'],
+  ['Perita administrativa','administrative_expert'],
+  ['Médica revisora','medical_reviewer']
+]);
+
+const MATTER_IDS = new Map([
+  ['Dano estético','aesthetic_damage'],
+  ['Dano corporal','bodily_damage'],
+  ['Incapacidade','capacity'],
+  ['Nexo causal e concausa','causation'],
+  ['Responsabilidade profissional','professional_liability'],
+  ['Acidente de trabalho','occupational_accident'],
+  ['Doença ocupacional','occupational_disease'],
+  ['Invalidez securitária','insurance_disability'],
+  ['Benefício previdenciário','social_security_benefit'],
+  ['Capacidade civil ou funcional','civil_or_functional_capacity'],
+  ['Outro','other']
+]);
+
 function now() {
   return new Date().toISOString();
 }
 
 function text(value) {
   return typeof value === 'string' ? value : '';
+}
+
+function stableId(explicit, label, map) {
+  return text(explicit) || map.get(text(label)) || '';
 }
 
 function normalizeCaseStatus(value) {
@@ -53,11 +104,18 @@ function normalizeCase(caseData = {}, previousCase = null) {
   c.reference ||= '';
   c.status = normalizeCaseStatus(c.status);
   c.context ||= {};
+
   c.context.setting = text(c.context.setting) || text(c.context.sphere);
   c.context.legalSphere = text(c.context.legalSphere) || text(c.context.branch);
+  c.context.settingId = stableId(c.context.settingId, c.context.setting, SETTING_IDS);
+  c.context.legalSphereId = stableId(c.context.legalSphereId, c.context.legalSphere, LEGAL_SPHERE_IDS);
+  c.context.roleId = stableId(c.context.roleId, c.context.role, ROLE_IDS);
+  c.context.matterId = stableId(c.context.matterId, c.context.matter, MATTER_IDS);
+  c.context.purposeId = text(c.context.purposeId);
   c.context.tribunal = text(c.context.tribunal);
   c.context.unit = text(c.context.unit);
   c.context.feeRegime = text(c.context.feeRegime);
+
   c.operations ||= {};
   c.operations.deadlines = Array.isArray(c.operations.deadlines)
     ? c.operations.deadlines
@@ -65,6 +123,7 @@ function normalizeCase(caseData = {}, previousCase = null) {
   c.operations.pendingActions = Array.isArray(c.operations.pendingActions)
     ? c.operations.pendingActions
     : [];
+
   c.person ||= { initials: '', birthDate: '', role: 'Periciando(a)' };
   c.scope ||= '';
   c.documentGaps ||= '';
@@ -82,6 +141,12 @@ function normalizeCase(caseData = {}, previousCase = null) {
     : [];
   c.methodology.dismissedProtocolIds = Array.isArray(c.methodology.dismissedProtocolIds)
     ? [...new Set(c.methodology.dismissedProtocolIds)]
+    : [];
+  c.methodology.activeInstrumentIds = Array.isArray(c.methodology.activeInstrumentIds)
+    ? [...new Set(c.methodology.activeInstrumentIds)]
+    : [];
+  c.methodology.dismissedInstrumentIds = Array.isArray(c.methodology.dismissedInstrumentIds)
+    ? [...new Set(c.methodology.dismissedInstrumentIds)]
     : [];
   c.methodology.decision ||= {
     claim: '', favorable: '', contrary: '', alternatives: '', limits: '', certainty: '', admissibleConclusion: ''
