@@ -1,7 +1,22 @@
 const CACHE_NAME='medper-shell-v23-20260808';
 const APP_SHELL=['./','./index.html','./app.html','./css/marketing.css','./css/design-system.css','./css/styles.css','./css/dashboard.css','./css/inspector.css','./css/methodology.css','./css/guided-methodology.css','./css/knowledge.css','./css/auth.css','./js/main.js','./js/core/store.js','./js/core/case-lifecycle.js','./js/methodology/protocols.js','./js/methodology/engine.js','./js/methodology/aipe.js','./js/knowledge/library.js','./js/ui/workflow.js','./js/ui/dashboard-model.js','./js/ui/dashboard-view.js','./js/ui/case-inspector.js','./js/ui/inspector-controller.js','./js/ui/app.js','./js/ui/dialog-controller.js','./js/auth/auth-controller.js','./js/config/supabase-config.js','./manifest.webmanifest','./icon.svg'];
-self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));});
-self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key)))).then(()=>self.clients.claim());});
+
+self.addEventListener('install',event=>{
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache=>cache.addAll(APP_SHELL))
+      .then(()=>self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate',event=>{
+  event.waitUntil(
+    caches.keys()
+      .then(keys=>Promise.all(keys.filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key))))
+      .then(()=>self.clients.claim())
+  );
+});
+
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
   const url=new URL(event.request.url);
