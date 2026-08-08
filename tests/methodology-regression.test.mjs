@@ -53,7 +53,7 @@ test('adds explicit physician-selected protocols without duplicating the primary
   assert.deepEqual(resolved.map(protocol => protocol.id), ['aesthetic', 'causation']);
 });
 
-test('suggests another protocol conservatively from the pericial object', () => {
+test('suggests another protocol without silently adopting it', () => {
   const caseData = {
     context: { matter: 'Dano estético' },
     methodology: { activeProtocolIds: [] },
@@ -63,11 +63,25 @@ test('suggests another protocol conservatively from the pericial object', () => 
   assert.deepEqual(protocolModule.getSuggestedProtocolIds(caseData), ['causation']);
   assert.deepEqual(
     protocolModule.getApplicableProtocols(caseData).map(protocol => protocol.id),
+    ['aesthetic']
+  );
+});
+
+test('adopts a suggested protocol only after explicit physician selection', () => {
+  const caseData = {
+    context: { matter: 'Dano estético' },
+    methodology: { activeProtocolIds: ['causation'] },
+    scope: 'Avaliar a cicatriz facial e verificar eventual nexo causal com o acidente.'
+  };
+
+  assert.deepEqual(protocolModule.getSuggestedProtocolIds(caseData), []);
+  assert.deepEqual(
+    protocolModule.getApplicableProtocols(caseData).map(protocol => protocol.id),
     ['aesthetic', 'causation']
   );
 });
 
-test('respects a physician dismissal of an automatic protocol suggestion', () => {
+test('respects a physician dismissal of a protocol suggestion', () => {
   const caseData = {
     context: { matter: 'Dano estético' },
     methodology: { activeProtocolIds: [], dismissedProtocolIds: ['causation'] },
