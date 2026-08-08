@@ -20,6 +20,8 @@ const state = {
       reference: '0002862-73.2019.8.08.0024',
       status: 'Em andamento',
       context: {
+        setting: 'Judicial',
+        legalSphere: 'Cível',
         sphere: 'Judicial',
         branch: 'Cível',
         role: 'Perita do juízo',
@@ -71,13 +73,13 @@ test('keeps a single primary new-case action in dashboard composition', () => {
   assert.equal(matches.length, 1);
 });
 
-test('preserves lifecycle filtering and direct case access below the overview', () => {
+test('preserves lifecycle filtering and opens case cards through the inspector', () => {
   const html = renderDashboardHome(state, 'active', { now });
 
   assert.match(html, /data-case-filter="active"/);
   assert.match(html, /data-case-filter="completed"/);
   assert.match(html, /data-case-filter="trash"/);
-  assert.match(html, /data-open-case="case_1"/);
+  assert.match(html, /data-inspect-case="case_1"/);
   assert.match(html, /data-case-action="complete"/);
   assert.match(html, /data-case-action="trash"/);
 });
