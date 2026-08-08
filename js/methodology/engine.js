@@ -1,23 +1,38 @@
 import { generalMethod, getApplicableProtocols, getProtocol } from './protocols.js';
+import { getApplicableInstrumentIds, getContextualProtocolProfile, getMethodologyContext } from './context-resolver.js';
 
 const has=(o,k)=>{const v=o?.[k];return typeof v==='string'?Boolean(v.trim()):Boolean(v)};
 
 export function auditCase(c){
   const issues=[];
   const g=c.methodology?.general||{}, s=c.methodology?.specific||{}, u=c.methodology?.guided||{}, d=c.methodology?.decision||{};
+  const methodologyContext=getMethodologyContext(c);
+  const contextualProfile=getContextualProtocolProfile(c);
+  const instrumentIds=new Set(getApplicableInstrumentIds(c));
+
   if(!has(g,'object'))issues.push({severity:'block',text:'Objeto pericial não delimitado.'});
   if(!has(g,'methodChoice'))issues.push({severity:'block',text:'Escolha metodológica não justificada.'});
   if(!has(g,'availableMaterial'))issues.push({severity:'warning',text:'Material analisado não descrito.'});
   if(!has(g,'objectiveExam')&&c.context?.mode!=='Documental')issues.push({severity:'warning',text:'Exame objetivo não registrado.'});
   if(!has(d,'alternatives'))issues.push({severity:'warning',text:'Hipóteses alternativas não analisadas.'});
   if(!has(d,'certainty'))issues.push({severity:'warning',text:'Grau de sustentação não registrado.'});
+
+  if(c.context?.legalSphereId&&c.context?.matterId&&!contextualProfile.baseProtocolId){
+    issues.push({severity:'warning',text:'Ainda não existe perfil contextual específico validado para esta combinação de esfera e objeto; mantenha o método geral e selecione protocolos/instrumentos manualmente.'});
+  }
+
+  if(!methodologyContext.purposeId){
+    issues.push({severity:'warning',text:'Finalidade médico-pericial ainda não definida.'});
+  }
+
   const protocolIds=new Set(getApplicableProtocols(c).map(protocol=>protocol.id));
   if(protocolIds.has('aesthetic')){
     if(u.consolidationStatus!=='Sim, com fundamento registrado')issues.push({severity:'block',text:'Sem consolidação fundamentada, não cabe sequela estética permanente definitiva.'});
     if(u.objectiveChange!=='Sim')issues.push({severity:'block',text:'A valoração estética exige alteração morfológica objetivamente demonstrada.'});
     if(!has(s,'topography')||!has(s,'dimensions'))issues.push({severity:'block',text:'Descrição morfológica incompleta: topografia e dimensões são necessárias.'});
     if(u.priorAppearanceStatus==='Não há informação')issues.push({severity:'warning',text:'Ausência de estado estético anterior limita a comparação.'});
-    if(has(s,'aipeScore')&&!has(s,'aipeRationale'))issues.push({severity:'warning',text:'AIPE registrada sem fundamentação descritiva.'});
+    if(instrumentIds.has('aipe')&&has(s,'aipeScore')&&!has(s,'aipeRationale'))issues.push({severity:'warning',text:'AIPE registrada sem fundamentação descritiva.'});
+    if(!instrumentIds.has('aipe')&&has(s,'aipeScore'))issues.push({severity:'warning',text:'Há registro AIPE, mas o instrumento não está ativo para o contexto atual; confirme sua pertinência metodológica ou remova o registro da análise ativa.'});
   }
   if(protocolIds.has('capacity')){
     if(u.functionalDeficitStatus!=='Sim')issues.push({severity:'block',text:'Diagnóstico isolado não demonstra incapacidade; falta déficit funcional objetivo.'});
