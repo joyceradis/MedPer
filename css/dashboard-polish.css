@@ -1,0 +1,54 @@
+/* MedPer dashboard — visual refinements locked to the approved composition. */
+.dashboard-shortcuts button{
+  background:#fff;
+  border:1px solid rgba(13,49,89,.12);
+  border-radius:16px;
+  box-shadow:0 10px 28px rgba(7,29,55,.075);
+}
+.dashboard-shortcuts button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 14px 34px rgba(7,29,55,.10);
+}
+.shortcut-action{
+  color:var(--medper-danger);
+  transition:transform .16s ease,color .16s ease;
+}
+.dashboard-shortcuts button:hover .shortcut-action{transform:translateX(3px)}
+
+.dashboard-continue-panel,.dashboard-deadlines-panel{
+  background:#fff;
+  box-shadow:0 10px 30px rgba(7,29,55,.065);
+}
+.continue-card-kicker{
+  background:#f8eff0;
+  color:#7f3540;
+  border:1px solid rgba(127,53,64,.07);
+}
+.continue-progress-track span{height:5px}
+.continue-progress-track span.is-complete,
+.continue-progress-track span.is-current{background:#315f92}
+
+.deadline-indicator{flex:none}
+.deadline-date{
+  background:linear-gradient(180deg,#fff 0%,#fafbfd 100%);
+  box-shadow:0 5px 14px rgba(7,29,55,.055);
+}
+.deadline-row:has(.is-danger) .deadline-date{border-color:rgba(211,75,85,.18)}
+.deadline-row:has(.is-warning) .deadline-date{border-color:rgba(216,139,25,.18)}
+
+.dashboard-pending{
+  border-color:rgba(13,49,89,.11);
+  box-shadow:0 8px 25px rgba(7,29,55,.055);
+}
+.dashboard-pending-action{
+  color:var(--medper-accent);
+  font-weight:800;
+}
+.dashboard-pending-action i{color:var(--medper-danger)}
+
+@media (max-width:760px){
+  .dashboard-shortcuts button{box-shadow:0 6px 18px rgba(7,29,55,.06)}
+  .continue-milestones{grid-template-columns:1fr}
+  .dashboard-pending{grid-template-columns:42px 1fr}
+  .dashboard-pending-action{grid-column:1/-1;justify-self:stretch;justify-content:center}
+}
