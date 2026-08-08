@@ -23,23 +23,16 @@ test('builds a sorted operational dashboard model from normalized cases',()=>{
 
 test('dashboard markup contains the approved operational composition',()=>{
   const view=fs.readFileSync(new URL('../js/ui/dashboard-view.js',import.meta.url),'utf8');
-  assert.match(view,/Perita do juízo/);
-  assert.match(view,/Etapa 5 de 9/);
-  assert.match(view,/Revisão de documentos/i);
-  assert.match(view,/Exame/);
-  assert.match(view,/Laudo/);
-  assert.match(view,/Ver pendências/);
-  assert.match(view,/data-surface=/);
-  assert.match(view,/<svg/);
-  assert.doesNotMatch(view,/fa-(solid|regular)|FontAwesome/i);
-  assert.doesNotMatch(view,/data-scroll-target=/);
+  assert.match(view,/Perita do juízo/);assert.match(view,/Etapa 5 de 9/);assert.match(view,/Revisão de documentos/i);assert.match(view,/Exame/);assert.match(view,/Laudo/);assert.match(view,/Ver pendências/);assert.match(view,/data-surface=/);assert.match(view,/<svg/);assert.doesNotMatch(view,/fa-(solid|regular)|FontAwesome/i);assert.doesNotMatch(view,/data-scroll-target=/);
 });
 
 test('Phase 2 CSS preserves restrained cards, semantic deadline dots and workspace hierarchy',()=>{
+  const base=fs.readFileSync(new URL('../css/dashboard.css',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../css/phase2.css',import.meta.url),'utf8');
   assert.match(css,/\.dashboard-shortcuts button[^}]*background:#fff/s);
   assert.match(css,/\.dashboard-shortcuts button[^}]*box-shadow:/s);
-  assert.match(css,/\.deadline-indicator\.is-danger/);
+  assert.match(base,/\.deadline-indicator\.is-danger/);
+  assert.match(base,/\.deadline-indicator\.is-warning/);
   assert.match(css,/\.dashboard-pending/);
   assert.match(css,/\.continue-progress/);
   assert.match(css,/\.shell \.main\.case-layout/);
