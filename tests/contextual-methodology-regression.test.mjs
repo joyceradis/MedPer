@@ -3,8 +3,9 @@ import { normalizeCase } from '../js/core/store.js';
 import {
   getMethodologyContext,
   getContextualProtocolProfile,
-  getSuggestedInstrumentIds
-} from '../js/methodology/protocols.js';
+  getSuggestedInstrumentIds,
+  getApplicableInstrumentIds
+} from '../js/methodology/context-resolver.js';
 
 function test(name, callback){
   try{callback();console.log(`✓ ${name}`);}catch(error){console.error(`✗ ${name}`);throw error;}
@@ -28,6 +29,7 @@ test('resolves civil aesthetic damage as a personal-damage contextual profile',(
   assert.equal(profile.id,'aesthetic_damage_civil');
   assert.equal(profile.baseProtocolId,'aesthetic');
   assert.deepEqual(getSuggestedInstrumentIds(c),['aipe']);
+  assert.deepEqual(getApplicableInstrumentIds(c),['aipe']);
 });
 
 test('does not generalize AIPE to criminal aesthetic assessment',()=>{
@@ -38,6 +40,7 @@ test('does not generalize AIPE to criminal aesthetic assessment',()=>{
   assert.equal(profile.id,'aesthetic_damage_criminal');
   assert.equal(profile.baseProtocolId,'aesthetic');
   assert.deepEqual(getSuggestedInstrumentIds(c),[]);
+  assert.deepEqual(getApplicableInstrumentIds(c),[]);
 });
 
 test('explicit physician instrument choices override contextual suggestions safely',()=>{
@@ -46,6 +49,15 @@ test('explicit physician instrument choices override contextual suggestions safe
     methodology:{activeInstrumentIds:[],dismissedInstrumentIds:['aipe']}
   });
   assert.deepEqual(getSuggestedInstrumentIds(c),[]);
+  assert.deepEqual(getApplicableInstrumentIds(c),[]);
+});
+
+test('physician can explicitly add an instrument even when it was not suggested',()=>{
+  const c=normalizeCase({
+    context:{setting:'Judicial',legalSphere:'Criminal',role:'Perita do juízo',matter:'Dano estético'},
+    methodology:{activeInstrumentIds:['aipe'],dismissedInstrumentIds:[]}
+  });
+  assert.deepEqual(getApplicableInstrumentIds(c),['aipe']);
 });
 
 test('keeps purpose explicit when physician has already selected one',()=>{
