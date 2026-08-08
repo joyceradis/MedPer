@@ -26,7 +26,7 @@ test('dashboard markup contains the approved operational composition',()=>{
   assert.match(view,/Perita do juízo/);assert.match(view,/Etapa 5 de 9/);assert.match(view,/Revisão de documentos/i);assert.match(view,/Exame/);assert.match(view,/Laudo/);assert.match(view,/Ver pendências/);assert.match(view,/data-surface=/);assert.match(view,/<svg/);assert.doesNotMatch(view,/fa-(solid|regular)|FontAwesome/i);assert.doesNotMatch(view,/data-scroll-target=/);
 });
 
-test('Phase 2 CSS preserves restrained cards, semantic deadline dots and workspace hierarchy',()=>{
+test('Phase 2 CSS preserves restrained cards, semantic deadlines and canonical navy hierarchy',()=>{
   const base=fs.readFileSync(new URL('../css/dashboard.css',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../css/phase2.css',import.meta.url),'utf8');
   assert.match(css,/\.dashboard-shortcuts button[^}]*background:#fff/s);
@@ -36,7 +36,11 @@ test('Phase 2 CSS preserves restrained cards, semantic deadline dots and workspa
   assert.match(css,/\.dashboard-pending/);
   assert.match(css,/\.continue-progress/);
   assert.match(css,/\.shell \.main\.case-layout/);
-  assert.match(css,/--mp-navy:#071d37/);
+  assert.match(css,/--mp-navy:#06172d/);
+  assert.match(css,/--mp-navy-mid:#0b2748/);
+  assert.match(css,/--mp-navy-top:#12375f/);
+  assert.match(css,/\.dashboard-sidebar:before/);
+  assert.match(css,/\.dashboard-sidebar:after/);
 });
 
 console.log('Dashboard regression suite completed successfully.');
