@@ -4,7 +4,10 @@
   --medper-sidebar-bottom:#072d55;
   --medper-wordmark-med:#f4f0e8;
   --medper-wordmark-per:#7ec8ff;
+  --medper-brand-ivory:var(--medper-wordmark-med);
+  --medper-brand-sky:var(--medper-wordmark-per);
   --medper-canvas:#f7f8fb;
+  --medper-bg:var(--medper-canvas);
   --medper-surface:#ffffff;
   --medper-text:#10213f;
   --medper-muted:#667085;
@@ -14,8 +17,11 @@
   --medper-warning:#d99016;
   --medper-danger:#d94a5b;
   --medper-radius:18px;
+  --medper-radius-lg:var(--medper-radius);
   --medper-radius-sm:12px;
   --medper-shadow:0 12px 36px rgba(16,33,63,.10);
+  --medper-shadow-sm:0 5px 18px rgba(16,33,63,.06);
+  --medper-shadow-md:var(--medper-shadow);
 }
 
 .medper-sidebar-surface{
@@ -23,8 +29,8 @@
   background:linear-gradient(180deg,var(--medper-sidebar-top) 0%,var(--medper-sidebar-mid) 44%,var(--medper-sidebar-bottom) 100%);
 }
 
-.medper-wordmark-med{color:var(--medper-wordmark-med)}
-.medper-wordmark-per{color:var(--medper-wordmark-per)}
+.medper-wordmark-med{color:var(--medper-brand-ivory)}
+.medper-wordmark-per{color:var(--medper-brand-sky)}
 
 .deadline-indicator[data-severity="neutral"]{color:var(--medper-accent)}
 .deadline-indicator[data-severity="warning"]{color:var(--medper-warning)}
