@@ -3,9 +3,9 @@ name: Frontend audit
 on:
   push:
     branches: [main]
-    paths: ['index.html','app.html','ROADMAP.md','css/**','js/**','sw.js','manifest.webmanifest','.github/workflows/frontend-audit.yml']
+    paths: ['index.html','app.html','ROADMAP.md','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/frontend-audit.yml']
   pull_request:
-    paths: ['index.html','app.html','ROADMAP.md','css/**','js/**','sw.js','manifest.webmanifest','.github/workflows/frontend-audit.yml']
+    paths: ['index.html','app.html','ROADMAP.md','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/frontend-audit.yml']
 
 permissions:
   contents: read
@@ -29,6 +29,8 @@ jobs:
           node --check js/methodology/aipe.js
           node --check js/knowledge/library.js
           node --check js/ui/workflow.js
+          node --check js/ui/dashboard-model.js
+          node --check js/ui/dashboard-view.js
           node --check js/ui/app.js
           node --check js/ui/dialog-controller.js
           node --check js/auth/auth-controller.js
@@ -65,12 +67,12 @@ jobs:
               raise SystemExit('Application entrypoint must be excluded from search indexing.')
 
           required = [
-              './index.html','./app.html','./css/marketing.css','./css/styles.css',
+              './index.html','./app.html','./css/marketing.css','./css/design-system.css','./css/styles.css','./css/dashboard.css',
               './css/methodology.css','./css/guided-methodology.css','./css/knowledge.css','./css/auth.css',
               './js/main.js','./js/core/store.js','./js/core/case-lifecycle.js',
               './js/methodology/protocols.js','./js/methodology/engine.js','./js/methodology/aipe.js',
               './js/knowledge/library.js',
-              './js/ui/workflow.js','./js/ui/app.js','./js/ui/dialog-controller.js',
+              './js/ui/workflow.js','./js/ui/dashboard-model.js','./js/ui/dashboard-view.js','./js/ui/app.js','./js/ui/dialog-controller.js',
               './js/auth/auth-controller.js','./js/config/supabase-config.js',
               './manifest.webmanifest','./icon.svg'
           ]
@@ -131,7 +133,7 @@ jobs:
               Path('js/main.js'),Path('js/core/store.js'),Path('js/core/case-lifecycle.js'),
               Path('js/methodology/protocols.js'),Path('js/methodology/engine.js'),Path('js/methodology/aipe.js'),
               Path('js/knowledge/library.js'),
-              Path('js/ui/workflow.js'),Path('js/ui/app.js'),Path('js/ui/dialog-controller.js'),
+              Path('js/ui/workflow.js'),Path('js/ui/dashboard-model.js'),Path('js/ui/dashboard-view.js'),Path('js/ui/app.js'),Path('js/ui/dialog-controller.js'),
               Path('js/auth/auth-controller.js')
           ]
           text = '\n'.join(path.read_text(encoding='utf-8') for path in loaded)
