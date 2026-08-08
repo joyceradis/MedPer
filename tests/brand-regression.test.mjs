@@ -22,12 +22,15 @@ test('uses a filled faceted polygon as the canonical logomark', () => {
   assert.match(icon, /viewBox="0 0 512 512"/);
 });
 
-test('keeps wordmark and sidebar color semantics in the dashboard stylesheet', () => {
+test('keeps wordmark and approved three-stop sidebar color semantics', () => {
   assert.match(dashboardCss, /\.wordmark-med/);
   assert.match(dashboardCss, /var\(--medper-brand-ivory\)/);
   assert.match(dashboardCss, /\.wordmark-per/);
   assert.match(dashboardCss, /var\(--medper-brand-sky\)/);
-  assert.match(dashboardCss, /linear-gradient\(180deg,var\(--medper-sidebar-top\),var\(--medper-sidebar-bottom\)\)/);
+  assert.match(
+    dashboardCss,
+    /linear-gradient\(180deg,var\(--medper-sidebar-top\).*var\(--medper-sidebar-mid\).*var\(--medper-sidebar-bottom\)/
+  );
 });
 
 test('reserves danger styling for semantic indicators rather than whole cards', () => {
