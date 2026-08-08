@@ -55,13 +55,13 @@ def test_password_reset_revokes_sessions():
     assert login.status_code == 200
 
 
-def test_complete_import_preserves_snapshot_and_evidence_rule():
+def test_complete_legacy_mlks_import_preserves_snapshot_and_evidence_rule():
     tokens = register('phase2-import', 'import@example.com')
     headers = {'Authorization': 'Bearer ' + tokens['access_token']}
     payload = {
-        'schema': 'https://joyceradis.github.io/MedPer/data/mlks.schema.json',
+        'schema': 'https://joyceradis.github.io/MLKS/data/mlks.schema.json',
         'exportedAt': '2026-08-04T00:00:00Z',
-        'application': 'MedPer PWA',
+        'application': 'MLKS Unified PWA',
         'case': {
             'id': 'case_frontend',
             'title': 'Caso importado',
