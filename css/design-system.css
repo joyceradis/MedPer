@@ -1,0 +1,31 @@
+:root{
+  --medper-sidebar-top:#2e73bd;
+  --medper-sidebar-mid:#124f8b;
+  --medper-sidebar-bottom:#072d55;
+  --medper-wordmark-med:#f4f0e8;
+  --medper-wordmark-per:#7ec8ff;
+  --medper-canvas:#f7f8fb;
+  --medper-surface:#ffffff;
+  --medper-text:#10213f;
+  --medper-muted:#667085;
+  --medper-border:#d9e0ea;
+  --medper-accent:#2e73bd;
+  --medper-success:#2f8f68;
+  --medper-warning:#d99016;
+  --medper-danger:#d94a5b;
+  --medper-radius:18px;
+  --medper-radius-sm:12px;
+  --medper-shadow:0 12px 36px rgba(16,33,63,.10);
+}
+
+.medper-sidebar-surface{
+  color:#fff;
+  background:linear-gradient(180deg,var(--medper-sidebar-top) 0%,var(--medper-sidebar-mid) 44%,var(--medper-sidebar-bottom) 100%);
+}
+
+.medper-wordmark-med{color:var(--medper-wordmark-med)}
+.medper-wordmark-per{color:var(--medper-wordmark-per)}
+
+.deadline-indicator[data-severity="neutral"]{color:var(--medper-accent)}
+.deadline-indicator[data-severity="warning"]{color:var(--medper-warning)}
+.deadline-indicator[data-severity="danger"]{color:var(--medper-danger)}
