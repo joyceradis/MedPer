@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
+// Verification branch: any visual-anchor drift must fail before release.
 const design = readFileSync(new URL('../css/design-system.css', import.meta.url), 'utf8');
 const dashboard = readFileSync(new URL('../css/dashboard.css', import.meta.url), 'utf8');
 const authCss = readFileSync(new URL('../css/auth.css', import.meta.url), 'utf8');
