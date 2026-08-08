@@ -1,8 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">MedPer</title>
-  <desc id="desc">Ícone da plataforma médico-pericial MedPer</desc>
-  <rect width="512" height="512" rx="112" fill="#071117"/>
-  <rect x="38" y="38" width="436" height="436" rx="92" fill="#0b1720" stroke="#9ec9b7" stroke-width="12"/>
-  <path d="M128 354V158h45l83 116 83-116h45v196h-48V235l-80 110-80-110v119z" fill="#c9ecdc"/>
-  <circle cx="392" cy="124" r="24" fill="#9ec9b7"/>
+  <desc id="desc">Logomarca geométrica facetada da plataforma MedPer</desc>
+  <g stroke="#f7f4ec" stroke-width="10" stroke-linejoin="round">
+    <polygon points="256,28 118,92 174,192" fill="#1784c8"/>
+    <polygon points="256,28 174,192 256,172" fill="#0c4f9f"/>
+    <polygon points="256,28 256,172 338,192" fill="#133f91"/>
+    <polygon points="256,28 338,192 394,92" fill="#ef2e2e"/>
+    <polygon points="118,92 82,202 174,192" fill="#125ab2"/>
+    <polygon points="82,202 174,192 150,306" fill="#08479f"/>
+    <polygon points="174,192 256,172 220,292" fill="#0b287b"/>
+    <polygon points="256,172 338,192 292,292" fill="#f29b21"/>
+    <polygon points="338,192 394,92 430,202" fill="#e90845"/>
+    <polygon points="338,192 430,202 362,306" fill="#18a251"/>
+    <polygon points="82,202 150,306 86,382" fill="#195bb0"/>
+    <polygon points="150,306 220,292 178,396" fill="#a54fba"/>
+    <polygon points="220,292 292,292 256,398" fill="#5e1b9d"/>
+    <polygon points="292,292 362,306 334,396" fill="#ef7e13"/>
+    <polygon points="362,306 430,202 426,382" fill="#087d3c"/>
+    <polygon points="86,382 178,396 256,484" fill="#b55dc3"/>
+    <polygon points="178,396 256,398 256,484" fill="#7932b3"/>
+    <polygon points="256,398 334,396 256,484" fill="#65089b"/>
+    <polygon points="334,396 426,382 256,484" fill="#08743b"/>
+  </g>
 </svg>
