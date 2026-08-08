@@ -1,25 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">MedPer</title>
-  <desc id="desc">Logomarca geométrica facetada, preenchida e vertical da plataforma MedPer</desc>
+  <desc id="desc">Logomarca geométrica facetada, preenchida e compacta da plataforma MedPer</desc>
   <g stroke="#f7f4ec" stroke-width="6" stroke-linejoin="round">
-    <polygon points="256,48 104,142 196,154" fill="#1687c9"/>
-    <polygon points="256,48 196,154 258,164" fill="#0b4b9d"/>
-    <polygon points="256,48 258,164 332,154" fill="#103f8c"/>
-    <polygon points="256,48 332,154 408,142" fill="#ef332f"/>
-    <polygon points="104,142 90,286 196,154" fill="#155eb3"/>
-    <polygon points="90,286 190,278 196,154" fill="#0a4da4"/>
-    <polygon points="196,154 190,278 258,164" fill="#132b78"/>
-    <polygon points="258,164 190,278 258,286" fill="#4a278e"/>
-    <polygon points="258,164 258,286 332,154" fill="#f39b22"/>
-    <polygon points="332,154 258,286 338,278" fill="#f06e17"/>
-    <polygon points="332,154 338,278 408,142" fill="#e80d45"/>
-    <polygon points="408,142 338,278 422,286" fill="#159b50"/>
-    <polygon points="90,286 160,402 190,278" fill="#215cae"/>
-    <polygon points="190,278 160,402 258,286" fill="#a853b8"/>
-    <polygon points="258,286 160,402 256,466" fill="#7a2da9"/>
-    <polygon points="258,286 256,466 356,402" fill="#650d98"/>
-    <polygon points="258,286 356,402 338,278" fill="#f08019"/>
-    <polygon points="338,278 356,402 422,286" fill="#0b8243"/>
-    <polygon points="160,402 356,402 256,466" fill="#6e169e" opacity=".96"/>
+    <polygon points="256,60 108,132 190,154" fill="#1687c9"/>
+    <polygon points="256,60 190,154 256,170" fill="#0d5cad"/>
+    <polygon points="256,60 256,170 330,154" fill="#103f8c"/>
+    <polygon points="256,60 330,154 404,132" fill="#ef3b32"/>
+    <polygon points="108,132 60,276 176,252" fill="#1567b8"/>
+    <polygon points="108,132 176,252 190,154" fill="#0b4f9e"/>
+    <polygon points="190,154 176,252 256,170" fill="#172f80"/>
+    <polygon points="256,170 176,252 256,266" fill="#48278e"/>
+    <polygon points="256,170 256,266 330,154" fill="#f39b23"/>
+    <polygon points="330,154 256,266 340,252" fill="#f2731b"/>
+    <polygon points="330,154 340,252 404,132" fill="#e90e45"/>
+    <polygon points="404,132 340,252 452,276" fill="#159b50"/>
+    <polygon points="60,276 132,396 176,252" fill="#2b5caf"/>
+    <polygon points="176,252 132,396 256,266" fill="#a653b8"/>
+    <polygon points="132,396 256,452 256,266" fill="#7c2eaa"/>
+    <polygon points="256,266 256,452 380,396" fill="#650d98"/>
+    <polygon points="256,266 380,396 340,252" fill="#e9891c"/>
+    <polygon points="340,252 380,396 452,276" fill="#0d8648"/>
   </g>
 </svg>
