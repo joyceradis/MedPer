@@ -17,7 +17,8 @@ const dashboardCss = readFileSync(new URL('../css/dashboard.css', import.meta.ur
 test('uses a filled faceted polygon as the canonical logomark', () => {
   const polygonCount = (icon.match(/<polygon\b/g) || []).length;
   assert.ok(polygonCount >= 10, `expected faceted mark, found ${polygonCount} polygons`);
-  assert.doesNotMatch(icon, />M<|>MedPer</);
+  assert.doesNotMatch(icon, /<path\b/);
+  assert.match(icon, /<title id="title">MedPer<\/title>/);
   assert.match(icon, /viewBox="0 0 512 512"/);
 });
 
