@@ -34,6 +34,8 @@ test('preserves explicit juridical-pericial context and operational metadata', (
 
   assert.equal(normalized.context.sphere, 'Judicial');
   assert.equal(normalized.context.branch, 'Cível');
+  assert.equal(normalized.context.setting, 'Judicial');
+  assert.equal(normalized.context.legalSphere, 'Cível');
   assert.equal(normalized.context.role, 'Perita do juízo');
   assert.equal(normalized.context.matter, 'Dano estético');
   assert.equal(normalized.context.tribunal, 'TJES');
@@ -43,6 +45,21 @@ test('preserves explicit juridical-pericial context and operational metadata', (
   assert.equal(normalized.operations.deadlines[0].type, 'Entrega do laudo');
 });
 
+test('preserves explicit canonical setting and legal sphere', () => {
+  const normalized = normalizeCase({
+    id: 'case_canonical_context',
+    context: {
+      setting: 'Judicial',
+      legalSphere: 'Trabalhista',
+      sphere: 'Judicial',
+      branch: 'Trabalhista'
+    }
+  });
+
+  assert.equal(normalized.context.setting, 'Judicial');
+  assert.equal(normalized.context.legalSphere, 'Trabalhista');
+});
+
 test('adds safe empty operational defaults without changing legacy context labels', () => {
   const normalized = normalizeCase({
     id: 'case_legacy_context',
@@ -50,6 +67,8 @@ test('adds safe empty operational defaults without changing legacy context label
   });
 
   assert.equal(normalized.context.matter, 'Incapacidade');
+  assert.equal(normalized.context.setting, '');
+  assert.equal(normalized.context.legalSphere, '');
   assert.equal(normalized.context.tribunal, '');
   assert.equal(normalized.context.unit, '');
   assert.equal(normalized.context.feeRegime, '');
