@@ -22,6 +22,16 @@ test('uses a filled faceted polygon as the canonical logomark', () => {
   assert.match(icon, /viewBox="0 0 512 512"/);
 });
 
+test('keeps the canonical logomark compact rather than diamond-shaped', () => {
+  const pointGroups = [...icon.matchAll(/points="([^"]+)"/g)].map(match => match[1]);
+  const points = pointGroups.flatMap(group => group.trim().split(/\s+/).map(pair => pair.split(',').map(Number)));
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const width = Math.max(...xs) - Math.min(...xs);
+  const height = Math.max(...ys) - Math.min(...ys);
+  assert.ok(width / height >= 0.9, `logomark is too narrow (${(width / height).toFixed(2)})`);
+});
+
 test('keeps wordmark and approved three-stop sidebar color semantics', () => {
   assert.match(dashboardCss, /\.wordmark-med/);
   assert.match(dashboardCss, /var\(--medper-brand-ivory\)/);
