@@ -85,6 +85,7 @@ GitHub Pages
             ├── auth/auth-controller.js
             ├── methodology/protocols.js
             ├── methodology/engine.js
+            ├── knowledge/library.js
             ├── ui/app.js
             └── ui/dialog-controller.js
 ```
@@ -178,6 +179,8 @@ Os protocolos são endereçados internamente por IDs estáveis (`aesthetic`, `ca
 - contagem de bloqueios e ressalvas;
 - avaliação de completude;
 - salvaguardas específicas por matéria.
+
+`js/knowledge/library.js` é uma camada declarativa separada do motor metodológico. Ela classifica fontes por natureza, autoridade, versão, âmbito e tema; mantém localizadores exatos e divergências; e resolve apenas quais referências são pertinentes ao assunto e à etapa cognitiva. Não importa nem modifica `engine.js` ou `protocols.js`, não persiste estado e não gera conclusões. A governança dessa camada está em `docs/KNOWLEDGE_REFERENCES.md`.
 
 Algumas respostas estruturadas ainda comparam rótulos de opções legadas. A identidade dos protocolos, entretanto, já não depende desses rótulos.
 

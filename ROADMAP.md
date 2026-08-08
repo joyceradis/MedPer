@@ -74,6 +74,7 @@ Este documento é a fonte de verdade para a evolução do produto. Novas funcion
 - [x] Navegação operacional por estado do caso: em andamento, concluídas e lixeira.
 - [x] Resolução adaptativa de múltiplos protocolos com controle médico sobre sugestões.
 - [x] AIPE de referência aberta no dano estético, sem automatismo decisório.
+- [x] Base técnica contextual classificada por natureza, autoridade, versão, âmbito e tema, com fonte/localização e divergências explícitas fora do motor decisório.
 - Redesenho visual definitivo e identidade de marca.
 - Guia visual mínimo.
 - Testes manuais em desktop e mobile.

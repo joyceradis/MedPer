@@ -1,5 +1,5 @@
-const CACHE_NAME='medper-shell-v19-20260807';
-const APP_SHELL=['./','./index.html','./app.html','./css/marketing.css','./css/styles.css','./css/methodology.css','./css/guided-methodology.css','./css/auth.css','./js/main.js','./js/core/store.js','./js/core/case-lifecycle.js','./js/methodology/protocols.js','./js/methodology/engine.js','./js/methodology/aipe.js','./js/ui/workflow.js','./js/ui/app.js','./js/ui/dialog-controller.js','./js/auth/auth-controller.js','./js/config/supabase-config.js','./manifest.webmanifest','./icon.svg'];
+const CACHE_NAME='medper-shell-v20-20260807';
+const APP_SHELL=['./','./index.html','./app.html','./css/marketing.css','./css/styles.css','./css/methodology.css','./css/guided-methodology.css','./css/knowledge.css','./css/auth.css','./js/main.js','./js/core/store.js','./js/core/case-lifecycle.js','./js/methodology/protocols.js','./js/methodology/engine.js','./js/methodology/aipe.js','./js/knowledge/library.js','./js/ui/workflow.js','./js/ui/app.js','./js/ui/dialog-controller.js','./js/auth/auth-controller.js','./js/config/supabase-config.js','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',event=>{
