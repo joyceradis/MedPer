@@ -77,6 +77,7 @@ assert.match(claude, /thinking\s*:\s*\{[\s\S]*?type:\s*['"]adaptive['"]/, 'Opus 
 assert.match(claude, /output_config\s*:\s*\{[\s\S]*?effort/, 'Claude request must set explicit effort through output_config');
 assert.doesNotMatch(claude, /budget_tokens/, 'budget_tokens is rejected by Opus 5 and must not return');
 assert.match(claude, /stop_reason/, 'Claude response must inspect stop_reason');
+assert.match(claude, /refusal/, 'Claude refusal must be reported explicitly rather than treated as an empty response');
 assert.match(claude, /AI_REVIEW_INPUT_DIR[^\n]*ai-review-input/, 'Claude must default to the canonical prepared input directory');
 assert.match(claude, /\$\{INPUT_DIR\}\/diff\.review\.txt/, 'Claude must consume the canonical prepared diff');
 
