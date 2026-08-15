@@ -28,6 +28,19 @@ export const KNOWLEDGE_SOURCES = freeze([
     note: 'Os dois PDFs anexados têm conteúdo textual idêntico e são uma única fonte canônica.'
   }),
   freeze({
+    id: 'abmlpm-tabela-dano-corporal-2024',
+    title: 'Tabela Brasileira para Apuração do Dano Corporal',
+    citation: 'Associação Brasileira de Medicina Legal e Perícia Médica (ABMLPM). Tabela Brasileira para Apuração do Dano Corporal.',
+    classes: ['recommendation'],
+    nature: 'Barema/tabela profissional',
+    authority: 'ABMLPM — associação brasileira da especialidade',
+    version: 'Lançamento: setembro de 2024',
+    scope: 'Quantificação percentual de sequelas por sistema orgânico, incluindo Capítulo 10 (sistema cutâneo), para uso em perícia cível e trabalhista.',
+    topics: ['body-damage', 'functional'],
+    limitation: 'Documento distinto da Diretriz para Avaliação do Dano Pessoal (id abmlpm-dano-pessoal-2025) — mesma entidade, publicações diferentes, não confundir. O MedPer ainda não codifica nenhum artigo desta tabela: nenhuma pontuação, faixa ou regra de cumulação do Capítulo 10 está implementada. Registrada aqui apenas como fonte citável; qualquer valor do Capítulo 10 usado num laudo depende de leitura direta do documento pela perita.',
+    note: 'A regra geral de cumulação da própria ABMLPM distingue sequelas sinérgicas (mesma função — somam-se diretamente, limitadas ao valor da perda total daquela função) de sequelas não sinérgicas (funções distintas — usa-se capacidade restante / Balthazard). Qual das duas rege especificamente o Capítulo 10 não foi confirmado por leitura do documento.'
+  }),
+  freeze({
     id: 'aipe-brasil-2016',
     title: 'Validação de instrumento para análise do dano estético no Brasil',
     citation: 'Fernandes MM, Cobo Plana JA, Bouchardet FCH, Michel-Crosato E, Oliveira RN. Saúde Debate. 2016;40(108):118–130. DOI: 10.1590/0103-1104-20161080010.',
