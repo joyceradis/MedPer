@@ -2,7 +2,7 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 
 const OUT_DIR = 'ai-review-out';
 const INPUT_DIR = process.env.AI_REVIEW_INPUT_DIR || 'ai-review-input';
-const EFFORT_BUDGETS = Object.freeze({ low: 2000, medium: 4000, high: 6000 });
+const VALID_EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
 
 mkdirSync(OUT_DIR, { recursive: true });
 const outPath = `${OUT_DIR}/claude-findings.md`;
@@ -15,10 +15,7 @@ try {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const model = process.env.CLAUDE_REVIEW_MODEL || 'claude-opus-5';
   const effort = process.env.CLAUDE_REVIEW_EFFORT || 'high';
-  const thinkingBudget = Number(
-    process.env.CLAUDE_THINKING_BUDGET_TOKENS || EFFORT_BUDGETS[effort] || EFFORT_BUDGETS.high
-  );
-  const maxTokens = Number(process.env.CLAUDE_MAX_TOKENS || 10000);
+  const maxTokens = Number(process.env.CLAUDE_MAX_TOKENS || 16000);
 
   if (meta.skip_ai) {
     write(`_Revisão do Claude não executada: ${meta.skip_reason || 'entrada marcada para skip'}._`);
@@ -32,11 +29,11 @@ try {
     write('_Nenhuma alteração de código detectada neste diff._');
     process.exit(0);
   }
-  if (!Number.isInteger(thinkingBudget) || thinkingBudget < 1024) {
-    throw new Error('CLAUDE_THINKING_BUDGET_TOKENS must be an integer >= 1024');
+  if (!VALID_EFFORTS.has(effort)) {
+    throw new Error(`CLAUDE_REVIEW_EFFORT must be one of: ${[...VALID_EFFORTS].join(', ')}`);
   }
-  if (!Number.isInteger(maxTokens) || maxTokens <= thinkingBudget) {
-    throw new Error('CLAUDE_MAX_TOKENS must be an integer greater than the thinking budget');
+  if (!Number.isInteger(maxTokens) || maxTokens < 1) {
+    throw new Error('CLAUDE_MAX_TOKENS must be a positive integer');
   }
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -50,8 +47,10 @@ try {
       model,
       max_tokens: maxTokens,
       thinking: {
-        type: 'enabled',
-        budget_tokens: thinkingBudget
+        type: 'adaptive'
+      },
+      output_config: {
+        effort
       },
       system: context,
       messages: [
@@ -65,7 +64,7 @@ try {
 
   if (!response.ok) {
     const body = await response.text();
-    write(`_Falha ao chamar a API da Anthropic (HTTP ${response.status}, modelo \`${model}\`): ${body.slice(0, 500)}_`);
+    write(`_Falha ao chamar a API da Anthropic (HTTP ${response.status}, modelo \`${model}\`, esforço \`${effort}\`): ${body.slice(0, 500)}_`);
     process.exit(0);
   }
 
@@ -85,7 +84,7 @@ try {
   }
 
   if (stopReason === 'max_tokens') {
-    const prefix = `_⚠️ Revisão do Claude atingiu o limite de saída (stop_reason=\`max_tokens\`, modelo \`${model}\`, esforço \`${effort}\`, thinking budget ${thinkingBudget}, max_tokens ${maxTokens}). O conteúdo abaixo pode estar incompleto._`;
+    const prefix = `_⚠️ Revisão do Claude atingiu o limite de saída (stop_reason=\`max_tokens\`, modelo \`${model}\`, esforço \`${effort}\`, max_tokens ${maxTokens}). O conteúdo abaixo pode estar incompleto._`;
     write(text ? `${prefix}\n\n${text}` : prefix);
     process.exit(0);
   }
