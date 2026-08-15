@@ -115,7 +115,7 @@ Esta camada **não é uma superfície do produto em runtime**.
 
 `.github/workflows/` — auditorias de frontend/regressão e demais gates do repositório.
 
-`package.json` — `npm run check`, `npm test` e `npm run audit` compõem a verificação JS canônica.
+`package.json` — `npm run check`, `npm test` e `npm run audit` compõem a verificação JS canônica. O gate de sintaxe inclui também os scripts do subsistema de revisão por IA.
 
 `tests/` — regressões de store, contexto, metodologia, dashboard, UI, knowledge, lifecycle, legado e infraestrutura de revisão.
 
@@ -127,7 +127,7 @@ Esta camada **não é uma superfície do produto em runtime**.
 
 `.github/scripts/review-openai.mjs` — cliente OpenAI via `fetch` nativo, com teto explícito de saída.
 
-`.github/scripts/review-claude.mjs` — cliente Anthropic via `fetch` nativo, com thinking explicitamente limitado e tratamento de `stop_reason`.
+`.github/scripts/review-claude.mjs` — cliente Anthropic via `fetch` nativo. Para Opus 5, usa thinking adaptativo (`thinking.type = adaptive`), esforço explícito (`output_config.effort`, `high` por padrão), teto rígido de `max_tokens` e tratamento de `stop_reason`; `budget_tokens` não pertence ao contrato desta geração do modelo.
 
 `.github/scripts/review-context.md` — invariantes do MedPer enviados igualmente aos dois revisores.
 
