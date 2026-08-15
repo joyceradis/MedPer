@@ -113,13 +113,29 @@ Esta camada **não é uma superfície do produto em runtime**.
 
 ### 6.1 Gates determinísticos
 
-`.github/workflows/` — auditorias de frontend/regressão e demais gates do repositório.
+`.github/workflows/` — auditorias de frontend, regressão, autenticação, backend e revisão automatizada.
 
-`package.json` — `npm run check`, `npm test` e `npm run audit` compõem a verificação JS canônica. O gate de sintaxe inclui também os scripts do subsistema de revisão por IA.
+`package.json` — `npm run check`, `npm test` e `npm run audit` compõem a verificação JS canônica. O gate de sintaxe inclui também os scripts do subsistema de revisão por IA. Como este arquivo define a própria composição dos gates, alterações em `package.json` disparam tanto a auditoria de frontend quanto a auditoria de regressão; mudança de wiring de teste não pode ficar sem CI apenas por não tocar `js/**` ou `tests/**`.
 
 `tests/` — regressões de store, contexto, metodologia, dashboard, UI, knowledge, lifecycle, legado e infraestrutura de revisão.
 
-### 6.2 Revisão automatizada GPT + Claude
+`tests/actions-runtime-regression.test.mjs` — contrato da própria infraestrutura de CI. Impede reintrodução de majors de Actions baseados no runtime Node 20, exige o major canônico em **cada ocorrência** de uma Action oficial governada e verifica a cobertura de gatilhos do `package.json`.
+
+### 6.2 Runtime das GitHub Actions
+
+As Actions JavaScript oficiais usadas pela infraestrutura de CI ficam em majors compatíveis com o **runtime Node.js 24 do GitHub Actions**. Essa camada é diferente da versão de linguagem usada para validar o produto.
+
+- `actions/checkout@v6` — checkout canônico.
+- `actions/setup-node@v7` — action em runtime atualizado; continua configurando `node-version: 20` para os gates JavaScript enquanto Node 20 permanecer no contrato de compatibilidade do projeto.
+- `actions/setup-python@v6` — action em runtime atualizado; continua configurando Python `3.13` para os testes backend.
+- `actions/upload-artifact@v7` e `actions/download-artifact@v5` — transporte de artefatos.
+- `actions/github-script@v8` — publicação e atualização do comentário consolidado de revisão.
+
+Nos jobs de revisão por IA, `actions/setup-node@v7` usa `package-manager-cache: false`: os clientes são ESM dependency-free executados diretamente por `node`, sem instalação de dependências npm.
+
+Regra: atualizar o runtime interno das GitHub Actions **não altera** o runtime da PWA, o owner de persistência, o motor metodológico, a seleção de protocolos nem conclusões médico-periciais.
+
+### 6.3 Revisão automatizada GPT + Claude
 
 `.github/workflows/ai-review.yml` — orquestra revisão independente por dois modelos em PRs e pushes para `main`.
 
@@ -161,7 +177,7 @@ Invariantes desta camada:
 6. `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` existem somente como GitHub Actions secrets quando ativadas;
 7. revisão de IA é **advisory governance**: não altera arquivos automaticamente, não escreve estado de caso, não adota protocolo e não produz conclusão médico-pericial.
 
-### 6.3 Fronteira de confiança dos secrets de revisão
+### 6.4 Fronteira de confiança dos secrets de revisão
 
 A ativação de secrets em um workflow disparado por `pull_request` pressupõe que **quem pode publicar branches dentro deste mesmo repositório é um colaborador confiável para a infraestrutura de CI**. Uma branch do próprio repositório pode propor alteração do YAML do workflow; portanto, segredo de provedor não deve ser ativado sob a premissa falsa de que qualquer autor de branch é não confiável.
 

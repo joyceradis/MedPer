@@ -22,8 +22,8 @@ jobs:
       MEDPER_JWT_SECRET: test-secret-that-is-longer-than-32-bytes
       MEDPER_PUBLIC_API_URL: http://localhost:8000
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           cache: pip
@@ -57,8 +57,8 @@ jobs:
       MEDPER_JWT_SECRET: postgres-test-secret-that-is-longer-than-32-bytes
       MEDPER_PUBLIC_API_URL: http://localhost:8000
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           cache: pip

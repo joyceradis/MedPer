@@ -33,13 +33,14 @@ jobs:
       base_sha: ${{ steps.prepare.outputs.base_sha }}
       head_sha: ${{ steps.prepare.outputs.head_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.event.after || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
+          package-manager-cache: false
       - name: Prepare canonical review input
         id: prepare
         env:
@@ -47,7 +48,7 @@ jobs:
           REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.after || github.sha }}
           REVIEW_BEFORE_SHA: ${{ github.event.before || '' }}
         run: node .github/scripts/prepare-review.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: review-input
           path: ai-review-input
@@ -60,20 +61,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: review-input
           path: ai-review-input
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
+          package-manager-cache: false
       - name: Call OpenAI
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_REVIEW_MODEL: ${{ vars.OPENAI_REVIEW_MODEL || 'gpt-5' }}
           OPENAI_MAX_COMPLETION_TOKENS: ${{ vars.OPENAI_MAX_COMPLETION_TOKENS || '6000' }}
         run: node ai-review-input/review-openai.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: gpt-findings
           path: ai-review-out/openai-findings.md
@@ -86,13 +88,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: review-input
           path: ai-review-input
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
+          package-manager-cache: false
       - name: Call Claude
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -100,7 +103,7 @@ jobs:
           CLAUDE_REVIEW_EFFORT: ${{ vars.CLAUDE_REVIEW_EFFORT || 'high' }}
           CLAUDE_MAX_TOKENS: ${{ vars.CLAUDE_MAX_TOKENS || '16000' }}
         run: node ai-review-input/review-claude.mjs
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: claude-findings
           path: ai-review-out/claude-findings.md
@@ -113,24 +116,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         continue-on-error: true
         with:
           name: review-input
           path: ai-review-input
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         if: needs.gpt-review.result != 'skipped'
         continue-on-error: true
         with:
           name: gpt-findings
           path: findings/gpt
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         if: needs.claude-review.result != 'skipped'
         continue-on-error: true
         with:
           name: claude-findings
           path: findings/claude
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');

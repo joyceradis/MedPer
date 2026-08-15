@@ -3,9 +3,9 @@ name: Frontend audit
 on:
   push:
     branches: [main]
-    paths: ['index.html','app.html','ROADMAP.md','docs/**','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/frontend-audit.yml']
+    paths: ['index.html','app.html','package.json','ROADMAP.md','docs/**','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/**']
   pull_request:
-    paths: ['index.html','app.html','ROADMAP.md','docs/**','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/frontend-audit.yml']
+    paths: ['index.html','app.html','package.json','ROADMAP.md','docs/**','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/**']
 
 permissions:
   contents: read
@@ -15,10 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 20
+          package-manager-cache: false
 
       - name: Run canonical syntax and regression audit
         run: npm run audit
