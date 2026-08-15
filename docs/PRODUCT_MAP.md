@@ -110,6 +110,10 @@ Finalidade: reunir instrumentos de apoio reutilizáveis sem confundi-los com mé
 
 Modelos e checklists não podem alterar silenciosamente o motor metodológico nem gerar conclusão automática.
 
+Primeira peça incorporada: o **Protocolo de Conferência Pericial** (`js/models/checklists.js`), oito dimensões de conferência de um laudo antes do protocolo — delimitação e requisitos formais, método e sua aceitação, rastreabilidade, fato/hipótese/conclusão, fronteira jurídica, coerência metodológica interna, proporcionalidade epistêmica, e estado anterior/concausa/lacunas. Fundamento declarado na própria superfície: art. 473 do CPC e os invariantes já documentados em `docs/ARCHITECTURE.md` e `docs/MEDPER_METHOD.md`.
+
+O protocolo é consulta somente-leitura. Confere forma, método, rastreabilidade e proporcionalidade; **não avalia a correção clínica** do diagnóstico, do exame ou do juízo médico, e a superfície declara esse limite ao leitor. Não há acoplamento com `engine.js` — verificado por teste de regressão.
+
 ## 8. Configurações
 
 Finalidade: perfil, conta e preferências da aplicação.

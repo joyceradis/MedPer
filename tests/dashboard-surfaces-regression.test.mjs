@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { renderDashboardHome, renderDashboardSurface } from '../js/ui/dashboard-view.js';
+import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY } from '../js/models/checklists.js';
 
 function test(name, fn){
   try{fn();console.log(`✓ ${name}`);}catch(error){console.error(`✗ ${name}`);throw error;}
@@ -64,6 +66,33 @@ test('renderDashboardHome resolves the visible surface from the application hash
   assert.match(casesHtml,/<h1>Meus casos<\/h1>/);
   assert.match(deadlinesHtml,/data-dashboard-surface="deadlines"/);
   assert.match(referencesHtml,/data-dashboard-surface="references"/);
+});
+
+test('the models surface publishes the conference protocol instead of a placeholder', () => {
+  const html = renderDashboardSurface(state, 'models', 'active', { now });
+  assert.match(html, /data-dashboard-surface="models"/);
+  assert.match(html, /<h1>Modelos e checklists<\/h1>/);
+  assert.doesNotMatch(html, /Área reservada/, 'the placeholder must not silently return');
+  assert.match(html, /Protocolo de Conferência Pericial/);
+
+  for (const dimension of CONFERENCE_PROTOCOL.dimensions) {
+    assert.ok(html.includes(dimension.code), `dimension ${dimension.code} must render`);
+    assert.ok(html.includes(dimension.title), `dimension title "${dimension.title}" must render`);
+  }
+  assert.equal(CONFERENCE_PROTOCOL.dimensions.length, 8, 'the protocol has eight dimensions');
+
+  for (const severity of Object.values(CONFERENCE_SEVERITY)) {
+    assert.ok(html.includes(severity.label), `severity "${severity.label}" must render`);
+  }
+  assert.match(html, /Fora de escopo/, 'the surface must state what the protocol does not assess');
+});
+
+test('the conference protocol stays outside the decision engine', () => {
+  const checklists = readFileSync(new URL('../js/models/checklists.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(checklists, /core\/store|localStorage/, 'checklists must not touch persisted state');
+  assert.doesNotMatch(checklists, /import .*engine\.js|import .*protocols\.js/, 'checklists must not reach into the methodology engine');
+  const engine = readFileSync(new URL('../js/methodology/engine.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(engine, /models\/checklists/, 'the engine must not consume the conference checklist');
 });
 
 console.log('Dashboard surfaces regression suite completed successfully.');
