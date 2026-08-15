@@ -24,17 +24,22 @@ const parentSha = '1'.repeat(40);
 const beforeSha = '2'.repeat(40);
 const emptyTreeSha = '3'.repeat(40);
 assert.equal(
-  resolvePushBase({ before: beforeSha, parent: parentSha, emptyTree: emptyTreeSha }),
+  resolvePushBase({ before: beforeSha, beforeAvailable: true, parent: parentSha, emptyTree: emptyTreeSha }),
   beforeSha,
-  'normal push must use github.event.before'
+  'normal push must use github.event.before when that commit is available'
 );
 assert.equal(
-  resolvePushBase({ before: '0'.repeat(40), parent: parentSha, emptyTree: emptyTreeSha }),
+  resolvePushBase({ before: beforeSha, beforeAvailable: false, parent: parentSha, emptyTree: emptyTreeSha }),
+  parentSha,
+  'an unreachable force-push before SHA must fall back to the current head parent'
+);
+assert.equal(
+  resolvePushBase({ before: '0'.repeat(40), beforeAvailable: false, parent: parentSha, emptyTree: emptyTreeSha }),
   parentSha,
   'zero before SHA must fall back to the head parent'
 );
 assert.equal(
-  resolvePushBase({ before: '0'.repeat(40), parent: '', emptyTree: emptyTreeSha }),
+  resolvePushBase({ before: '0'.repeat(40), beforeAvailable: false, parent: '', emptyTree: emptyTreeSha }),
   emptyTreeSha,
   'first commit must fall back to the empty tree when no parent exists'
 );
@@ -63,6 +68,10 @@ assert.match(workflow, /skip_ai/, 'workflow must propagate documentation-only/em
 assert.match(workflow, /<!-- medper-ai-dual-review -->/, 'PR comment needs a stable marker');
 assert.match(workflow, /issues\.updateComment/, 'existing review comment must be updated in place');
 assert.match(workflow, /truncated/, 'published review must disclose truncation state');
+
+const prepare = await readFile(new URL('../.github/scripts/prepare-review.mjs', import.meta.url), 'utf8');
+assert.match(prepare, /fetch[\s\S]*--depth=1[\s\S]*origin/, 'prepare must try to recover a missing nonzero before SHA from origin');
+assert.match(prepare, /beforeAvailable/, 'prepare must tell the pure range resolver whether the before commit is reachable');
 
 const openai = await readFile(new URL('../.github/scripts/review-openai.mjs', import.meta.url), 'utf8');
 assert.doesNotMatch(openai, /from ['"]openai['"]|require\(['"]openai['"]\)/, 'OpenAI SDK must not be added');
