@@ -19,7 +19,12 @@ function setPath(obj,path,value){const parts=path.split('.');let node=obj;for(le
 function header(){return`<header class="topbar"><div class="topbar-inner"><button class="brand" data-home><span class="brand-copy"><strong>MedPer</strong><span>Perícia estruturada</span></span></button><div class="top-actions"><span class="save-state">Salvo neste dispositivo</span><button class="button button-secondary" data-account>Entrar</button><button class="button button-primary" data-new-case>Nova perícia</button></div></div></header>`;}
 function panel(title,help,body,full=true){return`<section class="panel ${full?'panel-full':''}"><div class="panel-head"><div><h2>${esc(title)}</h2>${help?`<p>${esc(help)}</p>`:''}</div></div>${body}</section>`;}
 function textarea(path,label,value,help=''){return`<label class="field"><span>${esc(label)}</span><textarea data-bind="${esc(path)}" placeholder="${esc(help)}">${esc(value||'')}</textarea>${help?`<small class="field-help">${esc(help)}</small>`:''}</label>`;}
-function choices(path,label,value,options){return`<fieldset class="guided-question"><legend>${esc(label)}</legend><div class="guided-choices">${options.map(o=>`<label class="guided-choice"><input type="radio" name="${esc(path)}" data-bind="${esc(path)}" value="${esc(o)}" ${value===o?'checked':''}><span>${esc(o)}</span></label>`).join('')}</div></fieldset>`;}
+// Um valor já registrado que não consta mais da lista de opções — porque a escala foi
+// corrigida depois — não pode simplesmente sumir da tela: o dado continua no caso e a
+// perita precisa vê-lo para decidir se reclassifica. Ele é exibido ao final, marcado
+// como registro anterior, em vez de deixar a pergunta aparentando nunca ter sido
+// respondida. Nada é reescrito automaticamente; a reclassificação é decisão dela.
+function choices(path,label,value,options){const legacy=value&&!options.includes(value);const list=legacy?[...options,value]:options;return`<fieldset class="guided-question"><legend>${esc(label)}</legend><div class="guided-choices">${list.map(o=>`<label class="guided-choice${legacy&&o===value?' is-legacy':''}"><input type="radio" name="${esc(path)}" data-bind="${esc(path)}" value="${esc(o)}" ${value===o?'checked':''}><span>${esc(o)}${legacy&&o===value?'<small>registro anterior — fora da escala atual</small>':''}</span></label>`).join('')}</div></fieldset>`;}
 
 function renderHome(state,filter='active'){return renderDashboardHome(state,filter);}
 
