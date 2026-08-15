@@ -115,11 +115,11 @@ Esta camada **não é uma superfície do produto em runtime**.
 
 `.github/workflows/` — auditorias de frontend, regressão, autenticação, backend e revisão automatizada.
 
-`package.json` — `npm run check`, `npm test` e `npm run audit` compõem a verificação JS canônica. O gate de sintaxe inclui também os scripts do subsistema de revisão por IA.
+`package.json` — `npm run check`, `npm test` e `npm run audit` compõem a verificação JS canônica. O gate de sintaxe inclui também os scripts do subsistema de revisão por IA. Como este arquivo define a própria composição dos gates, alterações em `package.json` disparam tanto a auditoria de frontend quanto a auditoria de regressão; mudança de wiring de teste não pode ficar sem CI apenas por não tocar `js/**` ou `tests/**`.
 
 `tests/` — regressões de store, contexto, metodologia, dashboard, UI, knowledge, lifecycle, legado e infraestrutura de revisão.
 
-`tests/actions-runtime-regression.test.mjs` — contrato da própria infraestrutura de CI. Impede reintrodução de majors de Actions baseados no runtime Node 20 e exige os majors canônicos compatíveis com Node 24.
+`tests/actions-runtime-regression.test.mjs` — contrato da própria infraestrutura de CI. Impede reintrodução de majors de Actions baseados no runtime Node 20, exige o major canônico em **cada ocorrência** de uma Action oficial governada e verifica a cobertura de gatilhos do `package.json`.
 
 ### 6.2 Runtime das GitHub Actions
 
