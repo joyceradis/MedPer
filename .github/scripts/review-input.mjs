@@ -13,8 +13,8 @@ export function isDocumentationOnly(paths) {
   });
 }
 
-export function resolvePushBase({ before, parent, emptyTree }) {
-  if (before && !isZeroSha(before)) return before;
+export function resolvePushBase({ before, beforeAvailable = true, parent, emptyTree }) {
+  if (before && !isZeroSha(before) && beforeAvailable) return before;
   if (parent) return parent;
   return emptyTree || '';
 }
