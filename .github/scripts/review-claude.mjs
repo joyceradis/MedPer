@@ -8,6 +8,20 @@ mkdirSync(OUT_DIR, { recursive: true });
 const outPath = `${OUT_DIR}/claude-findings.md`;
 const write = text => writeFileSync(outPath, text, 'utf8');
 
+function coverageNote(meta) {
+  const changed = Array.isArray(meta.changed_paths) ? meta.changed_paths : [];
+  const omitted = Array.isArray(meta.omitted_paths) ? meta.omitted_paths : [];
+  const partial = typeof meta.partial_path === 'string' ? meta.partial_path : '';
+  const lines = [
+    `Arquivos alterados na revisão completa (${changed.length}): ${changed.length ? changed.join(', ') : 'não informado'}.`
+  ];
+  if (meta.truncated) {
+    lines.push(`Arquivo parcialmente incluído no corte: ${partial || 'não identificado'}.`);
+    lines.push(`Arquivos totalmente omitidos pelo corte: ${omitted.length ? omitted.join(', ') : 'nenhum identificado'}.`);
+  }
+  return lines.join('\n');
+}
+
 try {
   const diff = readFileSync(`${INPUT_DIR}/diff.review.txt`, 'utf8');
   const context = readFileSync(`${INPUT_DIR}/review-context.md`, 'utf8');
@@ -56,7 +70,7 @@ try {
       messages: [
         {
           role: 'user',
-          content: `Revise este diff do repositório MedPer. A entrada foi preparada uma única vez e é idêntica à enviada ao GPT.${meta.truncated ? ` ATENÇÃO: o diff original tinha ${meta.original_bytes} bytes e esta entrada foi truncada para ${meta.review_bytes} bytes.` : ''}\n\n\`\`\`diff\n${diff}\n\`\`\``
+          content: `Revise este diff do repositório MedPer. A entrada foi preparada uma única vez e é idêntica à enviada ao GPT.${meta.truncated ? ` ATENÇÃO: o diff original tinha ${meta.original_bytes} bytes e esta entrada foi truncada para ${meta.review_bytes} bytes.` : ''}\n${coverageNote(meta)}\n\n\`\`\`diff\n${diff}\n\`\`\``
         }
       ]
     })
