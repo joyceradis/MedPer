@@ -92,6 +92,7 @@ GitHub Pages
             ├── methodology/engine.js
             ├── methodology/aipe.js
             ├── knowledge/library.js
+            ├── models/checklists.js
             └── ui/
                 ├── app.js
                 ├── workflow.js
@@ -332,6 +333,7 @@ O shell inclui `context-resolver.js`, `method-context-controller.js` e `context-
 | `engine.js` | audit/completude/salvaguardas | apresentação |
 | `aipe.js` | referência declarativa AIPE | decisão/pontuação automática |
 | `knowledge/library.js` | provenance e pertinência documental | alterar método |
+| `models/checklists.js` | checklist declarativo de conferência de laudo | assumir motor decisório, produzir pontuação ou avaliar mérito clínico |
 | `method-context-controller.js` | apresentar contexto e registrar escolha explícita | persistência direta |
 | `ui/app.js` | workspace/interação | `localStorage` direto |
 | `sw.js` | cache/offline | autorização/dados |
