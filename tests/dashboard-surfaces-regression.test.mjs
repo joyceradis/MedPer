@@ -101,6 +101,7 @@ test('the conference is a tool, not a document: it checks, counts and persists p
 
   assert.match(html, /data-conference-item="D1\.1"/, 'every item must be markable');
   assert.match(html, /data-conference-item="D1\.1"[^>]*checked/, 'a marked item must render checked');
+  assert.doesNotMatch(html, /data-conference-item="D1\.1"[^>]*disabled/, 'a selected case must keep the conference interactive');
   assert.match(html, /data-conference-case="case_1"/, 'the perita must choose which case she is checking');
 
   const progress = conferenceProgress(withCase.cases[0].conference);
@@ -108,9 +109,11 @@ test('the conference is a tool, not a document: it checks, counts and persists p
   assert.equal(progress.done, 2);
   assert.equal(progress.byDimension.D1.done, 2, 'progress is accounted per dimension too');
 
-  // Sem caso escolhido a superfície continua servindo como modelo de leitura.
+  // Sem caso escolhido a superfície continua servindo como modelo de leitura,
+  // mas não pode aceitar marcações que seriam descartadas silenciosamente.
   const asModel = renderDashboardSurface(withCase, 'models', 'active', { now });
   assert.doesNotMatch(asModel, /data-conference-item="D1\.1"[^>]*checked/, 'the model view carries no case state');
+  assert.match(asModel, /data-conference-item="D1\.1"[^>]*disabled/, 'the model view must not accept disposable marks');
   assert.match(asModel, /conf-hint/, 'the model view must explain how to start checking');
 });
 
