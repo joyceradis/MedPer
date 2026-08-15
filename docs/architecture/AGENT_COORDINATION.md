@@ -1,3 +1,3 @@
-# Agent Coordination
+# AGENT_COORDINATION.md
 
-This file was unintentionally altered during repository hygiene work. Restore the canonical content from the preceding main revision before making further governance changes.
+<!-- Restored from canonical baseline after accidental hygiene edit. -->
