@@ -17,34 +17,37 @@ const combined = [...workflows.entries()]
   .map(([name, body]) => `\n# ${name}\n${body}`)
   .join('\n');
 
-const deprecatedNode20Actions = [
-  'actions/checkout@v4',
-  'actions/setup-node@v4',
-  'actions/setup-python@v5',
-  'actions/upload-artifact@v4',
-  'actions/download-artifact@v4',
-  'actions/github-script@v7'
-];
+const canonicalActionMajors = new Map([
+  ['actions/checkout', 'v6'],
+  ['actions/setup-node', 'v7'],
+  ['actions/setup-python', 'v6'],
+  ['actions/upload-artifact', 'v7'],
+  ['actions/download-artifact', 'v5'],
+  ['actions/github-script', 'v8']
+]);
 
-for (const action of deprecatedNode20Actions) {
-  assert.equal(combined.includes(action), false, `${action} must not remain after the Node 24 GitHub Actions migration`);
-}
-
-const requiredRuntimeMajors = [
-  ['actions/checkout@v6', /actions\/checkout@/],
-  ['actions/setup-node@v7', /actions\/setup-node@/],
-  ['actions/setup-python@v6', /actions\/setup-python@/],
-  ['actions/upload-artifact@v7', /actions\/upload-artifact@/],
-  ['actions/download-artifact@v5', /actions\/download-artifact@/],
-  ['actions/github-script@v8', /actions\/github-script@/]
-];
-
-for (const [expected, familyPattern] of requiredRuntimeMajors) {
-  if (familyPattern.test(combined)) assert.ok(combined.includes(expected), `${expected} must be the canonical major when that action family is used`);
+for (const [family, expectedMajor] of canonicalActionMajors) {
+  const uses = [...combined.matchAll(new RegExp(`${family.replace('/', '\\/')}@(v\\d+)`, 'g'))];
+  if (uses.length === 0) continue;
+  for (const use of uses) {
+    assert.equal(
+      use[1],
+      expectedMajor,
+      `${family}@${use[1]} is not canonical; every ${family} use must be ${family}@${expectedMajor}`
+    );
+  }
 }
 
 const aiWorkflow = workflows.get('ai-review.yml') || '';
-assert.match(aiWorkflow, /actions\/setup-node@v7[\s\S]*?package-manager-cache:\s*false/g, 'AI review setup-node steps must explicitly disable automatic package-manager caching');
+const aiSetupNodeUses = [...aiWorkflow.matchAll(/actions\/setup-node@v7[\s\S]*?(?=\n\s*- uses:|\n\s*- name:|$)/g)];
+assert.equal(aiSetupNodeUses.length, 3, 'AI review must keep exactly three setup-node steps');
+for (const [index, match] of aiSetupNodeUses.entries()) {
+  assert.match(
+    match[0],
+    /package-manager-cache:\s*false/,
+    `AI review setup-node step ${index + 1} must explicitly disable automatic package-manager caching`
+  );
+}
 
 const authWorkflow = workflows.get('auth-audit.yml') || '';
 assert.match(authWorkflow, /Path\('app\.html'\)/, 'auth audit must inspect the application shell');
