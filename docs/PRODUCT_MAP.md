@@ -112,7 +112,9 @@ Modelos e checklists não podem alterar silenciosamente o motor metodológico ne
 
 Primeira peça incorporada: o **Protocolo de Conferência Pericial** (`js/models/checklists.js`), oito dimensões de conferência de um laudo antes do protocolo — delimitação e requisitos formais, método e sua aceitação, rastreabilidade, fato/hipótese/conclusão, fronteira jurídica, coerência metodológica interna, proporcionalidade epistêmica, e estado anterior/concausa/lacunas. Fundamento declarado na própria superfície: art. 473 do CPC e os invariantes já documentados em `docs/ARCHITECTURE.md` e `docs/MEDPER_METHOD.md`.
 
-O protocolo é consulta somente-leitura. Confere forma, método, rastreabilidade e proporcionalidade; **não avalia a correção clínica** do diagnóstico, do exame ou do juízo médico, e a superfície declara esse limite ao leitor. Não há acoplamento com `engine.js` — verificado por teste de regressão.
+Segunda peça: a **Estrutura de Laudo Pericial Judicial** (`js/models/report-structure.js`), dezesseis seções na ordem de composição, cada uma declarando para que existe e o que precisa conter. Ela descreve **forma**: não prescreve instrumento, escala, faixa nem conclusão, e não contém caso. As duas peças são complementares — a estrutura orienta a escrita, o protocolo confere o resultado —, e a superfície apresenta nessa ordem.
+
+Ambas são consulta somente-leitura. Confere forma, método, rastreabilidade e proporcionalidade; **não avalia a correção clínica** do diagnóstico, do exame ou do juízo médico, e a superfície declara esse limite ao leitor. Não há acoplamento com `engine.js` — verificado por teste de regressão.
 
 ## 8. Configurações
 

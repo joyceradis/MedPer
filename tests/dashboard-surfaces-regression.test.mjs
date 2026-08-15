@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { renderDashboardHome, renderDashboardSurface } from '../js/ui/dashboard-view.js';
 import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY } from '../js/models/checklists.js';
+import { REPORT_STRUCTURE } from '../js/models/report-structure.js';
 
 function test(name, fn){
   try{fn();console.log(`✓ ${name}`);}catch(error){console.error(`✗ ${name}`);throw error;}
@@ -93,6 +94,29 @@ test('the conference protocol stays outside the decision engine', () => {
   assert.doesNotMatch(checklists, /import .*engine\.js|import .*protocols\.js/, 'checklists must not reach into the methodology engine');
   const engine = readFileSync(new URL('../js/methodology/engine.js', import.meta.url), 'utf8');
   assert.doesNotMatch(engine, /models\/checklists/, 'the engine must not consume the conference checklist');
+});
+
+test('the models surface publishes the report structure alongside the conference protocol', () => {
+  const html = renderDashboardSurface(state, 'models', 'active', { now });
+  assert.match(html, /Estrutura de Laudo Pericial Judicial/);
+  assert.equal(REPORT_STRUCTURE.sections.length, 16, 'the structure has sixteen sections');
+  for (const section of REPORT_STRUCTURE.sections) {
+    assert.ok(html.includes(section.title), `section "${section.title}" must render`);
+  }
+  assert.ok(html.indexOf('Estrutura de Laudo') < html.indexOf('Protocolo de Conferência'),
+    'composition comes before conference: you write the report, then you check it');
+});
+
+test('the report structure prescribes form, never clinical content', () => {
+  const source = readFileSync(new URL('../js/models/report-structure.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /core\/store|localStorage/, 'the model must not touch persisted state');
+  assert.doesNotMatch(source, /import .*engine\.js|import .*aipe\.js|import .*protocols\.js/,
+    'the model must not reach into methodology modules');
+  // Sem caso: nenhum identificador, data de atendimento ou número de processo.
+  assert.doesNotMatch(source, /\d{2}\/\d{2}\/\d{4}/, 'no case dates may appear in a structural model');
+  assert.doesNotMatch(source, /\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/, 'no process numbers may appear');
+  const engine = readFileSync(new URL('../js/methodology/engine.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(engine, /models\/report-structure/, 'the engine must not consume the report structure');
 });
 
 console.log('Dashboard surfaces regression suite completed successfully.');
