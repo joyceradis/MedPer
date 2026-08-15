@@ -1,7 +1,7 @@
 import { CASE_FILTERS, filterCasesByLifecycle } from '../core/case-lifecycle.js';
 import { buildDashboardModel } from './dashboard-model.js';
 import { KNOWLEDGE_SOURCES, REFERENCE_CLASSES } from '../knowledge/library.js';
-import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY } from '../models/checklists.js';
+import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY, conferenceItemId, conferenceProgress } from '../models/checklists.js';
 
 const esc=(value='')=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
 
@@ -22,6 +22,11 @@ const icons={
 };
 
 const SURFACES=new Set(['overview','cases','deadlines','references','models']);
+
+export function conferenceCaseFromHash(hash=''){
+  const match=String(hash||'').match(/^#\/dashboard\/models\/([^/]+)/);
+  return match?decodeURIComponent(match[1]):'';
+}
 
 function surfaceFromHash(hash=''){
   const match=String(hash||'').match(/^#\/dashboard\/([^/]+)/);
@@ -45,9 +50,24 @@ function overview(state,filter,options){const now=options.now||new Date(),model=
 function casesSurface(state,filter,options){const model=buildDashboardModel(state.cases||[],options.now||new Date()),visible=filterCasesByLifecycle(state.cases||[],filter);return `${pageHeader('Meus casos','Organize por estado do trabalho, atuação, esfera e unidade.')}<section class="surface-panel"><header class="dashboard-section-head"><div><h2>Perícias</h2><p>${visible.length} nesta visão</p></div><nav class="case-filters">${CASE_FILTERS.map(i=>`<button class="case-filter ${filter===i.id?'is-active':''}" data-case-filter="${i.id}"><span>${esc(i.label)}</span><small>${model.counts[i.id]}</small></button>`).join('')}</nav></header><div class="dashboard-case-grid">${visible.length?visible.map(renderCase).join(''):'<div class="dashboard-empty-state dashboard-empty-wide"><strong>Nenhum caso nesta visão</strong><span>Altere o filtro ou crie uma nova perícia.</span></div>'}</div></section>`;}
 function deadlinesSurface(state,filter,options){const now=options.now||new Date(),model=buildDashboardModel(state.cases||[],now);return `${pageHeader('Agenda e prazos','Compromissos periciais ordenados por criticidade.',{search:false})}<section class="surface-panel surface-deadlines"><header class="dashboard-section-head"><div><h2>Próximos compromissos</h2><p>${model.deadlines.length} prazo(s) registrado(s)</p></div></header>${model.deadlines.length?model.deadlines.map(d=>renderDeadline(d,now)).join(''):'<div class="dashboard-empty-state"><strong>Nenhum prazo registrado</strong><span>Adicione prazos aos casos para vê-los aqui.</span></div>'}</section>`;}
 function referencesSurface(){return `${pageHeader('Referências técnicas','Consulte a base documental sem misturá-la ao motor decisório.',{search:false,newCase:false})}<section class="reference-library"><header><span class="eyebrow">Biblioteca auditável</span><h2>Conhecimento contextual</h2><p>Natureza, autoridade, versão, âmbito e limitações permanecem explícitos. Uma referência não altera automaticamente o método nem produz conclusão.</p></header><div class="reference-library-grid">${KNOWLEDGE_SOURCES.map(s=>`<article class="reference-source-card"><div class="reference-source-class">${(s.classes||[]).map(c=>esc(REFERENCE_CLASSES[c]||c)).join(' · ')}</div><h3>${esc(s.title)}</h3><p>${esc(s.scope)}</p><dl><div><dt>Autoridade</dt><dd>${esc(s.authority)}</dd></div><div><dt>Versão</dt><dd>${esc(s.version)}</dd></div><div><dt>Limitação</dt><dd>${esc(s.limitation)}</dd></div></dl></article>`).join('')}</div></section>`;}
-function severityLegend(){return `<div class="checklist-severity-legend">${Object.values(CONFERENCE_SEVERITY).map(s=>`<div class="checklist-severity checklist-severity-${esc(s.id)}"><strong>${esc(s.label)}</strong><span>${esc(s.meaning)}</span></div>`).join('')}</div>`;}
-function conferenceCard(d){return `<article class="checklist-card"><header><span class="checklist-code">${esc(d.code)}</span><h3>${esc(d.title)}</h3></header><p class="checklist-why">${esc(d.why)}</p><ul class="checklist-items">${d.items.map(i=>`<li>${esc(i)}</li>`).join('')}</ul>${d.redFlag?`<p class="checklist-flag"><strong>Sinal de alerta</strong>${esc(d.redFlag)}</p>`:''}</article>`;}
-function modelsSurface(){const p=CONFERENCE_PROTOCOL;return `${pageHeader('Modelos e checklists','Recursos auxiliares sem interferência automática na conclusão.',{search:false,newCase:false})}<section class="checklist-surface"><header class="checklist-head"><div><span class="eyebrow">Instrumento de conferência</span><h2>${esc(p.title)}</h2><p>${esc(p.purpose)}</p></div><dl class="checklist-meta"><div><dt>Versão</dt><dd>${esc(p.version)}</dd></div><div><dt>Atualizado</dt><dd>${esc(p.updatedAt)}</dd></div><div><dt>Dimensões</dt><dd>${p.dimensions.length}</dd></div></dl></header><section class="checklist-basis"><h3>De onde vêm estes critérios</h3><ul>${p.basis.map(b=>`<li>${esc(b)}</li>`).join('')}</ul></section>${severityLegend()}<div class="checklist-stack">${p.dimensions.map(conferenceCard).join('')}</div><footer class="checklist-scope"><strong>Fora de escopo</strong><p>${esc(p.scopeLimit)}</p></footer></section>`;}
+function severityLegend(){return `<div class="checklist-severity-legend">${Object.values(CONFERENCE_SEVERITY).map(s=>`<span class="checklist-severity checklist-severity-${esc(s.id)}" title="${esc(s.meaning)}"><strong>${esc(s.label)}</strong><small>${esc(s.meaning)}</small></span>`).join('')}</div>`;}
 
-export function renderDashboardSurface(state,surface='overview',filter='active',options={}){const safe=SURFACES.has(surface)?surface:'overview';const displayName=options.displayName||'Dra. Joyce';const content=safe==='cases'?casesSurface(state,filter,options):safe==='deadlines'?deadlinesSurface(state,filter,options):safe==='references'?referencesSurface():safe==='models'?modelsSurface():overview(state,filter,{...options,displayName});return shell(content,safe,displayName);}
-export function renderDashboardHome(state,filter='active',options={}){const hash=options.hash??(typeof window!=='undefined'?window.location.hash:'');return renderDashboardSurface(state,surfaceFromHash(hash),filter,options);}
+function conferenceRow(d,checked,progress,open){const p=progress.byDimension[d.code]||{done:0,total:d.items.length};const complete=p.done===p.total;return `<details class="conf-row${complete?' is-complete':''}"${open?' open':''}><summary><span class="conf-code">${esc(d.code)}</span><span class="conf-title">${esc(d.title)}</span><span class="conf-count">${p.done}/${p.total}</span></summary><div class="conf-body"><p class="conf-why">${esc(d.why)}</p><ul class="conf-items">${d.items.map((text,i)=>{const id=conferenceItemId(d.code,i);const on=Boolean(checked[id]);return `<li><label class="conf-item${on?' is-checked':''}"><input type="checkbox" data-conference-item="${esc(id)}"${on?' checked':''}><span>${esc(text)}</span></label></li>`;}).join('')}</ul>${d.redFlag?`<p class="conf-flag"><strong>Sinal de alerta</strong>${esc(d.redFlag)}</p>`:''}</div></details>`;}
+
+function conferencePicker(state,activeId){const cases=(state.cases||[]).filter(c=>c.status!=='Lixeira');if(!cases.length)return '<p class="conf-empty">Nenhuma perícia aberta. A conferência fica disponível assim que existir um caso.</p>';return `<div class="conf-picker"><span>Conferindo</span><div class="conf-picker-options">${cases.map(c=>`<button type="button" class="conf-case${activeId===c.id?' is-active':''}" data-conference-case="${esc(c.id)}">${esc(c.title)}</button>`).join('')}${activeId?`<button type="button" class="conf-case conf-case-clear" data-conference-case="">Ver como modelo</button>`:''}</div></div>`;}
+
+function modelsSurface(state,options={}){
+  const p=CONFERENCE_PROTOCOL;
+  const activeId=options.conferenceCaseId||'';
+  const active=(state.cases||[]).find(c=>c.id===activeId&&c.status!=='Lixeira')||null;
+  const checked=active?(active.conference||{}):{};
+  const progress=conferenceProgress(checked,p);
+  const pct=progress.total?Math.round(progress.done/progress.total*100):0;
+  const meter=active
+    ? `<div class="conf-meter"><div class="conf-meter-head"><strong>${progress.done} de ${progress.total} conferidos</strong><span>${pct}%</span></div><div class="conf-meter-track" role="progressbar" aria-valuenow="${progress.done}" aria-valuemin="0" aria-valuemax="${progress.total}"><span style="width:${pct}%"></span></div></div>`
+    : '<p class="conf-hint">Escolha uma perícia para marcar a conferência. Sem caso selecionado, o protocolo aparece como modelo de leitura.</p>';
+  return `${pageHeader('Modelos e checklists','Instrumentos de apoio. Nada aqui altera protocolo, pontuação ou conclusão.',{search:false,newCase:false})}<section class="conf-surface"><header class="conf-head"><div><span class="eyebrow">Instrumento de conferência</span><h2>${esc(p.title)}</h2></div><details class="conf-about"><summary>Critérios e limites</summary><ul>${p.basis.map(b=>`<li>${esc(b)}</li>`).join('')}</ul><p class="conf-scope">${esc(p.scopeLimit)}</p></details></header>${conferencePicker(state,active?active.id:'')}${meter}${severityLegend()}<div class="conf-list">${p.dimensions.map((d,i)=>conferenceRow(d,checked,progress,!active&&i===0)).join('')}</div></section>`;
+}
+
+export function renderDashboardSurface(state,surface='overview',filter='active',options={}){const safe=SURFACES.has(surface)?surface:'overview';const displayName=options.displayName||'Dra. Joyce';const content=safe==='cases'?casesSurface(state,filter,options):safe==='deadlines'?deadlinesSurface(state,filter,options):safe==='references'?referencesSurface():safe==='models'?modelsSurface(state,options):overview(state,filter,{...options,displayName});return shell(content,safe,displayName);}
+export function renderDashboardHome(state,filter='active',options={}){const hash=options.hash??(typeof window!=='undefined'?window.location.hash:'');return renderDashboardSurface(state,surfaceFromHash(hash),filter,{...options,conferenceCaseId:options.conferenceCaseId??conferenceCaseFromHash(hash)});}

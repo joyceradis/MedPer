@@ -264,4 +264,19 @@ test('recovers safely from invalid persisted JSON', () => {
   assert.deepEqual(store.getState().cases, []);
 });
 
+test('a legacy case without conference state opens with an empty conference', () => {
+  const store = createStore();
+  store.replace({ cases: [{ id: 'legacy', title: 'Caso antigo' }] });
+  const [c] = store.getState().cases;
+  assert.deepEqual(c.conference, {}, 'missing conference must normalize to an empty map, never undefined');
+});
+
+test('conference marks survive normalization and never leak into methodology', () => {
+  const store = createStore();
+  store.replace({ cases: [{ id: 'c', title: 'Caso', conference: { 'D1.1': true } }] });
+  const [c] = store.getState().cases;
+  assert.equal(c.conference['D1.1'], true, 'the perita mark must be preserved');
+  assert.equal(Object.keys(c.methodology.guided).length, 0, 'conference is not a methodological answer');
+});
+
 console.log('Store regression suite completed successfully.');

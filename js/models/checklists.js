@@ -138,3 +138,29 @@ export const CONFERENCE_PROTOCOL = Object.freeze({
     })
   ])
 });
+
+// Identificador estável de item, usado como chave de persistência. Depende do código
+// da dimensão e da posição — não do texto —, para que corrigir a redação de um item
+// não apague a conferência já feita pela perita.
+export function conferenceItemId(dimensionCode, index) {
+  return `${dimensionCode}.${index + 1}`;
+}
+
+export function conferenceItems(protocol = CONFERENCE_PROTOCOL) {
+  return protocol.dimensions.flatMap(d => d.items.map((text, i) => ({
+    id: conferenceItemId(d.code, i),
+    dimensionCode: d.code,
+    text
+  })));
+}
+
+export function conferenceProgress(checked = {}, protocol = CONFERENCE_PROTOCOL) {
+  const items = conferenceItems(protocol);
+  const done = items.filter(item => checked[item.id]).length;
+  const byDimension = Object.fromEntries(protocol.dimensions.map(d => {
+    const total = d.items.length;
+    const marked = d.items.filter((_, i) => checked[conferenceItemId(d.code, i)]).length;
+    return [d.code, { done: marked, total }];
+  }));
+  return { done, total: items.length, byDimension };
+}
