@@ -9,7 +9,7 @@ on:
       - 'css/auth.css'
       - 'supabase/**'
       - 'js/main.js'
-      - 'index.html'
+      - 'app.html'
       - 'sw.js'
       - '.github/workflows/auth-audit.yml'
   pull_request:
@@ -19,7 +19,7 @@ on:
       - 'css/auth.css'
       - 'supabase/**'
       - 'js/main.js'
-      - 'index.html'
+      - 'app.html'
       - 'sw.js'
       - '.github/workflows/auth-audit.yml'
 
@@ -47,7 +47,7 @@ jobs:
           config=Path('js/config/supabase-config.js').read_text(encoding='utf-8')
           main=Path('js/main.js').read_text(encoding='utf-8')
           sw=Path('sw.js').read_text(encoding='utf-8')
-          index=Path('index.html').read_text(encoding='utf-8')
+          app=Path('app.html').read_text(encoding='utf-8')
           forbidden=['service_role','SUPABASE_SERVICE_ROLE','secretKey']
           exposed=[x for x in forbidden if x in config]
           if exposed: raise SystemExit(f'Secret-like values in browser config: {exposed}')
@@ -60,7 +60,7 @@ jobs:
           required_assets=['./css/auth.css','./js/auth/auth-controller.js','./js/config/supabase-config.js']
           missing=[x for x in required_assets if x not in sw]
           if missing: raise SystemExit(f'Auth assets absent from PWA shell: {missing}')
-          if './css/auth.css' not in index: raise SystemExit('Authentication stylesheet not loaded.')
+          if './css/auth.css' not in app: raise SystemExit('Authentication stylesheet not loaded by app.html.')
           print('Authentication gate, public-key safety and PWA assets validated.')
           PY
       - name: Check database schema isolation
