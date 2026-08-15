@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import {
   DEFAULT_DIFF_LIMIT_BYTES,
   isDocumentationOnly,
+  isZeroSha,
   resolvePushBase,
   truncateDiff
 } from './review-input.mjs';
@@ -35,6 +36,26 @@ function required(value, name) {
   return value;
 }
 
+function hasCommit(sha) {
+  if (!sha || isZeroSha(sha)) return false;
+  return Boolean(tryGitTrimmed(['rev-parse', '--verify', `${sha}^{commit}`]));
+}
+
+function ensureCommit(sha) {
+  if (hasCommit(sha)) return true;
+  if (!sha || isZeroSha(sha)) return false;
+
+  try {
+    git(['fetch', '--no-tags', '--depth=1', 'origin', sha], {
+      stdio: ['ignore', 'ignore', 'ignore']
+    });
+  } catch {
+    return false;
+  }
+
+  return hasCommit(sha);
+}
+
 const eventName = process.env.GITHUB_EVENT_NAME || '';
 const head = required(
   process.env.REVIEW_HEAD_SHA || tryGitTrimmed(['rev-parse', 'HEAD']),
@@ -51,8 +72,18 @@ if (eventName === 'pull_request') {
   const before = process.env.REVIEW_BEFORE_SHA || '';
   const parent = tryGitTrimmed(['rev-parse', `${head}^`]);
   const emptyTree = gitTrimmed(['hash-object', '-t', 'tree', '--stdin'], { input: '' });
-  base = resolvePushBase({ before, parent, emptyTree });
-  rangeSource = before && base === before ? 'push.before' : parent && base === parent ? 'head.parent' : 'empty.tree';
+  const beforeAvailable = ensureCommit(before);
+  base = resolvePushBase({ before, beforeAvailable, parent, emptyTree });
+
+  if (before && !isZeroSha(before) && beforeAvailable && base === before) {
+    rangeSource = 'push.before';
+  } else if (parent && base === parent) {
+    rangeSource = before && !isZeroSha(before)
+      ? 'head.parent-after-unavailable-before'
+      : 'head.parent';
+  } else {
+    rangeSource = 'empty.tree';
+  }
 }
 
 base = required(base, 'resolved base SHA');
@@ -105,5 +136,6 @@ if (githubOutput) {
 console.log(
   `Prepared AI review input: ${changedPaths.length} paths, ${truncated.originalBytes} bytes` +
   `${truncated.truncated ? ` (truncated to ${truncated.reviewBytes})` : ''}` +
-  `${skipAi ? `; AI skipped: ${skipReason}` : ''}.`
+  `${skipAi ? `; AI skipped: ${skipReason}` : ''}` +
+  `; range source: ${rangeSource}.`
 );
