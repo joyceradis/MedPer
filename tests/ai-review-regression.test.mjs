@@ -102,4 +102,46 @@ assert.match(claude, /changed_paths/, 'Claude prompt must receive the complete c
 assert.match(claude, /omitted_paths/, 'Claude prompt must disclose paths wholly omitted by truncation');
 assert.match(claude, /partial_path/, 'Claude prompt must disclose a partially included path');
 
+// ---------------------------------------------------------------------------
+// Camada de segurança — S1, C2, S3, S4, P1.
+// Bloco ortogonal: acrescenta invariantes de segurança sem tocar nas assertions
+// acima, que pertencem à linha canônica.
+// ---------------------------------------------------------------------------
+
+// C2 · o pipeline nunca pode pular a revisão da própria configuração operante.
+assert.equal(isDocumentationOnly(['.github/scripts/review-context.md']), false, 'review-context.md is the reviewers own system prompt, never documentation');
+assert.equal(isDocumentationOnly(['.github/workflows/ai-review.yml', 'docs/SITE_MAP.md']), false, 'any .github path disqualifies the documentation-only skip');
+assert.equal(isDocumentationOnly(['docs/ARCHITECTURE.md']), true, 'real documentation still skips paid review');
+
+// S1 · delimitador imprevisível por execução, envolvendo TODO dado controlado pela PR.
+assert.match(prepare, /randomUUID/, 'prepare must mint a per-run delimiter the diff cannot predict');
+assert.match(prepare, /fence/, 'the per-run delimiter must travel in the shared metadata');
+for (const [name, source] of [['openai', openai], ['claude', claude]]) {
+  assert.match(source, /meta\.fence/, `${name} must delimit untrusted input with the per-run fence`);
+  assert.doesNotMatch(source, /```diff/, `${name} must not fence the diff with backticks, which the diff itself can close`);
+  assert.match(source, /const untrusted = \[coverageNote\(meta\)[\s\S]{0,40}diff\]/, `${name} must place the PR-controlled path inventory inside the fence, not only the diff`);
+  assert.doesNotMatch(source, /\$\{coverageNote\(meta\)\}[\s\S]{0,200}\$\{meta\.fence\}/, `${name} must not emit coverageNote outside the delimited block`);
+  assert.match(source, /throw new Error\([^)]*fence/, `${name} must fail closed when the fence is absent`);
+}
+const reviewContext = await readFile(new URL('../.github/scripts/review-context.md', import.meta.url), 'utf8');
+assert.match(reviewContext, /inje[c\u00e7]/i, 'the system prompt must name prompt injection as a reportable finding');
+assert.match(reviewContext, /leg[i\u00ed]tima/i, 'the rule must distinguish legitimate policy changes from attempts to steer the current review');
+
+// P1 · a política vem da revisão-base confiável (tip da base), nunca do merge-base
+// nem da árvore da PR.
+assert.match(prepare, /policyRef/, 'the reviewer system prompt must resolve through an explicit policy revision');
+assert.match(prepare, /policyRef = targetBase/, 'on pull requests the policy revision must be the base tip, not the merge base');
+assert.match(prepare, /show['\"`\s,\]]+.*policyRef.*review-context\.md/, 'review-context.md must be read from the policy revision');
+assert.doesNotMatch(prepare, /copyFileSync[\s\S]{0,120}review-context\.md/, 'review-context.md must not be copied from the PR working tree');
+assert.match(prepare, /context_source/, 'metadata must record where the system prompt came from');
+assert.match(workflow, /contextNotice/, 'the comment must disclose when the rules did not come from the base');
+
+// S3 · publicar um texto não justifica permissão de escrita no repositório.
+assert.match(workflow, /contents:\s*read/, 'the review pipeline must never hold write access to repository contents');
+assert.doesNotMatch(workflow, /createCommitComment/, 'createCommitComment requires contents: write; publish to the job summary instead');
+assert.match(workflow, /core\.summary/, 'the no-PR push path must still publish its findings somewhere visible');
+
+// S4 · PR de fork não tem secrets nem token de escrita.
+assert.equal((workflow.match(/head\.repo\.full_name\s*==\s*github\.repository/g) || []).length, 3, 'the two reviewer jobs and the publishing job must each skip fork pull requests');
+
 console.log('AI review regression suite completed successfully.');
