@@ -113,13 +113,29 @@ Esta camada **não é uma superfície do produto em runtime**.
 
 ### 6.1 Gates determinísticos
 
-`.github/workflows/` — auditorias de frontend/regressão e demais gates do repositório.
+`.github/workflows/` — auditorias de frontend, regressão, autenticação, backend e revisão automatizada.
 
 `package.json` — `npm run check`, `npm test` e `npm run audit` compõem a verificação JS canônica. O gate de sintaxe inclui também os scripts do subsistema de revisão por IA.
 
 `tests/` — regressões de store, contexto, metodologia, dashboard, UI, knowledge, lifecycle, legado e infraestrutura de revisão.
 
-### 6.2 Revisão automatizada GPT + Claude
+`tests/actions-runtime-regression.test.mjs` — contrato de manutenção da própria infraestrutura de CI. Impede reintrodução dos majors de Actions baseados em Node 20 e exige os majors canônicos compatíveis com runtime Node 24.
+
+### 6.2 Runtime das GitHub Actions
+
+As Actions JavaScript oficiais usadas pela infraestrutura de CI ficam em majors compatíveis com o **runtime Node.js 24 do GitHub Actions**. Isso é independente da versão de linguagem usada para validar o produto.
+
+- `actions/checkout@v6` — checkout canônico.
+- `actions/setup-node@v7` — action em runtime atualizado; continua configurando `node-version: 20` para os gates JavaScript enquanto Node 20 permanecer no contrato de compatibilidade do projeto.
+- `actions/setup-python@v6` — action em runtime atualizado; continua configurando Python `3.13` para os testes backend.
+- `actions/upload-artifact@v7` e `actions/download-artifact@v5` — transporte dos artefatos de revisão.
+- `actions/github-script@v8` — publicação/atualização do comentário consolidado.
+
+Nos jobs de revisão por IA, `actions/setup-node@v7` usa `package-manager-cache: false`: os clientes de revisão são ESM dependency-free executados diretamente por `node`, sem instalação de dependências npm.
+
+Regra: atualizar o runtime interno das GitHub Actions **não altera** o runtime da PWA, o owner de persistência, o motor metodológico, a seleção de protocolos nem conclusões médico-periciais.
+
+### 6.3 Revisão automatizada GPT + Claude
 
 `.github/workflows/ai-review.yml` — orquestra revisão independente por dois modelos em PRs e pushes para `main`.
 
@@ -153,7 +169,7 @@ Invariantes desta camada:
 2. diff > 60.000 bytes é marcado explicitamente como truncado;
 3. mudança somente em `*.md`/`docs/**` não consome chamadas pagas de IA;
 4. comentários de PR são atualizados por marcador estável, em vez de multiplicados a cada push;
-5. `github.event.before` zerado usa fallback de parent/empty tree;
+5. range de push/PR usa fallback explícito quando o SHA de base não é utilizável;
 6. `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` existem somente como GitHub Actions secrets quando ativadas;
 7. revisão de IA é **advisory governance**: não altera arquivos automaticamente, não escreve estado de caso, não adota protocolo e não produz conclusão médico-pericial.
 
