@@ -57,6 +57,7 @@ assert.match(authWorkflow, /onAccessRevoked/, 'auth audit must track access revo
 
 const frontendWorkflow = workflows.get('frontend-audit.yml') || '';
 assert.match(frontendWorkflow, /['"]?package\.json['"]?/, 'frontend audit must run when package.json changes the canonical JS gates');
+assert.match(frontendWorkflow, /['"]?\.github\/workflows\/\*\*['"]?/, 'frontend audit must run the runtime regression gate for every workflow YAML change');
 const regressionWorkflow = workflows.get('regression-audit.yml') || '';
 assert.match(regressionWorkflow, /- ['"]?package\.json['"]?/, 'regression audit must run when package.json changes test wiring');
 
