@@ -125,6 +125,10 @@ Esta camada **não é uma superfície do produto em runtime**.
 
 `.github/scripts/prepare-review.mjs` + `review-input.mjs` — calculam **uma única entrada canônica** para os dois revisores, resolvem o intervalo de commits, detectam alterações apenas documentais e registram truncamento do diff.
 
+Em Pull Requests, o intervalo nasce do **merge-base entre a base alvo e o head**, evitando que avanço da branch alvo apareça como deleção ou alteração fantasma na revisão. Em pushes, o intervalo continua sendo `before → head`, com fallback para parent/empty tree quando `before` é zerado ou não pode ser recuperado.
+
+O payload de revisão é textual: patches binários não são incorporados ao orçamento. Quando o teto de 60.000 bytes é atingido, a metadata registra inventário completo dos caminhos alterados, caminho parcialmente incluído e caminhos totalmente omitidos. O comentário consolidado também é limitado de forma conservadora e declara quando a resposta de algum revisor precisou ser truncada apenas para publicação no GitHub; o artefato do job permanece a fonte integral daquela execução.
+
 `.github/scripts/review-openai.mjs` — cliente OpenAI via `fetch` nativo, com teto explícito de saída.
 
 `.github/scripts/review-claude.mjs` — cliente Anthropic via `fetch` nativo. Para Opus 5, usa thinking adaptativo (`thinking.type = adaptive`), esforço explícito (`output_config.effort`, `high` por padrão), teto rígido de `max_tokens` e tratamento de `stop_reason`; `budget_tokens` não pertence ao contrato desta geração do modelo.
@@ -136,7 +140,7 @@ Fluxo:
 ```text
 PR / push main
       ↓
-prepare — checkout único + range + diff canônico + metadata
+prepare — checkout único + merge-base/range + diff canônico + metadata
       ↓
 review-input artifact
       ├───────────────┐
@@ -144,18 +148,26 @@ review-input artifact
 GPT review        Claude review
       └───────┬───────┘
               ↓
-comentário consolidado e atualizável
+comentário consolidado, limitado e atualizável
 ```
 
 Invariantes desta camada:
 
 1. os dois revisores recebem o mesmo payload de diff;
-2. diff > 60.000 bytes é marcado explicitamente como truncado;
-3. mudança somente em `*.md`/`docs/**` não consome chamadas pagas de IA;
+2. diff > 60.000 bytes é marcado explicitamente como truncado e sua cobertura por caminho é declarada;
+3. mudança somente documental pode evitar chamadas pagas de IA, mas arquivos operacionais de governança não podem ser tratados como documentação inócua;
 4. comentários de PR são atualizados por marcador estável, em vez de multiplicados a cada push;
-5. `github.event.before` zerado usa fallback de parent/empty tree;
+5. Pull Requests usam merge-base; pushes usam `before` quando recuperável e fallback seguro quando ele é zerado/inalcançável;
 6. `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` existem somente como GitHub Actions secrets quando ativadas;
 7. revisão de IA é **advisory governance**: não altera arquivos automaticamente, não escreve estado de caso, não adota protocolo e não produz conclusão médico-pericial.
+
+### 6.3 Fronteira de confiança dos secrets de revisão
+
+A ativação de secrets em um workflow disparado por `pull_request` pressupõe que **quem pode publicar branches dentro deste mesmo repositório é um colaborador confiável para a infraestrutura de CI**. Uma branch do próprio repositório pode propor alteração do YAML do workflow; portanto, segredo de provedor não deve ser ativado sob a premissa falsa de que qualquer autor de branch é não confiável.
+
+Enquanto o MedPer operar com branches internas controladas pela founder e agentes autorizados, essa é a fronteira explícita de confiança. Antes de admitir contribuição não confiável com capacidade de branch no mesmo repositório, a revisão paga deve migrar para uma fronteira que não entregue secrets ao YAML controlado pelo autor da PR — por exemplo, GitHub Environment com aprovação obrigatória ou execução base-controlled (`workflow_run`/arquitetura equivalente), com nova auditoria de permissões.
+
+Pull Requests de forks devem degradar sem secrets e sem transformar ausência de permissão de escrita em falsa falha de revisão. A configuração concreta desse caminho permanece responsabilidade da camada de governança de Actions, não do runtime MedPer.
 
 ## 7. Regra arquitetural resumida
 
