@@ -1,0 +1,159 @@
+# Revisão automatizada em dois modelos (OpenAI GPT + Anthropic Claude), em paralelo.
+#
+# Pré-requisitos que este workflow NÃO provisiona sozinho — configure antes de esperar
+# resultado, em Settings → Secrets and variables → Actions:
+#   secrets:   OPENAI_API_KEY, ANTHROPIC_API_KEY
+#   variables (opcionais): OPENAI_REVIEW_MODEL, CLAUDE_REVIEW_MODEL
+#     (sem elas, usa os padrões definidos abaixo — confirme se são os modelos corretos
+#     para a sua conta antes de confiar no resultado)
+#
+# Dispara em toda Pull Request (revisão antes do merge) e em todo push na main
+# (revisão pós-merge). Cada execução chama duas APIs pagas de terceiros — não há
+# limite de gasto embutido além do corte de tamanho do diff abaixo.
+name: AI dual-model review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  gpt-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compute diff
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff "origin/${{ github.event.pull_request.base.ref }}...HEAD" > diff.txt || true
+          else
+            git diff "${{ github.event.before }}" "${{ github.event.after }}" > diff.txt || git diff HEAD~1 HEAD > diff.txt || true
+          fi
+          head -c 60000 diff.txt > diff.trimmed.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Call OpenAI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_REVIEW_MODEL: ${{ vars.OPENAI_REVIEW_MODEL || 'gpt-5' }}
+        run: node .github/scripts/review-openai.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gpt-findings
+          path: ai-review-out/openai-findings.md
+          if-no-files-found: warn
+          retention-days: 14
+
+  claude-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compute diff
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff "origin/${{ github.event.pull_request.base.ref }}...HEAD" > diff.txt || true
+          else
+            git diff "${{ github.event.before }}" "${{ github.event.after }}" > diff.txt || git diff HEAD~1 HEAD > diff.txt || true
+          fi
+          head -c 60000 diff.txt > diff.trimmed.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Call Claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_REVIEW_MODEL: ${{ vars.CLAUDE_REVIEW_MODEL || 'claude-sonnet-5' }}
+        run: node .github/scripts/review-claude.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: claude-findings
+          path: ai-review-out/claude-findings.md
+          if-no-files-found: warn
+          retention-days: 14
+
+  post-comment:
+    needs: [gpt-review, claude-review]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: findings
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const read = path => {
+              try { return fs.readFileSync(path, 'utf8'); }
+              catch { return '_Sem resultado (job não concluiu ou artefato ausente)._'; }
+            };
+            const gpt = read('findings/gpt-findings/openai-findings.md');
+            const claude = read('findings/claude-findings/claude-findings.md');
+            const eventLabel = context.eventName === 'pull_request' ? 'Pull Request' : 'push para main';
+
+            const body = [
+              '### 🤖 Revisão automatizada — GPT + Claude',
+              '',
+              `Disparada por: ${eventLabel} · commit \`${context.sha.slice(0, 7)}\``,
+              '',
+              '#### GPT',
+              gpt,
+              '',
+              '#### Claude',
+              claude,
+              '',
+              '---',
+              '_Gerado automaticamente por `.github/workflows/ai-review.yml`. Achados de IA — não substituem revisão humana nem alteram o motor metodológico do MedPer._'
+            ].join('\n');
+
+            if (context.eventName === 'pull_request') {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body
+              });
+              return;
+            }
+
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha
+            });
+
+            if (prs.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prs[0].number,
+                body: `**Auditoria pós-merge**\n\n${body}`
+              });
+            } else {
+              await github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+                body: `**Auditoria pós-merge (push direto, sem PR associada)**\n\n${body}`
+              });
+            }
