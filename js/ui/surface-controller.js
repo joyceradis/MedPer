@@ -48,7 +48,8 @@ export function installSurfaceController({root,store}){
   };
 
   // A marcação é registro da perita sobre o próprio trabalho. Persiste pelo store,
-  // que segue sendo o único dono do estado — o controlador não escreve em localStorage.
+  // que segue sendo o único dono do estado — o controlador não escreve na camada
+  // de armazenamento persistente diretamente.
   //
   // `notify:false` é deliberado, e é o mesmo idioma que o workspace já usa para
   // digitação: um re-render completo a cada item marcado fecharia o acordeão e
