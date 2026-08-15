@@ -58,7 +58,7 @@ assert.equal(Buffer.byteLength(oversized.text, 'utf8'), 60000);
 const workflow = await readFile(new URL('../.github/workflows/ai-review.yml', import.meta.url), 'utf8');
 assert.match(workflow, /^  prepare:/m, 'workflow must have a single prepare job');
 assert.equal(
-  (workflow.match(/actions\/checkout@v4/g) || []).length,
+  (workflow.match(/actions\/checkout@v\d+/g) || []).length,
   1,
   'only the prepare job should clone the repository'
 );
