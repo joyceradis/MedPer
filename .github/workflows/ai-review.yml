@@ -135,6 +135,8 @@ jobs:
           script: |
             const fs = require('fs');
             const marker = '<!-- medper-ai-dual-review -->';
+            const MAX_COMMENT_CHARS = 60000;
+            const MAX_FINDING_CHARS = 25000;
             const read = (path, fallback) => {
               try { return fs.readFileSync(path, 'utf8'); }
               catch { return fallback; }
@@ -142,6 +144,23 @@ jobs:
             const readJson = (path, fallback) => {
               try { return JSON.parse(fs.readFileSync(path, 'utf8')); }
               catch { return fallback; }
+            };
+            const capFinding = (text, provider) => {
+              const value = String(text || '');
+              if (value.length <= MAX_FINDING_CHARS) return value;
+              const notice = `\n\n_⚠️ Resultado truncado no comentário para ${provider}; o artefato do job preserva a resposta integral desta execução._`;
+              return `${value.slice(0, Math.max(0, MAX_FINDING_CHARS - notice.length))}${notice}`;
+            };
+            const summarizePaths = paths => {
+              const values = Array.isArray(paths) ? paths : [];
+              const visible = values.slice(0, 60).map(path => `\`${path}\``).join(', ');
+              const remaining = values.length - Math.min(values.length, 60);
+              return remaining > 0 ? `${visible} … (+${remaining} caminho(s))` : visible || 'nenhum identificado';
+            };
+            const capReviewBody = text => {
+              if (text.length <= MAX_COMMENT_CHARS) return text;
+              const notice = '\n\n_⚠️ Resultado truncado no comentário pelo teto de segurança do MedPer; consulte os artefatos dos jobs para o conteúdo integral._';
+              return `${text.slice(0, Math.max(0, MAX_COMMENT_CHARS - notice.length))}${notice}`;
             };
             const prepare_failure = {
               prepare_failure: true,
@@ -166,12 +185,14 @@ jobs:
               : meta.skip_ai
                 ? `_Revisão de IA não executada: ${meta.skip_reason}. Nenhuma chamada paga foi feita._`
                 : '_Sem resultado (job não concluiu ou artefato ausente)._';
-            const gpt = read('findings/gpt/openai-findings.md', skipped);
-            const claude = read('findings/claude/claude-findings.md', skipped);
+            const gptRaw = read('findings/gpt/openai-findings.md', skipped);
+            const claudeRaw = read('findings/claude/claude-findings.md', skipped);
+            const gpt = capFinding(gptRaw, 'GPT');
+            const claude = capFinding(claudeRaw, 'Claude');
             const eventLabel = context.eventName === 'pull_request' ? 'Pull Request' : 'push para main';
             const range = `${String(meta.base_sha).slice(0, 7)}…${String(meta.head_sha).slice(0, 7)}`;
             const coverage = meta.truncated
-              ? ` Parcial: \`${meta.partial_path || 'não identificado'}\`. Omitidos: ${Array.isArray(meta.omitted_paths) && meta.omitted_paths.length ? meta.omitted_paths.map(path => `\`${path}\``).join(', ') : 'nenhum identificado'}.`
+              ? ` Parcial: \`${meta.partial_path || 'não identificado'}\`. Omitidos: ${summarizePaths(meta.omitted_paths)}.`
               : '';
             const inputStatus = meta.prepare_failure
               ? '⚠️ **Entrada canônica indisponível:** o job `prepare` falhou antes de publicar `meta.json`.'
@@ -179,7 +200,7 @@ jobs:
                 ? `⚠️ **Diff truncado:** ${meta.original_bytes} bytes no original; ${meta.review_bytes} bytes enviados a cada revisor (limite ${meta.limit_bytes}).${coverage}`
                 : `Diff completo: ${meta.review_bytes} bytes enviados de forma idêntica aos dois revisores.`;
 
-            const body = [
+            const rawBody = [
               marker,
               '### 🤖 Revisão automatizada — GPT + Claude',
               '',
@@ -196,6 +217,7 @@ jobs:
               '---',
               '_Gerado automaticamente por `.github/workflows/ai-review.yml`. Achados de IA são governança de repositório: não substituem revisão humana, não alteram estado de caso e não produzem conclusão médico-pericial._'
             ].filter(Boolean).join('\n');
+            const body = capReviewBody(rawBody);
 
             async function upsertPrComment(issueNumber, commentBody) {
               const comments = await github.paginate(github.rest.issues.listComments, {
