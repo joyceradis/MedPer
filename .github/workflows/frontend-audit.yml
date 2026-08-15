@@ -3,9 +3,9 @@ name: Frontend audit
 on:
   push:
     branches: [main]
-    paths: ['index.html','app.html','package.json','ROADMAP.md','docs/**','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/frontend-audit.yml']
+    paths: ['index.html','app.html','package.json','ROADMAP.md','docs/**','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/**']
   pull_request:
-    paths: ['index.html','app.html','package.json','ROADMAP.md','docs/**','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/frontend-audit.yml']
+    paths: ['index.html','app.html','package.json','ROADMAP.md','docs/**','css/**','js/**','tests/**','sw.js','manifest.webmanifest','icon.svg','.github/workflows/**']
 
 permissions:
   contents: read
