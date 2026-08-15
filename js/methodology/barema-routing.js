@@ -25,7 +25,7 @@ export const FUNCTIONAL_BAREMA_TRACKS = Object.freeze({
     id: 'dpvat',
     label: 'Tabela DPVAT / seguro obrigatório',
     hasScoringData: false,
-    note: 'Nenhuma tabela DPVAT está registrada no MedPer. Trilho reservado para quando a finalidade securitária exigir esse cálculo.'
+    note: 'Base normativa verificada por triangulação (issue #55): Lei nº 6.194/1974, art. 3º, §1º, com a tabela anexa na redação da Lei nº 11.945/2009 — perda parcial completa aplica o percentual da tabela; perda parcial incompleta sofre dupla redução, pelo enquadramento no segmento e depois pela intensidade da sequela. Os percentuais NÃO estão codificados no MedPer; qualquer cálculo depende de leitura direta da norma pela perita.'
   })
 });
 
