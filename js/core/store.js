@@ -132,6 +132,12 @@ function normalizeCase(caseData = {}, previousCase = null) {
   c.events ||= [];
   c.questions ||= [];
   c.conclusions ||= [];
+  // Conferência do laudo: mapa item → marcado. Registro da perita sobre o próprio
+  // trabalho, não juízo do sistema — nada aqui altera protocolo, pontuação ou
+  // conclusão. Caso legado sem o campo abre normalmente com a conferência vazia.
+  c.conference = c.conference && typeof c.conference === 'object' && !Array.isArray(c.conference)
+    ? { ...c.conference }
+    : {};
   c.methodology ||= {};
   c.methodology.general ||= {};
   c.methodology.specific ||= {};

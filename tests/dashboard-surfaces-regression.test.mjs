@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { renderDashboardHome, renderDashboardSurface } from '../js/ui/dashboard-view.js';
-import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY } from '../js/models/checklists.js';
+import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY, conferenceItemId, conferenceProgress } from '../js/models/checklists.js';
 
 function test(name, fn){
   try{fn();console.log(`✓ ${name}`);}catch(error){console.error(`✗ ${name}`);throw error;}
@@ -84,7 +84,7 @@ test('the models surface publishes the conference protocol instead of a placehol
   for (const severity of Object.values(CONFERENCE_SEVERITY)) {
     assert.ok(html.includes(severity.label), `severity "${severity.label}" must render`);
   }
-  assert.match(html, /Fora de escopo/, 'the surface must state what the protocol does not assess');
+  assert.ok(html.includes(CONFERENCE_PROTOCOL.scopeLimit.slice(0, 40)), 'the surface must state what the protocol does not assess');
 });
 
 test('the conference protocol stays outside the decision engine', () => {
@@ -93,6 +93,37 @@ test('the conference protocol stays outside the decision engine', () => {
   assert.doesNotMatch(checklists, /import .*engine\.js|import .*protocols\.js/, 'checklists must not reach into the methodology engine');
   const engine = readFileSync(new URL('../js/methodology/engine.js', import.meta.url), 'utf8');
   assert.doesNotMatch(engine, /models\/checklists/, 'the engine must not consume the conference checklist');
+});
+
+test('the conference is a tool, not a document: it checks, counts and persists per case', () => {
+  const withCase = { cases: [{ ...state.cases[0], conference: { 'D1.1': true, 'D1.2': true } }] };
+  const html = renderDashboardSurface(withCase, 'models', 'active', { now, conferenceCaseId: 'case_1' });
+
+  assert.match(html, /data-conference-item="D1\.1"/, 'every item must be markable');
+  assert.match(html, /data-conference-item="D1\.1"[^>]*checked/, 'a marked item must render checked');
+  assert.doesNotMatch(html, /data-conference-item="D1\.1"[^>]*disabled/, 'a selected case must keep the conference interactive');
+  assert.match(html, /data-conference-case="case_1"/, 'the perita must choose which case she is checking');
+
+  const progress = conferenceProgress(withCase.cases[0].conference);
+  assert.ok(html.includes(`${progress.done} de ${progress.total} conferidos`), 'progress must be visible');
+  assert.equal(progress.done, 2);
+  assert.equal(progress.byDimension.D1.done, 2, 'progress is accounted per dimension too');
+
+  // Sem caso escolhido a superfície continua servindo como modelo de leitura,
+  // mas não pode aceitar marcações que seriam descartadas silenciosamente.
+  const asModel = renderDashboardSurface(withCase, 'models', 'active', { now });
+  assert.doesNotMatch(asModel, /data-conference-item="D1\.1"[^>]*checked/, 'the model view carries no case state');
+  assert.match(asModel, /data-conference-item="D1\.1"[^>]*disabled/, 'the model view must not accept disposable marks');
+  assert.match(asModel, /conf-hint/, 'the model view must explain how to start checking');
+});
+
+test('item ids survive a rewording of the item text', () => {
+  // A chave de persistência é código+posição, não o texto: corrigir a redação de um
+  // item não pode apagar a conferência que a perita já fez.
+  assert.equal(conferenceItemId('D1', 0), 'D1.1');
+  assert.equal(conferenceItemId('D8', 2), 'D8.3');
+  const source = readFileSync(new URL('../js/models/checklists.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /conferenceItemId\([^)]*text/, 'the id must never derive from the item text');
 });
 
 console.log('Dashboard surfaces regression suite completed successfully.');
