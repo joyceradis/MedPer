@@ -2,6 +2,7 @@ import { appendFileSync, copyFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process';
 import {
   DEFAULT_DIFF_LIMIT_BYTES,
+  analyzeDiffCoverage,
   isDocumentationOnly,
   isZeroSha,
   resolvePushBase,
@@ -66,8 +67,11 @@ let base = '';
 let rangeSource = '';
 
 if (eventName === 'pull_request') {
-  base = required(process.env.REVIEW_BASE_SHA, 'REVIEW_BASE_SHA');
-  rangeSource = 'pull_request.base.sha';
+  const targetBase = required(process.env.REVIEW_BASE_SHA, 'REVIEW_BASE_SHA');
+  const targetAvailable = ensureCommit(targetBase);
+  const mergeBase = targetAvailable ? tryGitTrimmed(['merge-base', targetBase, head]) : '';
+  base = mergeBase || targetBase;
+  rangeSource = mergeBase ? 'pull_request.merge-base' : 'pull_request.base.sha';
 } else {
   const before = process.env.REVIEW_BEFORE_SHA || '';
   const parent = tryGitTrimmed(['rev-parse', `${head}^`]);
@@ -88,7 +92,7 @@ if (eventName === 'pull_request') {
 
 base = required(base, 'resolved base SHA');
 
-const diff = git(['diff', '--no-ext-diff', '--binary', base, head]);
+const diff = git(['diff', '--no-ext-diff', base, head]);
 const changedPathText = git(['diff', '--name-only', base, head]);
 const changedPaths = changedPathText
   .split(/\r?\n/)
@@ -100,6 +104,7 @@ const emptyDiff = diff.length === 0 || changedPaths.length === 0;
 const skipAi = emptyDiff || documentationOnly;
 const skipReason = emptyDiff ? 'empty-diff' : documentationOnly ? 'documentation-only' : '';
 const truncated = truncateDiff(diff, DEFAULT_DIFF_LIMIT_BYTES);
+const coverage = analyzeDiffCoverage(diff, truncated.text, changedPaths);
 
 mkdirSync(OUT_DIR, { recursive: true });
 writeFileSync(`${OUT_DIR}/diff.review.txt`, truncated.text, 'utf8');
@@ -111,6 +116,10 @@ const meta = {
   head_sha: head,
   range_source: rangeSource,
   changed_paths_count: changedPaths.length,
+  changed_paths: changedPaths,
+  included_paths: coverage.includedPaths,
+  partial_path: coverage.partialPath,
+  omitted_paths: coverage.omittedPaths,
   documentation_only: documentationOnly,
   skip_ai: skipAi,
   skip_reason: skipReason,
@@ -135,7 +144,7 @@ if (githubOutput) {
 
 console.log(
   `Prepared AI review input: ${changedPaths.length} paths, ${truncated.originalBytes} bytes` +
-  `${truncated.truncated ? ` (truncated to ${truncated.reviewBytes})` : ''}` +
+  `${truncated.truncated ? ` (truncated to ${truncated.reviewBytes}; partial=${coverage.partialPath || 'none'}; omitted=${coverage.omittedPaths.length})` : ''}` +
   `${skipAi ? `; AI skipped: ${skipReason}` : ''}` +
   `; range source: ${rangeSource}.`
 );
