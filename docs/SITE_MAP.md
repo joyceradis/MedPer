@@ -159,6 +159,8 @@ Invariantes desta camada:
 
 ## 7. Regra arquitetural resumida
 
+**Dashboard gere. Inspector reconhece. Workspace trabalha e raciocina. Biblioteca consulta e audita conhecimento.**
+
 ```text
 SITE PÚBLICO apresenta
 DASHBOARD gere
