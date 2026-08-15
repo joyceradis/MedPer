@@ -55,6 +55,11 @@ assert.doesNotMatch(authWorkflow, /Path\('index\.html'\).*auth\.css/s, 'auth aud
 assert.match(authWorkflow, /onAccessGranted:startApplication/, 'auth audit must track the current access-granted composition contract');
 assert.match(authWorkflow, /onAccessRevoked/, 'auth audit must track access revocation wiring');
 
+const frontendWorkflow = workflows.get('frontend-audit.yml') || '';
+assert.match(frontendWorkflow, /['"]?package\.json['"]?/, 'frontend audit must run when package.json changes the canonical JS gates');
+const regressionWorkflow = workflows.get('regression-audit.yml') || '';
+assert.match(regressionWorkflow, /- ['"]?package\.json['"]?/, 'regression audit must run when package.json changes test wiring');
+
 const siteMap = await readFile(new URL('../docs/SITE_MAP.md', import.meta.url), 'utf8');
 assert.match(siteMap, /runtime Node\.js 24 do GitHub Actions/, 'site map must document the CI runtime boundary');
 assert.match(siteMap, /Node 20.*contrato de compatibilidade do projeto/s, 'site map must distinguish Action runtime from MedPer test runtime');
