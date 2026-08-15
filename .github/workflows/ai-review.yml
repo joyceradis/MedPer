@@ -114,6 +114,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: review-input
           path: ai-review-input
@@ -138,17 +139,45 @@ jobs:
               try { return fs.readFileSync(path, 'utf8'); }
               catch { return fallback; }
             };
-            const meta = JSON.parse(fs.readFileSync('ai-review-input/meta.json', 'utf8'));
-            const skipped = meta.skip_ai
-              ? `_Revisão de IA não executada: ${meta.skip_reason}. Nenhuma chamada paga foi feita._`
-              : '_Sem resultado (job não concluiu ou artefato ausente)._';
+            const readJson = (path, fallback) => {
+              try { return JSON.parse(fs.readFileSync(path, 'utf8')); }
+              catch { return fallback; }
+            };
+            const prepare_failure = {
+              prepare_failure: true,
+              base_sha: context.payload.pull_request?.base?.sha || context.payload.before || '',
+              head_sha: context.payload.pull_request?.head?.sha || context.payload.after || context.sha,
+              range_source: 'unavailable',
+              changed_paths_count: 0,
+              changed_paths: [],
+              included_paths: [],
+              partial_path: '',
+              omitted_paths: [],
+              skip_ai: true,
+              skip_reason: 'prepare-failed',
+              truncated: false,
+              original_bytes: 0,
+              review_bytes: 0,
+              limit_bytes: 60000
+            };
+            const meta = readJson('ai-review-input/meta.json', prepare_failure);
+            const skipped = meta.prepare_failure
+              ? '_Revisão de IA não executada porque o job `prepare` não produziu uma entrada canônica. Consulte os logs do workflow._'
+              : meta.skip_ai
+                ? `_Revisão de IA não executada: ${meta.skip_reason}. Nenhuma chamada paga foi feita._`
+                : '_Sem resultado (job não concluiu ou artefato ausente)._';
             const gpt = read('findings/gpt/openai-findings.md', skipped);
             const claude = read('findings/claude/claude-findings.md', skipped);
             const eventLabel = context.eventName === 'pull_request' ? 'Pull Request' : 'push para main';
             const range = `${String(meta.base_sha).slice(0, 7)}…${String(meta.head_sha).slice(0, 7)}`;
-            const inputStatus = meta.truncated
-              ? `⚠️ **Diff truncado:** ${meta.original_bytes} bytes no original; ${meta.review_bytes} bytes enviados a cada revisor (limite ${meta.limit_bytes}).`
-              : `Diff completo: ${meta.review_bytes} bytes enviados de forma idêntica aos dois revisores.`;
+            const coverage = meta.truncated
+              ? ` Parcial: \`${meta.partial_path || 'não identificado'}\`. Omitidos: ${Array.isArray(meta.omitted_paths) && meta.omitted_paths.length ? meta.omitted_paths.map(path => `\`${path}\``).join(', ') : 'nenhum identificado'}.`
+              : '';
+            const inputStatus = meta.prepare_failure
+              ? '⚠️ **Entrada canônica indisponível:** o job `prepare` falhou antes de publicar `meta.json`.'
+              : meta.truncated
+                ? `⚠️ **Diff truncado:** ${meta.original_bytes} bytes no original; ${meta.review_bytes} bytes enviados a cada revisor (limite ${meta.limit_bytes}).${coverage}`
+                : `Diff completo: ${meta.review_bytes} bytes enviados de forma idêntica aos dois revisores.`;
 
             const body = [
               marker,
@@ -156,7 +185,7 @@ jobs:
               '',
               `Disparada por: ${eventLabel} · intervalo \`${range}\` · ${meta.changed_paths_count} arquivo(s) alterado(s)`,
               inputStatus,
-              meta.skip_ai ? `IA ignorada: \`${meta.skip_reason}\`.` : '',
+              meta.skip_ai && !meta.prepare_failure ? `IA ignorada: \`${meta.skip_reason}\`.` : '',
               '',
               '#### GPT',
               gpt,
