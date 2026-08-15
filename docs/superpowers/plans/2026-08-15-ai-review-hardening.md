@@ -30,10 +30,10 @@
 - Consumes: repository workflow and scripts as text; exports from `.github/scripts/review-input.mjs`.
 - Produces: a deterministic regression gate invoked by `npm test`.
 
-- [x] **Step 1: Write the failing test** covering documentation-only detection, zero SHA, 60 KB truncation metadata, shared prepare artifact, stable comment marker/update behavior, Anthropic thinking/stop-reason handling, OpenAI output cap, and absence of SDK imports.
-- [x] **Step 2: Confirm RED in GitHub Actions** — the first run failed with `ERR_MODULE_NOT_FOUND` before the helper existed.
+- [x] **Step 1: Write the failing test** covering documentation-only detection, zero/unavailable push base, 60 KB truncation metadata, shared prepare artifact, stable comment marker/update behavior, Anthropic thinking/stop-reason/refusal handling, OpenAI output cap, and absence of SDK imports.
+- [x] **Step 2: Confirm RED in GitHub Actions** — initial helper absence produced `ERR_MODULE_NOT_FOUND`; the later force-push availability contract also produced the expected RED before implementation.
 - [x] **Step 3: Add the test to the end of the existing `npm test` command.**
-- [x] **Step 4: Commit the RED gate.**
+- [x] **Step 4: Commit the regression gate.**
 
 ### Task 2: Canonical review input preparation
 
@@ -43,14 +43,14 @@
 - Modify: `.github/workflows/ai-review.yml`
 
 **Interfaces:**
-- Produces `isZeroSha(sha)`, `isDocumentationOnly(paths)`, `truncateDiff(diff, limitBytes)`, and `resolvePushBase({ before, parent, emptyTree })`.
+- Produces `isZeroSha(sha)`, `isDocumentationOnly(paths)`, `truncateDiff(diff, limitBytes)`, and `resolvePushBase({ before, beforeAvailable, parent, emptyTree })`.
 - `prepare-review.mjs` writes `ai-review-input/diff.review.txt`, `ai-review-input/changed-paths.txt`, `ai-review-input/meta.json`, and copies provider/context scripts into the same artifact.
 
 - [x] **Step 1: Implement pure helpers minimally to satisfy unit assertions.**
 - [x] **Step 2: Implement `prepare-review.mjs` with deterministic base/head resolution and Git diff generation.**
 - [x] **Step 3: Replace duplicated reviewer checkouts/diff computation with one `prepare` job and one uploaded `review-input` artifact.**
 - [x] **Step 4: Make reviewer jobs download the same artifact and skip provider calls when `meta.json` says `skip_ai: true`.**
-- [x] **Step 5: Commit canonical input preparation.**
+- [x] **Step 5: Recover a nonzero but unavailable `before` SHA with a focused fetch; if recovery fails, fall back to the current head parent/empty tree and record the range source.**
 
 ### Task 3: Provider safeguards and bounded output
 
@@ -92,15 +92,15 @@
 
 - [x] **Step 1: Map public, app/dashboard, inspector, workspace, methodology, knowledge, persistence, legacy, PWA, backend/API, and CI/audit surfaces.**
 - [x] **Step 2: State explicitly that AI review is repository governance and cannot mutate case state or medico-legal conclusions.**
-- [x] **Step 3: Preserve the canonical architectural rule required by the existing frontend audit.**
+- [x] **Step 3: Preserve the canonical architectural rule required by the existing frontend audit and document the verified Opus 5 adaptive-thinking contract.**
 
 ### Task 6: Verification and integration
 
 **Files:**
 - No production changes unless verification exposes a defect.
 
-- [ ] **Step 1: Verify syntax of every new/modified `.mjs` script through CI.**
-- [ ] **Step 2: Verify `tests/ai-review-regression.test.mjs` through CI after the adaptive-thinking correction.**
-- [ ] **Step 3: Verify `npm run check`, `npm test`, application composition, and offline-shell gates.**
-- [x] **Step 4: Open PR #41 from `chatgpt/ai-review-hardening` to `claude/ai-dual-review-automation`.**
-- [ ] **Step 5: Review final CI evidence and Claude review before integrating into the Claude branch.**
+- [x] **Step 1: Verify syntax of every new/modified `.mjs` script through the canonical `npm run check` CI path.**
+- [x] **Step 2: Verify `tests/ai-review-regression.test.mjs` through CI after the adaptive-thinking and force-push-base corrections.**
+- [x] **Step 3: Verify `npm run check`, `npm test`, application composition, and offline-shell gates.**
+- [x] **Step 4: Open PR #41 from `chatgpt/ai-review-hardening` to `claude/ai-dual-review-automation`; separately prove docs-only skip end-to-end in verification PR #42 and close it without merge.**
+- [ ] **Step 5: Obtain current-head Codex/Claude review, inspect the final AI workflow evidence, then integrate into the Claude branch if no blocker remains.**
