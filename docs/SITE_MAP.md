@@ -119,6 +119,8 @@ Esta camada **não é uma superfície do produto em runtime**.
 
 `tests/` — regressões de store, contexto, metodologia, dashboard, UI, knowledge, lifecycle, legado e infraestrutura de revisão.
 
+As ações JavaScript oficiais usadas pela infraestrutura de CI ficam em majors compatíveis com o runtime Node.js 24 do GitHub Actions. Isso é independente da versão do Node usada para testar o produto: os gates JavaScript do MedPer continuam executando explicitamente em Node 20 enquanto esse for o contrato de compatibilidade do projeto, e os testes de backend continuam fixados em Python 3.13.
+
 ### 6.2 Revisão automatizada GPT + Claude
 
 `.github/workflows/ai-review.yml` — orquestra revisão independente por dois modelos em PRs e pushes para `main`.
