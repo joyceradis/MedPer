@@ -17,7 +17,7 @@ Harden the dual-model AI review pipeline introduced on `claude/ai-dual-review-au
 
 ## Architecture
 
-A `prepare` job owns checkout and review-input preparation. It resolves a deterministic base/head range, writes the full diff, changed-path list, a 60 KB review payload, and machine-readable metadata, then uploads those files as one artifact. The GPT and Claude jobs only download that artifact, run their provider-specific review scripts, and upload findings.
+A `prepare` job owns checkout and review-input preparation. It resolves a deterministic base/head range, writes the changed-path list, a 60 KB review payload, and machine-readable metadata, then uploads those files as one artifact. The GPT and Claude jobs only download that artifact, run their provider-specific review scripts, and upload findings.
 
 Reusable logic for documentation-only detection, zero-SHA detection, range selection, and truncation lives in a small dependency-free ESM helper so it can be regression-tested outside GitHub Actions.
 
@@ -28,8 +28,10 @@ The final `post-comment` job downloads both findings plus the metadata and publi
 ### Anthropic
 
 - Default model: `claude-opus-5`, still overrideable with `CLAUDE_REVIEW_MODEL`.
-- Explicit thinking configuration with `type: "enabled"` and `budget_tokens` sized below `max_tokens`.
-- `max_tokens` large enough to leave a guaranteed answer budget after thinking.
+- Claude Opus 5 uses adaptive thinking: `thinking: { type: "adaptive" }`.
+- Reasoning depth is controlled with `output_config: { effort: ... }`; default effort remains `high` during calibration.
+- `budget_tokens` must not be sent to Opus 5: Anthropic removed manual extended-thinking budgets from Opus 4.7 and later, where that request shape returns HTTP 400.
+- `max_tokens` remains a hard output ceiling across thinking plus visible response; truncation is never treated as a valid complete review.
 - Inspect `stop_reason` and distinguish refusal, output truncation, and empty content from success.
 
 ### OpenAI
@@ -47,7 +49,7 @@ Add `tests/ai-review-regression.test.mjs` and include it in `npm test`. The regr
 - documentation-only path detection;
 - explicit truncation metadata at 60 KB;
 - workflow shape: exactly one preparation job, reviewers consume the shared artifact, and PR comments are update-in-place by marker;
-- provider safeguards: Anthropic thinking + `stop_reason`; OpenAI output-token ceiling; no SDK imports.
+- provider safeguards: Anthropic adaptive thinking + explicit effort + `stop_reason` + rejection of `budget_tokens`; OpenAI output-token ceiling; no SDK imports.
 
 ## Site / repository map
 
