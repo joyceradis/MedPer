@@ -62,6 +62,9 @@ assert.match(workflow, /truncated/, 'published review must disclose truncation s
 assert.match(workflow, /prepare_failure/, 'post-comment must publish an explanatory body when prepare input is unavailable');
 assert.match(workflow, /readJson/, 'post-comment must parse metadata through a guarded helper');
 assert.match(workflow, /MAX_COMMENT_CHARS\s*=\s*60000/, 'combined review comments need a conservative GitHub size ceiling');
+assert.match(workflow, /MAX_FINDING_CHARS\s*=\s*25000/, 'each provider must retain an explicit independent publication budget');
+assert.match(workflow, /MAX_PATH_SUMMARY_CHARS\s*=\s*3000/, 'path disclosure must reserve comment space for both provider findings');
+assert.match(workflow, /candidate\.length\s*>\s*MAX_PATH_SUMMARY_CHARS/, 'path summaries must be bounded by characters, not only by path count');
 assert.match(workflow, /capFinding/, 'each provider finding must be bounded before composing the PR comment');
 assert.match(workflow, /Resultado truncado no comentário/, 'comment-side truncation must be disclosed explicitly');
 assert.match(workflow, /capFinding\(gptRaw/, 'GPT findings must pass through the comment cap');
