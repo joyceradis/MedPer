@@ -50,11 +50,28 @@ for (const [expected, familyPattern] of requiredRuntimeMajors) {
 }
 
 const aiWorkflow = workflows.get('ai-review.yml') || '';
-assert.match(
-  aiWorkflow,
-  /actions\/setup-node@v7[\s\S]*?package-manager-cache:\s*false/g,
-  'AI review setup-node steps must explicitly disable automatic package-manager caching'
-);
+const aiLines = aiWorkflow.split(/\r?\n/);
+const setupNodeIndexes = aiLines
+  .map((line, index) => ({ line, index }))
+  .filter(item => /^\s{6}- uses: actions\/setup-node@v7\s*$/.test(item.line))
+  .map(item => item.index);
+
+assert.equal(setupNodeIndexes.length, 3, 'AI review must keep one setup-node step in prepare and each provider job');
+for (const [position, start] of setupNodeIndexes.entries()) {
+  let end = aiLines.length;
+  for (let index = start + 1; index < aiLines.length; index += 1) {
+    if (/^\s{6}- (?:uses|name):/.test(aiLines[index])) {
+      end = index;
+      break;
+    }
+  }
+  const block = aiLines.slice(start, end).join('\n');
+  assert.match(
+    block,
+    /package-manager-cache:\s*false/,
+    `AI review setup-node step ${position + 1} must explicitly disable automatic package-manager caching`
+  );
+}
 
 const authWorkflow = workflows.get('auth-audit.yml') || '';
 assert.match(authWorkflow, /Path\('app\.html'\)/, 'auth audit must inspect the application shell');
