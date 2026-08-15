@@ -6,6 +6,7 @@ on:
     paths:
       - 'js/**'
       - 'tests/**'
+      - 'package.json'
       - 'app.html'
       - 'index.html'
       - 'sw.js'
@@ -16,6 +17,7 @@ on:
     paths:
       - 'js/**'
       - 'tests/**'
+      - 'package.json'
       - 'app.html'
       - 'index.html'
       - 'sw.js'
