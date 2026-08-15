@@ -1,15 +1,11 @@
 # Revisão automatizada em dois modelos (OpenAI GPT + Anthropic Claude), em paralelo.
 #
-# Pré-requisitos que este workflow NÃO provisiona sozinho — configure antes de esperar
-# resultado, em Settings → Secrets and variables → Actions:
+# Pré-requisitos — configure somente após os gates deste workflow ficarem verdes:
 #   secrets:   OPENAI_API_KEY, ANTHROPIC_API_KEY
 #   variables (opcionais): OPENAI_REVIEW_MODEL, CLAUDE_REVIEW_MODEL
-#     (sem elas, usa os padrões definidos abaixo — confirme se são os modelos corretos
-#     para a sua conta antes de confiar no resultado)
 #
-# Dispara em toda Pull Request (revisão antes do merge) e em todo push na main
-# (revisão pós-merge). Cada execução chama duas APIs pagas de terceiros — não há
-# limite de gasto embutido além do corte de tamanho do diff abaixo.
+# O diff é preparado uma única vez e entregue byte a byte aos dois revisores.
+# Mudanças exclusivamente documentais não geram chamadas pagas de IA.
 name: AI dual-model review
 
 on:
@@ -28,22 +24,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  gpt-review:
+  prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      skip_ai: ${{ steps.prepare.outputs.skip_ai }}
+      truncated: ${{ steps.prepare.outputs.truncated }}
+      base_sha: ${{ steps.prepare.outputs.base_sha }}
+      head_sha: ${{ steps.prepare.outputs.head_sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Compute diff
-        run: |
-          set -euo pipefail
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git diff "origin/${{ github.event.pull_request.base.ref }}...HEAD" > diff.txt || true
-          else
-            git diff "${{ github.event.before }}" "${{ github.event.after }}" > diff.txt || git diff HEAD~1 HEAD > diff.txt || true
-          fi
-          head -c 60000 diff.txt > diff.trimmed.txt
+          ref: ${{ github.event.pull_request.head.sha || github.event.after || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Prepare canonical review input
+        id: prepare
+        env:
+          REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.after || github.sha }}
+          REVIEW_BEFORE_SHA: ${{ github.event.before || '' }}
+        run: node .github/scripts/prepare-review.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: review-input
+          path: ai-review-input
+          if-no-files-found: error
+          retention-days: 14
+
+  gpt-review:
+    needs: prepare
+    if: needs.prepare.outputs.skip_ai != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: review-input
+          path: ai-review-input
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -51,7 +71,8 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_REVIEW_MODEL: ${{ vars.OPENAI_REVIEW_MODEL || 'gpt-5' }}
-        run: node .github/scripts/review-openai.mjs
+          OPENAI_MAX_COMPLETION_TOKENS: ${{ vars.OPENAI_MAX_COMPLETION_TOKENS || '6000' }}
+        run: node ai-review-input/review-openai.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: gpt-findings
@@ -60,29 +81,25 @@ jobs:
           retention-days: 14
 
   claude-review:
+    needs: prepare
+    if: needs.prepare.outputs.skip_ai != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          fetch-depth: 0
-      - name: Compute diff
-        run: |
-          set -euo pipefail
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git diff "origin/${{ github.event.pull_request.base.ref }}...HEAD" > diff.txt || true
-          else
-            git diff "${{ github.event.before }}" "${{ github.event.after }}" > diff.txt || git diff HEAD~1 HEAD > diff.txt || true
-          fi
-          head -c 60000 diff.txt > diff.trimmed.txt
+          name: review-input
+          path: ai-review-input
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Call Claude
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLAUDE_REVIEW_MODEL: ${{ vars.CLAUDE_REVIEW_MODEL || 'claude-sonnet-5' }}
-        run: node .github/scripts/review-claude.mjs
+          CLAUDE_REVIEW_MODEL: ${{ vars.CLAUDE_REVIEW_MODEL || 'claude-opus-5' }}
+          CLAUDE_REVIEW_EFFORT: ${{ vars.CLAUDE_REVIEW_EFFORT || 'high' }}
+          CLAUDE_MAX_TOKENS: ${{ vars.CLAUDE_MAX_TOKENS || '16000' }}
+        run: node ai-review-input/review-claude.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: claude-findings
@@ -91,30 +108,119 @@ jobs:
           retention-days: 14
 
   post-comment:
-    needs: [gpt-review, claude-review]
+    needs: [prepare, gpt-review, claude-review]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
-          path: findings
+          name: review-input
+          path: ai-review-input
+      - uses: actions/download-artifact@v4
+        if: needs.gpt-review.result != 'skipped'
+        continue-on-error: true
+        with:
+          name: gpt-findings
+          path: findings/gpt
+      - uses: actions/download-artifact@v4
+        if: needs.claude-review.result != 'skipped'
+        continue-on-error: true
+        with:
+          name: claude-findings
+          path: findings/claude
       - uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const read = path => {
+            const marker = '<!-- medper-ai-dual-review -->';
+            const MAX_COMMENT_CHARS = 60000;
+            const MAX_FINDING_CHARS = 25000;
+            const MAX_PATH_SUMMARY_CHARS = 3000;
+            const MAX_PATHS_SUMMARIZED = 60;
+            const read = (path, fallback) => {
               try { return fs.readFileSync(path, 'utf8'); }
-              catch { return '_Sem resultado (job não concluiu ou artefato ausente)._'; }
+              catch { return fallback; }
             };
-            const gpt = read('findings/gpt-findings/openai-findings.md');
-            const claude = read('findings/claude-findings/claude-findings.md');
+            const readJson = (path, fallback) => {
+              try { return JSON.parse(fs.readFileSync(path, 'utf8')); }
+              catch { return fallback; }
+            };
+            const capFinding = (text, provider) => {
+              const value = String(text || '');
+              if (value.length <= MAX_FINDING_CHARS) return value;
+              const notice = `\n\n_⚠️ Resultado truncado no comentário para ${provider}; o artefato do job preserva a resposta integral desta execução._`;
+              return `${value.slice(0, Math.max(0, MAX_FINDING_CHARS - notice.length))}${notice}`;
+            };
+            const summarizePaths = paths => {
+              const values = Array.isArray(paths) ? paths.map(String) : [];
+              const visible = [];
+              for (const path of values.slice(0, MAX_PATHS_SUMMARIZED)) {
+                const token = `\`${path}\``;
+                const candidate = [...visible, token].join(', ');
+                if (candidate.length > MAX_PATH_SUMMARY_CHARS) break;
+                visible.push(token);
+              }
+              const rendered = visible.join(', ');
+              const remaining = values.length - visible.length;
+              if (remaining > 0) {
+                const suffix = ` … (+${remaining} caminho(s))`;
+                const room = Math.max(0, MAX_PATH_SUMMARY_CHARS - suffix.length);
+                return `${rendered.slice(0, room)}${suffix}`;
+              }
+              return rendered || 'nenhum identificado';
+            };
+            const capReviewBody = text => {
+              if (text.length <= MAX_COMMENT_CHARS) return text;
+              const notice = '\n\n_⚠️ Resultado truncado no comentário pelo teto de segurança do MedPer; consulte os artefatos dos jobs para o conteúdo integral._';
+              return `${text.slice(0, Math.max(0, MAX_COMMENT_CHARS - notice.length))}${notice}`;
+            };
+            const prepare_failure = {
+              prepare_failure: true,
+              base_sha: context.payload.pull_request?.base?.sha || context.payload.before || '',
+              head_sha: context.payload.pull_request?.head?.sha || context.payload.after || context.sha,
+              range_source: 'unavailable',
+              changed_paths_count: 0,
+              changed_paths: [],
+              included_paths: [],
+              partial_path: '',
+              omitted_paths: [],
+              skip_ai: true,
+              skip_reason: 'prepare-failed',
+              truncated: false,
+              original_bytes: 0,
+              review_bytes: 0,
+              limit_bytes: 60000
+            };
+            const meta = readJson('ai-review-input/meta.json', prepare_failure);
+            const skipped = meta.prepare_failure
+              ? '_Revisão de IA não executada porque o job `prepare` não produziu uma entrada canônica. Consulte os logs do workflow._'
+              : meta.skip_ai
+                ? `_Revisão de IA não executada: ${meta.skip_reason}. Nenhuma chamada paga foi feita._`
+                : '_Sem resultado (job não concluiu ou artefato ausente)._';
+            const gptRaw = read('findings/gpt/openai-findings.md', skipped);
+            const claudeRaw = read('findings/claude/claude-findings.md', skipped);
+            const gpt = capFinding(gptRaw, 'GPT');
+            const claude = capFinding(claudeRaw, 'Claude');
             const eventLabel = context.eventName === 'pull_request' ? 'Pull Request' : 'push para main';
+            const range = `${String(meta.base_sha).slice(0, 7)}…${String(meta.head_sha).slice(0, 7)}`;
+            const coverage = meta.truncated
+              ? ` Parcial: \`${meta.partial_path || 'não identificado'}\`. Omitidos: ${summarizePaths(meta.omitted_paths)}.`
+              : '';
+            const inputStatus = meta.prepare_failure
+              ? '⚠️ **Entrada canônica indisponível:** o job `prepare` falhou antes de publicar `meta.json`.'
+              : meta.truncated
+                ? `⚠️ **Diff truncado:** ${meta.original_bytes} bytes no original; ${meta.review_bytes} bytes enviados a cada revisor (limite ${meta.limit_bytes}).${coverage}`
+                : `Diff completo: ${meta.review_bytes} bytes enviados de forma idêntica aos dois revisores.`;
 
-            const body = [
+            const rawBody = [
+              marker,
               '### 🤖 Revisão automatizada — GPT + Claude',
               '',
-              `Disparada por: ${eventLabel} · commit \`${context.sha.slice(0, 7)}\``,
+              `Disparada por: ${eventLabel} · intervalo \`${range}\` · ${meta.changed_paths_count} arquivo(s) alterado(s)`,
+              inputStatus,
+              meta.skip_ai && !meta.prepare_failure ? `IA ignorada: \`${meta.skip_reason}\`.` : '',
               '',
               '#### GPT',
               gpt,
@@ -123,16 +229,41 @@ jobs:
               claude,
               '',
               '---',
-              '_Gerado automaticamente por `.github/workflows/ai-review.yml`. Achados de IA — não substituem revisão humana nem alteram o motor metodológico do MedPer._'
-            ].join('\n');
+              '_Gerado automaticamente por `.github/workflows/ai-review.yml`. Achados de IA são governança de repositório: não substituem revisão humana, não alteram estado de caso e não produzem conclusão médico-pericial._'
+            ].filter(Boolean).join('\n');
+            const body = capReviewBody(rawBody);
 
-            if (context.eventName === 'pull_request') {
+            async function upsertPrComment(issueNumber, commentBody) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                per_page: 100
+              });
+              const existing = comments.find(comment =>
+                typeof comment.body === 'string' && comment.body.includes(marker)
+              );
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body: commentBody
+                });
+                return;
+              }
+
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
-                body
+                issue_number: issueNumber,
+                body: commentBody
               });
+            }
+
+            if (context.eventName === 'pull_request') {
+              await upsertPrComment(context.payload.pull_request.number, body);
               return;
             }
 
@@ -143,12 +274,7 @@ jobs:
             });
 
             if (prs.length > 0) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prs[0].number,
-                body: `**Auditoria pós-merge**\n\n${body}`
-              });
+              await upsertPrComment(prs[0].number, `**Auditoria pós-merge**\n\n${body}`);
             } else {
               await github.rest.repos.createCommitComment({
                 owner: context.repo.owner,
