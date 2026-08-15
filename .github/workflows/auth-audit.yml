@@ -54,7 +54,7 @@ jobs:
           required_auth=['signInWithPassword','signUp','signInWithOAuth','getSession','onAuthStateChange','create_personal_organization','signOut']
           missing=[x for x in required_auth if x not in auth]
           if missing: raise SystemExit(f'Authentication behavior missing: {missing}')
-          required_main=['createAuthController','handleAuthState','createApp']
+          required_main=['createAuthController','startApplication','onAccessGranted:startApplication','onAccessRevoked','createApp']
           missing=[x for x in required_main if x not in main]
           if missing: raise SystemExit(f'Authentication gate missing: {missing}')
           required_assets=['./css/auth.css','./js/auth/auth-controller.js','./js/config/supabase-config.js']
