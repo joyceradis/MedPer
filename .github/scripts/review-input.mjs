@@ -48,3 +48,63 @@ export function truncateDiff(diff, limitBytes = DEFAULT_DIFF_LIMIT_BYTES) {
     limitBytes
   };
 }
+
+function pathFromDiffHeader(header) {
+  const marker = ' b/';
+  const index = header.lastIndexOf(marker);
+  if (index === -1) return '';
+  return header.slice(index + marker.length).replace(/^"|"$/g, '');
+}
+
+export function analyzeDiffCoverage(fullDiff, reviewText, changedPaths = []) {
+  const source = String(fullDiff ?? '');
+  const review = String(reviewText ?? '');
+  const paths = Array.isArray(changedPaths) ? changedPaths.map(String) : [];
+  const sourceBytes = Buffer.byteLength(source, 'utf8');
+  const reviewBytes = Buffer.byteLength(review, 'utf8');
+
+  if (reviewBytes >= sourceBytes) {
+    return {
+      includedPaths: [...paths],
+      partialPath: '',
+      omittedPaths: []
+    };
+  }
+
+  const headers = [...source.matchAll(/^diff --git .*$/gm)].map(match => ({
+    index: match.index ?? 0,
+    path: pathFromDiffHeader(match[0])
+  }));
+
+  if (headers.length === 0) {
+    return {
+      includedPaths: [],
+      partialPath: paths[0] || '',
+      omittedPaths: paths.slice(paths.length > 0 ? 1 : 0)
+    };
+  }
+
+  const includedPaths = [];
+  const omittedPaths = [];
+  let partialPath = '';
+
+  for (let index = 0; index < headers.length; index += 1) {
+    const current = headers[index];
+    const next = headers[index + 1];
+    const startByte = Buffer.byteLength(source.slice(0, current.index), 'utf8');
+    const endByte = Buffer.byteLength(source.slice(0, next?.index ?? source.length), 'utf8');
+    const path = current.path || paths[index] || '';
+
+    if (!path) continue;
+    if (endByte <= reviewBytes) includedPaths.push(path);
+    else if (startByte < reviewBytes && !partialPath) partialPath = path;
+    else omittedPaths.push(path);
+  }
+
+  const classified = new Set([...includedPaths, partialPath, ...omittedPaths].filter(Boolean));
+  for (const path of paths) {
+    if (!classified.has(path)) omittedPaths.push(path);
+  }
+
+  return { includedPaths, partialPath, omittedPaths };
+}
