@@ -56,4 +56,14 @@ assert.match(
   'AI review setup-node steps must explicitly disable automatic package-manager caching'
 );
 
+const authWorkflow = workflows.get('auth-audit.yml') || '';
+assert.match(authWorkflow, /Path\('app\.html'\)/, 'auth audit must inspect the application shell');
+assert.doesNotMatch(authWorkflow, /Path\('index\.html'\).*auth\.css/s, 'auth audit must not require auth CSS on the public landing page');
+assert.match(authWorkflow, /onAccessGranted:startApplication/, 'auth audit must track the current access-granted composition contract');
+assert.match(authWorkflow, /onAccessRevoked/, 'auth audit must track access revocation wiring');
+
+const siteMap = await readFile(new URL('../docs/SITE_MAP.md', import.meta.url), 'utf8');
+assert.match(siteMap, /runtime Node\.js 24 do GitHub Actions/, 'site map must document the CI runtime boundary');
+assert.match(siteMap, /Node 20.*contrato de compatibilidade do projeto/s, 'site map must distinguish Action runtime from MedPer test runtime');
+
 console.log(`GitHub Actions runtime regression suite completed successfully across ${workflowFiles.length} workflows.`);
