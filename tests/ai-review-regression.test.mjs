@@ -24,26 +24,10 @@ assert.equal(isDocumentationOnly([]), false);
 const parentSha = '1'.repeat(40);
 const beforeSha = '2'.repeat(40);
 const emptyTreeSha = '3'.repeat(40);
-assert.equal(
-  resolvePushBase({ before: beforeSha, beforeAvailable: true, parent: parentSha, emptyTree: emptyTreeSha }),
-  beforeSha,
-  'normal push must use github.event.before when that commit is available'
-);
-assert.equal(
-  resolvePushBase({ before: beforeSha, beforeAvailable: false, parent: parentSha, emptyTree: emptyTreeSha }),
-  parentSha,
-  'an unreachable force-push before SHA must fall back to the current head parent'
-);
-assert.equal(
-  resolvePushBase({ before: '0'.repeat(40), beforeAvailable: false, parent: parentSha, emptyTree: emptyTreeSha }),
-  parentSha,
-  'zero before SHA must fall back to the head parent'
-);
-assert.equal(
-  resolvePushBase({ before: '0'.repeat(40), beforeAvailable: false, parent: '', emptyTree: emptyTreeSha }),
-  emptyTreeSha,
-  'first commit must fall back to the empty tree when no parent exists'
-);
+assert.equal(resolvePushBase({ before: beforeSha, beforeAvailable: true, parent: parentSha, emptyTree: emptyTreeSha }), beforeSha, 'normal push must use github.event.before when that commit is available');
+assert.equal(resolvePushBase({ before: beforeSha, beforeAvailable: false, parent: parentSha, emptyTree: emptyTreeSha }), parentSha, 'an unreachable force-push before SHA must fall back to the current head parent');
+assert.equal(resolvePushBase({ before: '0'.repeat(40), beforeAvailable: false, parent: parentSha, emptyTree: emptyTreeSha }), parentSha, 'zero before SHA must fall back to the head parent');
+assert.equal(resolvePushBase({ before: '0'.repeat(40), beforeAvailable: false, parent: '', emptyTree: emptyTreeSha }), emptyTreeSha, 'first commit must fall back to the empty tree when no parent exists');
 
 const exact = truncateDiff('a'.repeat(60000));
 assert.equal(exact.truncated, false);
@@ -68,11 +52,7 @@ assert.deepEqual(coverage.omittedPaths, ['c.js']);
 
 const workflow = await readFile(new URL('../.github/workflows/ai-review.yml', import.meta.url), 'utf8');
 assert.match(workflow, /^  prepare:/m, 'workflow must have a single prepare job');
-assert.equal(
-  (workflow.match(/actions\/checkout@v4/g) || []).length,
-  1,
-  'only the prepare job should clone the repository'
-);
+assert.equal((workflow.match(/actions\/checkout@v\d+/g) || []).length, 1, 'only the prepare job should clone the repository');
 assert.match(workflow, /name:\s*review-input/, 'prepare job must upload canonical review input');
 assert.match(workflow, /needs:\s*\[?prepare/, 'reviewer jobs must depend on prepare');
 assert.match(workflow, /skip_ai/, 'workflow must propagate documentation-only/empty diff skip metadata');
@@ -81,6 +61,11 @@ assert.match(workflow, /issues\.updateComment/, 'existing review comment must be
 assert.match(workflow, /truncated/, 'published review must disclose truncation state');
 assert.match(workflow, /prepare_failure/, 'post-comment must publish an explanatory body when prepare input is unavailable');
 assert.match(workflow, /readJson/, 'post-comment must parse metadata through a guarded helper');
+assert.match(workflow, /MAX_COMMENT_CHARS\s*=\s*60000/, 'combined review comments need a conservative GitHub size ceiling');
+assert.match(workflow, /capFinding/, 'each provider finding must be bounded before composing the PR comment');
+assert.match(workflow, /Resultado truncado no comentário/, 'comment-side truncation must be disclosed explicitly');
+assert.match(workflow, /capFinding\(gptRaw/, 'GPT findings must pass through the comment cap');
+assert.match(workflow, /capFinding\(claudeRaw/, 'Claude findings must pass through the comment cap');
 
 const prepare = await readFile(new URL('../.github/scripts/prepare-review.mjs', import.meta.url), 'utf8');
 assert.match(prepare, /fetch[\s\S]*--depth=1[\s\S]*origin/, 'prepare must try to recover a missing nonzero before SHA from origin');
