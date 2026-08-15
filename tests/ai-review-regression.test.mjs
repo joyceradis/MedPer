@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
   DEFAULT_DIFF_LIMIT_BYTES,
+  analyzeDiffCoverage,
   isDocumentationOnly,
   isZeroSha,
   resolvePushBase,
@@ -55,6 +56,16 @@ assert.equal(oversized.originalBytes, 60001);
 assert.equal(oversized.reviewBytes, 60000);
 assert.equal(Buffer.byteLength(oversized.text, 'utf8'), 60000);
 
+const diffA = 'diff --git a/a.js b/a.js\n--- a/a.js\n+++ b/a.js\n@@ -1 +1 @@\n-old\n+new\n';
+const diffB = 'diff --git a/b.js b/b.js\n--- a/b.js\n+++ b/b.js\n@@ -1 +1 @@\n-old\n+new\n';
+const diffC = 'diff --git a/c.js b/c.js\n--- a/c.js\n+++ b/c.js\n@@ -1 +1 @@\n-old\n+new\n';
+const fullCoverageDiff = `${diffA}${diffB}${diffC}`;
+const partialReview = `${diffA}${diffB.slice(0, 35)}`;
+const coverage = analyzeDiffCoverage(fullCoverageDiff, partialReview, ['a.js', 'b.js', 'c.js']);
+assert.deepEqual(coverage.includedPaths, ['a.js']);
+assert.equal(coverage.partialPath, 'b.js');
+assert.deepEqual(coverage.omittedPaths, ['c.js']);
+
 const workflow = await readFile(new URL('../.github/workflows/ai-review.yml', import.meta.url), 'utf8');
 assert.match(workflow, /^  prepare:/m, 'workflow must have a single prepare job');
 assert.equal(
@@ -68,16 +79,26 @@ assert.match(workflow, /skip_ai/, 'workflow must propagate documentation-only/em
 assert.match(workflow, /<!-- medper-ai-dual-review -->/, 'PR comment needs a stable marker');
 assert.match(workflow, /issues\.updateComment/, 'existing review comment must be updated in place');
 assert.match(workflow, /truncated/, 'published review must disclose truncation state');
+assert.match(workflow, /prepare_failure/, 'post-comment must publish an explanatory body when prepare input is unavailable');
+assert.match(workflow, /readJson/, 'post-comment must parse metadata through a guarded helper');
 
 const prepare = await readFile(new URL('../.github/scripts/prepare-review.mjs', import.meta.url), 'utf8');
 assert.match(prepare, /fetch[\s\S]*--depth=1[\s\S]*origin/, 'prepare must try to recover a missing nonzero before SHA from origin');
 assert.match(prepare, /beforeAvailable/, 'prepare must tell the pure range resolver whether the before commit is reachable');
+assert.match(prepare, /merge-base/, 'pull request review must resolve the merge base instead of diffing the moving target tip directly');
+assert.doesNotMatch(prepare, /['"]--binary['"]/, 'review-only diffs must not embed binary patches into the 60 KB budget');
+assert.match(prepare, /changed_paths:\s*changedPaths/, 'metadata must expose the complete changed-path list');
+assert.match(prepare, /omitted_paths:/, 'metadata must expose paths omitted by truncation');
+assert.match(prepare, /partial_path:/, 'metadata must expose the path whose diff was only partially included');
 
 const openai = await readFile(new URL('../.github/scripts/review-openai.mjs', import.meta.url), 'utf8');
 assert.doesNotMatch(openai, /from ['"]openai['"]|require\(['"]openai['"]\)/, 'OpenAI SDK must not be added');
 assert.match(openai, /max_completion_tokens|max_output_tokens/, 'OpenAI response must have an explicit token ceiling');
 assert.match(openai, /AI_REVIEW_INPUT_DIR[^\n]*ai-review-input/, 'OpenAI must default to the canonical prepared input directory');
 assert.match(openai, /\$\{INPUT_DIR\}\/diff\.review\.txt/, 'OpenAI must consume the canonical prepared diff');
+assert.match(openai, /changed_paths/, 'OpenAI prompt must receive the complete changed-path inventory');
+assert.match(openai, /omitted_paths/, 'OpenAI prompt must disclose paths wholly omitted by truncation');
+assert.match(openai, /partial_path/, 'OpenAI prompt must disclose a partially included path');
 
 const claude = await readFile(new URL('../.github/scripts/review-claude.mjs', import.meta.url), 'utf8');
 assert.doesNotMatch(claude, /from ['"]@anthropic-ai\/sdk['"]|require\(['"]@anthropic-ai\/sdk['"]\)/, 'Anthropic SDK must not be added');
@@ -89,5 +110,8 @@ assert.match(claude, /stop_reason/, 'Claude response must inspect stop_reason');
 assert.match(claude, /refusal/, 'Claude refusal must be reported explicitly rather than treated as an empty response');
 assert.match(claude, /AI_REVIEW_INPUT_DIR[^\n]*ai-review-input/, 'Claude must default to the canonical prepared input directory');
 assert.match(claude, /\$\{INPUT_DIR\}\/diff\.review\.txt/, 'Claude must consume the canonical prepared diff');
+assert.match(claude, /changed_paths/, 'Claude prompt must receive the complete changed-path inventory');
+assert.match(claude, /omitted_paths/, 'Claude prompt must disclose paths wholly omitted by truncation');
+assert.match(claude, /partial_path/, 'Claude prompt must disclose a partially included path');
 
 console.log('AI review regression suite completed successfully.');
