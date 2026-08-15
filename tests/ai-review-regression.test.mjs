@@ -67,7 +67,8 @@ assert.match(workflow, /truncated/, 'published review must disclose truncation s
 const openai = await readFile(new URL('../.github/scripts/review-openai.mjs', import.meta.url), 'utf8');
 assert.doesNotMatch(openai, /from ['"]openai['"]|require\(['"]openai['"]\)/, 'OpenAI SDK must not be added');
 assert.match(openai, /max_completion_tokens|max_output_tokens/, 'OpenAI response must have an explicit token ceiling');
-assert.match(openai, /ai-review-input\/diff\.review\.txt/, 'OpenAI must consume the canonical prepared diff');
+assert.match(openai, /AI_REVIEW_INPUT_DIR[^\n]*ai-review-input/, 'OpenAI must default to the canonical prepared input directory');
+assert.match(openai, /\$\{INPUT_DIR\}\/diff\.review\.txt/, 'OpenAI must consume the canonical prepared diff');
 
 const claude = await readFile(new URL('../.github/scripts/review-claude.mjs', import.meta.url), 'utf8');
 assert.doesNotMatch(claude, /from ['"]@anthropic-ai\/sdk['"]|require\(['"]@anthropic-ai\/sdk['"]\)/, 'Anthropic SDK must not be added');
@@ -75,6 +76,7 @@ assert.match(claude, /claude-opus-5/, 'Claude review should default to Opus 5 du
 assert.match(claude, /thinking\s*:/, 'Claude request must configure thinking explicitly');
 assert.match(claude, /budget_tokens/, 'Claude thinking must have a bounded budget');
 assert.match(claude, /stop_reason/, 'Claude response must inspect stop_reason');
-assert.match(claude, /ai-review-input\/diff\.review\.txt/, 'Claude must consume the canonical prepared diff');
+assert.match(claude, /AI_REVIEW_INPUT_DIR[^\n]*ai-review-input/, 'Claude must default to the canonical prepared input directory');
+assert.match(claude, /\$\{INPUT_DIR\}\/diff\.review\.txt/, 'Claude must consume the canonical prepared diff');
 
 console.log('AI review regression suite completed successfully.');
