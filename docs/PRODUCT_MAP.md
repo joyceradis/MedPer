@@ -114,7 +114,7 @@ Primeira peça incorporada: o **Protocolo de Conferência Pericial** (`js/models
 
 Segunda peça: a **Estrutura de Laudo Pericial Judicial** (`js/models/report-structure.js`), dezesseis seções na ordem de composição, cada uma declarando para que existe e o que precisa conter. Ela descreve **forma**: não prescreve instrumento, escala, faixa nem conclusão, e não contém caso. As duas peças são complementares — a estrutura orienta a escrita, o protocolo confere o resultado —, e a superfície apresenta nessa ordem.
 
-Ambas são consulta somente-leitura. Confere forma, método, rastreabilidade e proporcionalidade; **não avalia a correção clínica** do diagnóstico, do exame ou do juízo médico, e a superfície declara esse limite ao leitor. Não há acoplamento com `engine.js` — verificado por teste de regressão.
+Ambas são consulta somente-leitura e tratam de forma, método, rastreabilidade e proporcionalidade. Nenhuma das duas **avalia a correção clínica** do diagnóstico, do exame ou do juízo médico, e cada superfície declara esse limite ao leitor. Não há acoplamento com `engine.js` — verificado por teste de regressão.
 
 ## 8. Configurações
 
