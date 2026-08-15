@@ -17,6 +17,8 @@ Este documento é a fonte de verdade para a evolução do produto. Novas funcion
 | 9. Fazer piloto fechado | Não iniciada | Validação controlada com profissionais reais |
 | 10. Abrir venda pública | Não iniciada | Operação comercial, suporte e segurança prontos |
 
+**Frente transversal — governança de repositório e CI.** Não é etapa do produto e não bloqueia as demais: revisão automatizada em dois modelos sobre cada Pull Request, com o diff tratado como entrada não confiável, permissão mínima do token e regras de revisão lidas sempre da base confiável (#41, #46, #47). Depende de decisão da Founder para ativar os secrets — sem eles o pipeline roda, informa qual chave falta e encerra, sem custo (#40).
+
 ---
 
 ## 1. Separar site público de dashboard
@@ -75,6 +77,9 @@ Este documento é a fonte de verdade para a evolução do produto. Novas funcion
 - [x] Resolução adaptativa de múltiplos protocolos com controle médico sobre sugestões.
 - [x] AIPE de referência aberta no dano estético, sem automatismo decisório.
 - [x] Base técnica contextual classificada por natureza, autoridade, versão, âmbito e tema, com fonte/localização e divergências explícitas fora do motor decisório.
+- [x] Entrada AIPE derivada da tabela de referência — categoria "Médio" e banda "Severo" passam a ser registráveis, e registros feitos sob a escala anterior aparecem marcados em vez de sumirem da tela (#50).
+- [x] Superfície "Modelos e checklists" deixa de ser placeholder: publica o Protocolo de Conferência Pericial (#51) e o converte em ferramenta com itens marcáveis, progresso e conferência persistida por caso (#53).
+- Estrutura de Laudo Pericial Judicial ao lado da etapa Documento — conteúdo pronto em `claude/report-structure-model`, aguardando reimplementação no idioma de ferramenta.
 - Redesenho visual definitivo e identidade de marca.
 - Guia visual mínimo.
 - Testes manuais em desktop e mobile.
