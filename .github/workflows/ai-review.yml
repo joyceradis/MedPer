@@ -55,9 +55,12 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  # Os três jobs abaixo são ignorados em Pull Request de fork: o GitHub já lhes nega
+  # secrets e concede token somente-leitura, então executá-los produziria apenas falha
+  # vermelha permanente, nunca revisão.
   gpt-review:
     needs: prepare
-    if: needs.prepare.outputs.skip_ai != 'true'
+    if: needs.prepare.outputs.skip_ai != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -84,7 +87,7 @@ jobs:
 
   claude-review:
     needs: prepare
-    if: needs.prepare.outputs.skip_ai != 'true'
+    if: needs.prepare.outputs.skip_ai != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -112,7 +115,7 @@ jobs:
 
   post-comment:
     needs: [prepare, gpt-review, claude-review]
-    if: always()
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -194,9 +197,15 @@ jobs:
               truncated: false,
               original_bytes: 0,
               review_bytes: 0,
-              limit_bytes: 60000
+              limit_bytes: 60000,
+              context_source: 'indisponível'
             };
             const meta = readJson('ai-review-input/meta.json', prepare_failure);
+            // As regras devem vir da revisão-base confiável. Quando não vierem, o resultado
+            // não é revisão independente e não pode ser lido como tal.
+            const contextNotice = meta.prepare_failure || String(meta.context_source || '').startsWith('base:')
+              ? ''
+              : `⚠️ **Regras de revisão não vieram da base** (\`${meta.context_source}\`): este resultado não é revisão independente do que a PR alterou.`;
             const skipped = meta.prepare_failure
               ? '_Revisão de IA não executada porque o job `prepare` não produziu uma entrada canônica. Consulte os logs do workflow._'
               : meta.skip_ai
@@ -223,6 +232,7 @@ jobs:
               '',
               `Disparada por: ${eventLabel} · intervalo \`${range}\` · ${meta.changed_paths_count} arquivo(s) alterado(s)`,
               inputStatus,
+              contextNotice,
               meta.skip_ai && !meta.prepare_failure ? `IA ignorada: \`${meta.skip_reason}\`.` : '',
               '',
               '#### GPT',
@@ -278,11 +288,12 @@ jobs:
 
             if (prs.length > 0) {
               await upsertPrComment(prs[0].number, `**Auditoria pós-merge**\n\n${body}`);
-            } else {
-              await github.rest.repos.createCommitComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                commit_sha: context.sha,
-                body: `**Auditoria pós-merge (push direto, sem PR associada)**\n\n${body}`
-              });
+              return;
             }
+
+            // Comentar no commit exigiria `contents: write` — permissão de escrever no
+            // conteúdo do repositório para publicar um texto. O resumo do job entrega o
+            // mesmo conteúdo mantendo o token no mínimo privilégio.
+            await core.summary
+              .addRaw(`**Auditoria pós-merge (push direto, sem PR associada)**\n\n${body}`)
+              .write();

@@ -9,6 +9,11 @@ export function isDocumentationOnly(paths) {
 
   return paths.every(rawPath => {
     const path = String(rawPath || '').replace(/^\.\//, '');
+    // `.github/**` é configuração operante do próprio pipeline — workflows, scripts
+    // e `review-context.md`, que é o system prompt dos dois revisores. Tratar esses
+    // arquivos como documentação permitiria alterar as instruções do mecanismo de
+    // revisão sem passar por revisão nenhuma.
+    if (path.startsWith('.github/')) return false;
     return path.startsWith('docs/') || /\.md$/i.test(path);
   });
 }
