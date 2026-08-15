@@ -73,8 +73,9 @@ assert.match(openai, /\$\{INPUT_DIR\}\/diff\.review\.txt/, 'OpenAI must consume 
 const claude = await readFile(new URL('../.github/scripts/review-claude.mjs', import.meta.url), 'utf8');
 assert.doesNotMatch(claude, /from ['"]@anthropic-ai\/sdk['"]|require\(['"]@anthropic-ai\/sdk['"]\)/, 'Anthropic SDK must not be added');
 assert.match(claude, /claude-opus-5/, 'Claude review should default to Opus 5 during calibration');
-assert.match(claude, /thinking\s*:/, 'Claude request must configure thinking explicitly');
-assert.match(claude, /budget_tokens/, 'Claude thinking must have a bounded budget');
+assert.match(claude, /thinking\s*:\s*\{[\s\S]*?type:\s*['"]adaptive['"]/, 'Opus 5 must use adaptive thinking');
+assert.match(claude, /output_config\s*:\s*\{[\s\S]*?effort/, 'Claude request must set explicit effort through output_config');
+assert.doesNotMatch(claude, /budget_tokens/, 'budget_tokens is rejected by Opus 5 and must not return');
 assert.match(claude, /stop_reason/, 'Claude response must inspect stop_reason');
 assert.match(claude, /AI_REVIEW_INPUT_DIR[^\n]*ai-review-input/, 'Claude must default to the canonical prepared input directory');
 assert.match(claude, /\$\{INPUT_DIR\}\/diff\.review\.txt/, 'Claude must consume the canonical prepared diff');
