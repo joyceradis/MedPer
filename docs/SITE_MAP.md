@@ -119,19 +119,19 @@ Esta camada **não é uma superfície do produto em runtime**.
 
 `tests/` — regressões de store, contexto, metodologia, dashboard, UI, knowledge, lifecycle, legado e infraestrutura de revisão.
 
-`tests/actions-runtime-regression.test.mjs` — contrato de manutenção da própria infraestrutura de CI. Impede reintrodução dos majors de Actions baseados em Node 20 e exige os majors canônicos compatíveis com runtime Node 24.
+`tests/actions-runtime-regression.test.mjs` — contrato da própria infraestrutura de CI. Impede reintrodução de majors de Actions baseados no runtime Node 20 e exige os majors canônicos compatíveis com Node 24.
 
 ### 6.2 Runtime das GitHub Actions
 
-As Actions JavaScript oficiais usadas pela infraestrutura de CI ficam em majors compatíveis com o **runtime Node.js 24 do GitHub Actions**. Isso é independente da versão de linguagem usada para validar o produto.
+As Actions JavaScript oficiais usadas pela infraestrutura de CI ficam em majors compatíveis com o **runtime Node.js 24 do GitHub Actions**. Essa camada é diferente da versão de linguagem usada para validar o produto.
 
 - `actions/checkout@v6` — checkout canônico.
 - `actions/setup-node@v7` — action em runtime atualizado; continua configurando `node-version: 20` para os gates JavaScript enquanto Node 20 permanecer no contrato de compatibilidade do projeto.
 - `actions/setup-python@v6` — action em runtime atualizado; continua configurando Python `3.13` para os testes backend.
-- `actions/upload-artifact@v7` e `actions/download-artifact@v5` — transporte dos artefatos de revisão.
-- `actions/github-script@v8` — publicação/atualização do comentário consolidado.
+- `actions/upload-artifact@v7` e `actions/download-artifact@v5` — transporte de artefatos.
+- `actions/github-script@v8` — publicação e atualização do comentário consolidado de revisão.
 
-Nos jobs de revisão por IA, `actions/setup-node@v7` usa `package-manager-cache: false`: os clientes de revisão são ESM dependency-free executados diretamente por `node`, sem instalação de dependências npm.
+Nos jobs de revisão por IA, `actions/setup-node@v7` usa `package-manager-cache: false`: os clientes são ESM dependency-free executados diretamente por `node`, sem instalação de dependências npm.
 
 Regra: atualizar o runtime interno das GitHub Actions **não altera** o runtime da PWA, o owner de persistência, o motor metodológico, a seleção de protocolos nem conclusões médico-periciais.
 
@@ -140,6 +140,10 @@ Regra: atualizar o runtime interno das GitHub Actions **não altera** o runtime 
 `.github/workflows/ai-review.yml` — orquestra revisão independente por dois modelos em PRs e pushes para `main`.
 
 `.github/scripts/prepare-review.mjs` + `review-input.mjs` — calculam **uma única entrada canônica** para os dois revisores, resolvem o intervalo de commits, detectam alterações apenas documentais e registram truncamento do diff.
+
+Em Pull Requests, o intervalo nasce do **merge-base entre a base alvo e o head**, evitando que avanço da branch alvo apareça como deleção ou alteração fantasma na revisão. Em pushes, o intervalo continua sendo `before → head`, com fallback para parent/empty tree quando `before` é zerado ou não pode ser recuperado.
+
+O payload de revisão é textual: patches binários não são incorporados ao orçamento. Quando o teto de 60.000 bytes é atingido, a metadata registra inventário completo dos caminhos alterados, caminho parcialmente incluído e caminhos totalmente omitidos. O comentário consolidado também é limitado de forma conservadora e declara quando a resposta de algum revisor precisou ser truncada apenas para publicação no GitHub; o artefato do job permanece a fonte integral daquela execução.
 
 `.github/scripts/review-openai.mjs` — cliente OpenAI via `fetch` nativo, com teto explícito de saída.
 
@@ -152,7 +156,7 @@ Fluxo:
 ```text
 PR / push main
       ↓
-prepare — checkout único + range + diff canônico + metadata
+prepare — checkout único + merge-base/range + diff canônico + metadata
       ↓
 review-input artifact
       ├───────────────┐
@@ -160,18 +164,26 @@ review-input artifact
 GPT review        Claude review
       └───────┬───────┘
               ↓
-comentário consolidado e atualizável
+comentário consolidado, limitado e atualizável
 ```
 
 Invariantes desta camada:
 
 1. os dois revisores recebem o mesmo payload de diff;
-2. diff > 60.000 bytes é marcado explicitamente como truncado;
-3. mudança somente em `*.md`/`docs/**` não consome chamadas pagas de IA;
+2. diff > 60.000 bytes é marcado explicitamente como truncado e sua cobertura por caminho é declarada;
+3. mudança somente documental pode evitar chamadas pagas de IA, mas arquivos operacionais de governança não podem ser tratados como documentação inócua;
 4. comentários de PR são atualizados por marcador estável, em vez de multiplicados a cada push;
-5. range de push/PR usa fallback explícito quando o SHA de base não é utilizável;
+5. Pull Requests usam merge-base; pushes usam `before` quando recuperável e fallback seguro quando ele é zerado/inalcançável;
 6. `OPENAI_API_KEY` e `ANTHROPIC_API_KEY` existem somente como GitHub Actions secrets quando ativadas;
 7. revisão de IA é **advisory governance**: não altera arquivos automaticamente, não escreve estado de caso, não adota protocolo e não produz conclusão médico-pericial.
+
+### 6.4 Fronteira de confiança dos secrets de revisão
+
+A ativação de secrets em um workflow disparado por `pull_request` pressupõe que **quem pode publicar branches dentro deste mesmo repositório é um colaborador confiável para a infraestrutura de CI**. Uma branch do próprio repositório pode propor alteração do YAML do workflow; portanto, segredo de provedor não deve ser ativado sob a premissa falsa de que qualquer autor de branch é não confiável.
+
+Enquanto o MedPer operar com branches internas controladas pela founder e agentes autorizados, essa é a fronteira explícita de confiança. Antes de admitir contribuição não confiável com capacidade de branch no mesmo repositório, a revisão paga deve migrar para uma fronteira que não entregue secrets ao YAML controlado pelo autor da PR — por exemplo, GitHub Environment com aprovação obrigatória ou execução base-controlled (`workflow_run`/arquitetura equivalente), com nova auditoria de permissões.
+
+Pull Requests de forks devem degradar sem secrets e sem transformar ausência de permissão de escrita em falsa falha de revisão. A configuração concreta desse caminho permanece responsabilidade da camada de governança de Actions, não do runtime MedPer.
 
 ## 7. Regra arquitetural resumida
 
