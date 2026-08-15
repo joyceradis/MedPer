@@ -81,6 +81,11 @@ assert.match(workflow, /issues\.updateComment/, 'existing review comment must be
 assert.match(workflow, /truncated/, 'published review must disclose truncation state');
 assert.match(workflow, /prepare_failure/, 'post-comment must publish an explanatory body when prepare input is unavailable');
 assert.match(workflow, /readJson/, 'post-comment must parse metadata through a guarded helper');
+assert.match(workflow, /MAX_COMMENT_CHARS\s*=\s*60000/, 'combined review comments need a conservative GitHub size ceiling');
+assert.match(workflow, /capFinding/, 'each provider finding must be bounded before composing the PR comment');
+assert.match(workflow, /Resultado truncado no comentário/, 'comment-side truncation must be disclosed explicitly');
+assert.match(workflow, /capFinding\(gptRaw/, 'GPT findings must pass through the comment cap');
+assert.match(workflow, /capFinding\(claudeRaw/, 'Claude findings must pass through the comment cap');
 
 const prepare = await readFile(new URL('../.github/scripts/prepare-review.mjs', import.meta.url), 'utf8');
 assert.match(prepare, /fetch[\s\S]*--depth=1[\s\S]*origin/, 'prepare must try to recover a missing nonzero before SHA from origin');
