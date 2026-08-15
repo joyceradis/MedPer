@@ -1,5 +1,6 @@
 import { generalMethod, getApplicableProtocols, getProtocol } from './protocols.js';
 import { getApplicableInstrumentIds, getContextualProtocolProfile, getMethodologyContext } from './context-resolver.js';
+import { functionalBaremaIsAtStake, normalizeFinalidadeId, resolveFunctionalBaremaTrack } from './barema-routing.js';
 
 const has=(o,k)=>{const v=o?.[k];return typeof v==='string'?Boolean(v.trim()):Boolean(v)};
 
@@ -50,6 +51,24 @@ export function auditCase(c){
     if(!['Compatível','Parcialmente compatível'].includes(u.temporalResult))issues.push(issue('block','temporalResult','Compatibilidade temporal insuficiente para conclusão causal positiva.'));
     if(u.alternativesStatus!=='Sim')issues.push(issue('warning','alternativesStatus','Causas alternativas não foram integralmente avaliadas.'));
   }
+  // A seleção do barema funcional é pela finalidade médico-jurídica da perícia,
+  // nunca pela causa do trauma (issue #56). Advisória, nunca bloqueio: o motor
+  // aponta a lacuna ou a ambiguidade, a escolha permanece da perita.
+  //
+  // O gatilho não é o protocolo de incapacidade. "Dano corporal" é matéria do
+  // cadastro sem protocolo próprio — resolve para o protocolo genérico — e é
+  // exatamente a matéria a que a Tabela Brasileira se dirige. Gatear em
+  // `capacity` deixava o caso central da issue fora do roteador.
+  if(functionalBaremaIsAtStake({matter:c.context?.matter,matterId:c.context?.matterId,protocolIds:[...protocolIds]})){
+    const finalidadeId=normalizeFinalidadeId(g.finalidadeChoice);
+    if(!finalidadeId){
+      issues.push(issue('warning','finalidadeChoice','Finalidade médico-jurídica da perícia não declarada. O barema funcional não deve ser escolhido pela causa do trauma (acidente de trânsito, queda etc.); declare a finalidade no passo Delimitação, em Exame e método.'));
+    }else{
+      const dpvatQuesitoExplicit=(Array.isArray(c.questions)?c.questions:[]).some(question=>/dpvat/i.test(String(question?.text||'')));
+      const barema=resolveFunctionalBaremaTrack({finalidadeId,dpvatQuesitoExplicit});
+      if(barema.requiresManualChoice)issues.push(issue('warning','finalidadeChoice',barema.rationale));
+    }
+  }
   if(protocolIds.has('liability')){
     if(!['Sim','Parcialmente'].includes(u.indicationStatus))issues.push(issue('warning','indicationStatus','Indicação técnica não está suficientemente esclarecida.'));
     if(u.damageStatus!=='Sim')issues.push(issue('block','damageStatus','Dano atual não está objetivamente demonstrado.'));
@@ -62,10 +81,12 @@ export function completion(c){
   const p=getProtocol(c.context?.matter);
   const applicable=getApplicableProtocols(c);
   const g=c.methodology?.general||{}, s=c.methodology?.specific||{}, u=c.methodology?.guided||{};
-  const stepCompletion=protocol=>protocol.steps.map(step=>step.fields.every(f=>f.type==='narrative'?has(s,f.id):has(u,f.id)));
+  // Um campo pode declarar o próprio critério de resposta; sem isso, basta valor.
+  const answered=(bag,f)=>f.answeredBy?Boolean(f.answeredBy(bag?.[f.id])):has(bag,f.id);
+  const stepCompletion=protocol=>protocol.steps.map(step=>step.fields.every(f=>f.type==='narrative'?answered(s,f):answered(u,f)));
   const specificByProtocol=Object.fromEntries(applicable.map(protocol=>[protocol.id,stepCompletion(protocol)]));
   return {
-    general:generalMethod.map(x=>x.fields.every(f=>has(g,f.id))),
+    general:generalMethod.map(x=>x.fields.every(f=>answered(g,f))),
     specific:specificByProtocol[p.id]||stepCompletion(p),
     specificByProtocol
   };

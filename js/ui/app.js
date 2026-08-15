@@ -35,7 +35,13 @@ const viewState={auditAheadOpen:false};
 // perita precisa vê-lo para decidir se reclassifica. Ele é exibido ao final, marcado
 // como registro anterior, em vez de deixar a pergunta aparentando nunca ter sido
 // respondida. Nada é reescrito automaticamente; a reclassificação é decisão dela.
-function choices(path,label,value,options){const legacy=value&&!options.includes(value);const list=legacy?[...options,value]:options;return`<fieldset class="guided-question"><legend>${esc(label)}</legend><div class="guided-choices">${list.map(o=>`<label class="guided-choice${legacy&&o===value?' is-legacy':''}"><input type="radio" name="${esc(path)}" data-bind="${esc(path)}" value="${esc(o)}" ${value===o?'checked':''}><span>${esc(o)}${legacy&&o===value?'<small>registro anterior — fora da escala atual</small>':''}</span></label>`).join('')}</div></fieldset>`;}
+// Uma opção pode ser texto simples — em que o valor gravado é o próprio rótulo —
+// ou um par {id,label}, em que o caso persiste o id e a tela exibe o rótulo.
+// A segunda forma é a correta quando a redação pode mudar: label visível não é
+// contrato do domínio, e renomear uma opção não pode órfãr casos já gravados.
+const optionId=o=>typeof o==='string'?o:o.id;
+const optionLabel=o=>typeof o==='string'?o:o.label;
+function choices(path,label,value,options){const legacy=value&&!options.some(o=>optionId(o)===value);const list=legacy?[...options,value]:options;return`<fieldset class="guided-question"><legend>${esc(label)}</legend><div class="guided-choices">${list.map(o=>{const id=optionId(o),isLegacy=legacy&&id===value;return`<label class="guided-choice${isLegacy?' is-legacy':''}"><input type="radio" name="${esc(path)}" data-bind="${esc(path)}" value="${esc(id)}" ${value===id?'checked':''}><span>${esc(optionLabel(o))}${isLegacy?'<small>registro anterior — fora da escala atual</small>':''}</span></label>`;}).join('')}</div></fieldset>`;}
 
 function renderHome(state,filter='active'){return renderDashboardHome(state,filter);}
 
@@ -102,7 +108,7 @@ function protocolSelector(c,applicable){
 }
 function renderMethod(c){
   const applicable=getApplicableProtocols(c),done=completion(c);
-  const general=generalMethod.map((phase,i)=>panel(phase.title,'Método geral obrigatório.',`<div class="form-grid">${phase.fields.map(f=>textarea(`methodology.general.${f.id}`,f.label,c.methodology.general[f.id],f.help)).join('')}</div><p class="notice">${done.general[i]?'Etapa concluída':'Etapa em andamento'}</p>`)).join('');
+  const general=generalMethod.map((phase,i)=>panel(phase.title,'Método geral obrigatório.',`<div class="form-grid">${phase.fields.map(f=>f.type==='narrative'?textarea(`methodology.general.${f.id}`,f.label,c.methodology.general[f.id],f.help):choices(`methodology.general.${f.id}`,f.label,c.methodology.general[f.id],f.options)).join('')}</div><p class="notice">${done.general[i]?'Etapa concluída':'Etapa em andamento'}</p>`)).join('');
   const selector=panel('Métodos aplicáveis','O MedPer sugere pelo contexto e pelo objeto. Você mantém o controle sobre os módulos adicionais.',protocolSelector(c,applicable));
   const specific=applicable.map(p=>panel(`Protocolo · ${p.title}`,p.id==='aesthetic'?'AIPE disponível neste caso.':'Somente as etapas pertinentes a este objeto ficam abertas.',`${p.id==='aesthetic'?renderAipeReference():''}<div class="guided-methodology">${p.steps.map((s,i)=>`<details class="guided-step" ${i===0?'open':''}><summary><span>${esc(s.title)}</span><small>${done.specificByProtocol?.[p.id]?.[i]?'Concluído':'Em andamento'}</small></summary><div class="guided-step-body">${s.fields.map(f=>f.type==='narrative'?textarea(`methodology.specific.${f.id}`,f.label,c.methodology.specific[f.id],f.help):choices(`methodology.guided.${f.id}`,f.label,c.methodology.guided[f.id],f.options)).join('')}</div></details>`).join('')}</div>`)).join('');
   return`<div class="methodology-stack">${stageAudit(c,'method')}${general}${selector}${specific}</div>`;

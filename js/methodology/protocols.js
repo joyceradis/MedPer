@@ -1,5 +1,10 @@
 import {AIPE_CATEGORIES,AIPE_IMPACT_BANDS} from './aipe.js';
-const q=(id,label,options)=>({id,label,options});
+import {FINALIDADE_OPTIONS,normalizeFinalidadeId} from './barema-routing.js';
+// `answeredBy` deixa o campo declarar o que conta como resposta. Sem ele, basta
+// haver valor. Com ele, o valor precisa ter significado para o método — é o que
+// impede uma opção-sentinela de fazer a etapa contar como concluída enquanto a
+// auditoria diz que o dado não foi declarado.
+const q=(id,label,options,answeredBy)=>answeredBy?({id,label,options,answeredBy}):({id,label,options});
 const n=(id,label,help)=>({id,label,help,type:'narrative'});
 // A entrada da perita representa a tabela de referência em vez de copiá-la à mão.
 // Rótulo e faixa vêm de AIPE_CATEGORIES; a graduação, de AIPE_IMPACT_BANDS. Este
@@ -9,8 +14,19 @@ const n=(id,label,help)=>({id,label,help,type:'narrative'});
 const aipeRange=category=>category.range[0]===category.range[1]?`${category.range[0]}`:`${category.range[0]}–${category.range[1]}`;
 const AIPE_CATEGORY_OPTIONS=AIPE_CATEGORIES.map(category=>`${category.label} (${aipeRange(category)})`);
 const AIPE_LEVEL_OPTIONS=[...new Set(Object.values(AIPE_IMPACT_BANDS).flatMap(bands=>bands.map(([level])=>level)))].concat('Não definido');
+// A finalidade médico-jurídica é declarada aqui, na delimitação — antes de
+// qualquer escolha de barema funcional (issue #56). As opções vêm de
+// FINALIDADE_OPTIONS para que a UI nunca duplique a taxonomia que o roteamento
+// usa; ver js/methodology/barema-routing.js.
+// As opções carregam id e rótulo: o caso persiste o id, a tela exibe o rótulo.
+// Não há opção "A definir": ela gravava um valor e fazia a etapa contar como
+// concluída enquanto a auditoria dizia que a finalidade não estava declarada — a
+// tela afirmava duas coisas contraditórias sobre o mesmo campo. Não responder já
+// é exatamente o estado que "A definir" tentava expressar, e a auditoria já o
+// aponta.
+const FINALIDADE_CHOICE_OPTIONS=FINALIDADE_OPTIONS.map(option=>({id:option.id,label:option.label}));
 export const generalMethod=[
-{id:'delimitation',title:'Delimitação',fields:[n('object','Objeto pericial','Registre exatamente o que deve ser esclarecido.'),n('controversies','Pontos controvertidos','Questões médicas efetivamente discutidas.'),n('methodChoice','Escolha metodológica','Justifique avaliação presencial, documental, indireta ou combinada.'),n('scopeLimits','Limites da atuação','Questões fora do objeto ou dependentes de outro especialista.')]},
+{id:'delimitation',title:'Delimitação',fields:[n('object','Objeto pericial','Registre exatamente o que deve ser esclarecido.'),q('finalidadeChoice','Finalidade médico-jurídica da perícia',FINALIDADE_CHOICE_OPTIONS,normalizeFinalidadeId),n('controversies','Pontos controvertidos','Questões médicas efetivamente discutidas.'),n('methodChoice','Escolha metodológica','Justifique avaliação presencial, documental, indireta ou combinada.'),n('scopeLimits','Limites da atuação','Questões fora do objeto ou dependentes de outro especialista.')]},
 {id:'material',title:'Material analisado',fields:[n('availableMaterial','Elementos disponíveis','Autos, prontuários, imagens, exames e literatura.'),n('missingMaterial','Elementos ausentes','Documentos ou dados necessários não disponibilizados.'),n('sourceQuality','Qualidade das fontes','Autoria, contemporaneidade, integridade e consistência.'),n('contradictions','Divergências documentais','Incompatibilidades entre registros, relato e exame.')]},
 {id:'execution',title:'Execução técnica',fields:[n('directedHistory','Anamnese pericial dirigida','História orientada ao objeto.'),n('priorState','Estado anterior','Condições preexistentes e funcionalidade prévia.'),n('objectiveExam','Exame objetivo','Achados positivos e negativos relevantes.'),n('complementaryData','Exames complementares','Resultados e interpretação pericial.'),n('consistency','Consistência interna','Compatibilidade entre relato, documentos, exame e evolução.')]}
 ];
