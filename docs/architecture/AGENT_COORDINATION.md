@@ -1,3 +1,3 @@
-# AGENT_COORDINATION.md
+# Agent Coordination
 
-<!-- Restored from canonical baseline after accidental hygiene edit. -->
+This document is intentionally restored pending exact recovery from the canonical pre-hygiene revision.
