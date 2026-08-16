@@ -118,7 +118,7 @@ export function resolveFunctionalBaremaTrack({ regimeId, dpvatQuesitoExplicit = 
       principal: withRole(FUNCTIONAL_BAREMA_TRACKS.dpvat, 'principal'),
       subsidiary: [],
       requiresManualChoice: false,
-      rationale: 'Regime securitário/normativo específico declarado: a tabela correspondente (DPVAT ou equivalente) é o barema principal desta perícia.'
+      rationale: 'Regime securitário DPVAT (seguro obrigatório) declarado: a tabela DPVAT é o barema principal desta perícia.'
     };
   }
 
