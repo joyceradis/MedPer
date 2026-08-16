@@ -90,8 +90,11 @@ O MedPer está em fase de **protótipo funcional e engenharia cognitiva**.
 - quesitos;
 - prévia do documento final;
 - exportação JSON;
+- superfície **Modelos e checklists** com o Protocolo de Conferência Pericial operando como ferramenta: oito dimensões colapsáveis, itens marcáveis, progresso por dimensão e conferência persistida por caso (`case.conference`);
+- entrada AIPE derivada da tabela de referência, com a faixa visível no rótulo e preservação de registros feitos sob a escala anterior;
+- revisão automatizada em dois modelos na CI, com o diff tratado como entrada não confiável;
 - autenticação e modelo multiusuário preparados, ainda não conectados a ambiente real;
-- testes de regressão para migração, persistência e compatibilidade do objeto pericial.
+- suíte de regressão cobrindo migração, persistência, metodologia, superfícies, conhecimento, marca e runtime da CI.
 
 ### Em desenvolvimento
 
@@ -206,16 +209,29 @@ MedPer/
 │   │   ├── store.js
 │   │   └── case-lifecycle.js
 │   ├── methodology/
+│   │   ├── context-resolver.js
 │   │   ├── protocols.js
 │   │   ├── engine.js
 │   │   └── aipe.js
+│   ├── knowledge/
+│   │   └── library.js          referências com autoridade e localizador
+│   ├── models/
+│   │   └── checklists.js       instrumentos de conferência, fora do motor
 │   └── ui/
 │       ├── workflow.js
 │       ├── app.js
+│       ├── dashboard-model.js
+│       ├── dashboard-view.js
+│       ├── surface-controller.js
+│       ├── case-inspector.js
+│       ├── inspector-controller.js
+│       ├── method-context-controller.js
 │       └── dialog-controller.js
 │
 ├── docs/
 │   ├── ARCHITECTURE.md
+│   ├── PRODUCT_MAP.md          arquitetura de informação e superfícies
+│   ├── STATUS.md               âncora operacional de retomada
 │   ├── AUDIT_REGRESSION.md
 │   ├── FIELD_MIGRATION_MATRIX.md
 │   └── MEDPER_METHOD.md
@@ -225,7 +241,7 @@ MedPer/
 │   └── 002_bootstrap_organization.sql
 │
 ├── tests/
-│   └── store-regression.test.mjs
+│   └── suítes de regressão (a cadeia canônica está em `package.json`)
 │
 └── .github/workflows/
     └── auditorias automatizadas
@@ -265,33 +281,21 @@ Não abra os arquivos diretamente com `file://`, pois imports ES, Service Worker
 ### Sintaxe dos módulos
 
 ```bash
-node --check js/main.js
-node --check js/core/store.js
-node --check js/core/case-lifecycle.js
-node --check js/methodology/protocols.js
-node --check js/methodology/engine.js
-node --check js/methodology/aipe.js
-node --check js/ui/app.js
-node --check js/ui/dialog-controller.js
-node --check js/auth/auth-controller.js
-node --check sw.js
+npm run check
 ```
+
+A cadeia canônica de módulos verificados vive em `package.json`, no script `check`. Ela não é replicada aqui de propósito: uma lista copiada envelhece em silêncio, e a divergência entre documentação e código é exatamente o defeito que este projeto trata como bloqueio.
 
 ### Testes de regressão
 
 ```bash
-npm test
+npm test          # suíte completa
+npm run audit     # check + test, a cadeia usada pela CI
 ```
 
-Os testes atuais cobrem:
+As suítes cobrem persistência e migração de casos legados, metodologia contextual, protocolos e AIPE, superfícies do dashboard, camada de conhecimento, marca e âncora visual, fronteira do legado MLKS, e o runtime dos workflows do GitHub Actions.
 
-- migração do objeto pericial legado;
-- sincronização entre o alias histórico e o campo canônico;
-- conflito entre versões do objeto;
-- atualização silenciosa e notificação explícita;
-- preservação de coleções durante migração;
-- backup das chaves antigas;
-- recuperação segura após JSON inválido.
+A lista executável está em `package.json`, no script `test`. Um teste que existe no arquivo mas não está na cadeia não roda — e esse foi um defeito real encontrado neste repositório, por isso a cadeia é a fonte, não esta seção.
 
 ---
 
