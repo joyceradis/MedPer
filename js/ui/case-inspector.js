@@ -1,5 +1,6 @@
 import { getKnowledgeSource, getRelevantKnowledge, REFERENCE_CLASSES } from '../knowledge/library.js';
 import { classifyDeadline } from './dashboard-model.js';
+import { WORKFLOW_STAGES } from './workflow.js';
 
 const esc = (value = '') => String(value ?? '').replace(/[&<>"']/g, character => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
@@ -28,7 +29,9 @@ function renderSummary(caseData, { stageId, now }) {
   const deadline = nextDeadline(caseData);
   const pending = caseData.operations?.pendingActions || [];
   const severity = deadline ? classifyDeadline(deadline.dueAt, now) : 'neutral';
-  const stageLabel = stageId ? stageId.replace(/-/g, ' ') : 'delimitação';
+  // O rótulo vem da própria lista de etapas. O `replace('-',' ')` anterior
+  // devolvia o identificador de rota cru — a inspetora lia "delimitation".
+  const stageLabel = (WORKFLOW_STAGES.find(stage => stage.id === stageId) || WORKFLOW_STAGES[0]).label;
 
   return `<div class="inspector-summary-grid">
     <div class="inspector-fact"><span>Objeto</span><strong>${esc(caseData.scope || caseData.methodology?.general?.object || 'Não delimitado')}</strong></div>

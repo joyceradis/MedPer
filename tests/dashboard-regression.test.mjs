@@ -55,7 +55,7 @@ test('caseStageProgress reflete o que está registrado no caso',async()=>{
   assert.equal(comAutos.currentLabel,'Cronologia');
 });
 
-test('Phase 2 CSS preserves restrained cards, semantic deadlines and canonical navy hierarchy',()=>{
+test('Phase 2 CSS preserves semantic deadlines and the canonical navy, without ornament',()=>{
   const base=fs.readFileSync(new URL('../css/dashboard.css',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../css/phase2.css',import.meta.url),'utf8');
 
@@ -63,11 +63,85 @@ test('Phase 2 CSS preserves restrained cards, semantic deadlines and canonical n
   assert.match(base,/\.deadline-indicator\.is-warning/);
   assert.match(css,/\.work-progress-track/);
   assert.match(css,/\.shell \.main\.case-layout/);
+
+  // A marca é congelada em PRODUCT_ANCHOR §3.1 e não muda por passe de desenho.
   assert.match(css,/--mp-navy:#06172d/);
   assert.match(css,/--mp-navy-mid:#0b2748/);
   assert.match(css,/--mp-navy-top:#12375f/);
-  assert.match(css,/\.dashboard-sidebar:before/);
-  assert.match(css,/\.dashboard-sidebar:after/);
+
+  // A textura diagonal atrás da navegação não era marca: eram três gradientes
+  // empilhados em 56,2%/56,5% simulando relevo. Este teste protegia a
+  // decoração; passa a proteger a remoção dela. Só o gradiente vertical da
+  // barra — esse sim identidade — permanece.
+  assert.match(css,/\.dashboard-sidebar:before,\.dashboard-sidebar:after\{content:none\}/,
+    'a barra lateral não pode voltar a desenhar textura em pseudo-elemento');
+  assert.match(css,/\.dashboard-sidebar\{[^}]*linear-gradient\(180deg,var\(--mp-navy-top\)/,
+    'o gradiente vertical da marca continua');
+});
+
+test('Phase 2 CSS holds the interface direction: legible floor, continuous progress, status is never a fill',()=>{
+  const css=fs.readFileSync(new URL('../css/phase2.css',import.meta.url),'utf8');
+
+  // Piso de legibilidade. O desenho anterior descia a 8,5px em rótulos.
+  const tamanhos=[...css.matchAll(/font-size:(\d+(?:\.\d+)?)px/g)].map(m=>Number(m[1]));
+  assert.ok(tamanhos.length>20,'a folha declara tamanhos de tipo');
+  assert.ok(Math.min(...tamanhos)>=10,`nenhum tipo abaixo de 10px (menor encontrado: ${Math.min(...tamanhos)}px)`);
+
+  // Progresso é uma barra contínua, não nove pílulas soltas com selo flutuante.
+  for (const [nome,bloco] of [
+    ['.work-progress-track',css.match(/\.work-progress-track\{([^}]*)\}/)],
+    ['.shell .stage-status',css.match(/\.shell \.stage-status\{([^}]*)\}/)]
+  ]) {
+    assert.ok(bloco,`${nome} declarado`);
+    assert.match(bloco[1],/gap:0/,`${nome} sem folga entre segmentos`);
+    assert.match(bloco[1],/overflow:hidden/,`${nome} é um trilho único`);
+  }
+  assert.doesNotMatch(css,/\.(work-progress|stage-status)[^{]*is-current[^{]*\{[^}]*content:['"]✓/,
+    'o selo de visto flutuando fora do trilho não volta');
+
+  // Severidade é o glifo, nunca a tinta do fundo: o texto tem de continuar legível.
+  const auditoria=css.match(/\.audit-item\.block,\.audit-item\.warning\{([^}]*)\}/);
+  assert.ok(auditoria,'a especificidade de .audit-item.block é neutralizada explicitamente');
+  assert.match(auditoria[1],/background:var\(--mp-window\)/,'bloqueio e ressalva não tingem o fundo');
+  assert.match(css,/\.audit-item\.block:before\{background:var\(--mp-red\)\}/);
+  assert.match(css,/\.audit-item\.warning:before\{background:var\(--mp-orange\)\}/);
+
+  // Uma superfície que contém listas não desenha a própria moldura.
+  assert.match(css,/\.surface-panel,\.reference-library,\.conf-surface\{\s*border:0;border-radius:0;background:transparent;box-shadow:none/,
+    'painel que hospeda lista não pode voltar a ser caixa dentro de caixa');
+});
+
+test('toda grade de layout redefinida na camada visual carrega o próprio degrau responsivo',()=>{
+  // Armadilha de cascata, encontrada medindo: `phase2.css` é a última folha
+  // carregada, então uma regra base declarada aqui vence os `@media` das folhas
+  // anteriores. Ao reescrever `.protocol-selector` em quatro colunas sem repetir
+  // os degraus que existiam em `guided-methodology.css`, a grade ficou fixa em
+  // qualquer largura e a página passou a estourar 427px num viewport de 420.
+  // Regra: se esta camada declara uma grade de layout na base, ela também
+  // precisa estreitá-la aqui. Trilhos de progresso usam `repeat(N,1fr)` sem
+  // `minmax` e ficam de fora — não são layout, são um único elemento medido.
+  const css=fs.readFileSync(new URL('../css/phase2.css',import.meta.url),'utf8');
+
+  // Separa o que está dentro de @media do que está fora, contando chaves.
+  let base='',media='',profundidade=0,dentro=false;
+  for (let i=0;i<css.length;i++) {
+    if (!dentro && css.startsWith('@media',i)) { dentro=true; profundidade=0; }
+    (dentro?(media+=css[i]):(base+=css[i]));
+    if (dentro) {
+      if (css[i]==='{') profundidade++;
+      else if (css[i]==='}' && --profundidade===0) dentro=false;
+    }
+  }
+
+  const grades=[...base.matchAll(/(?:^|\n)([^@\s{][^{}\n]*)\{[^{}]*grid-template-columns:repeat\((\d+),\s*minmax\(0,\s*1fr\)\)/g)]
+    .filter(m=>Number(m[2])>1)
+    .map(m=>m[1].trim().split(',')[0].trim());
+
+  assert.ok(grades.length>=3,`a folha declara grades de layout (encontradas: ${grades.length})`);
+  for (const seletor of grades) {
+    assert.ok(media.includes(`${seletor}{`),
+      `${seletor} declara grade multi-coluna na base e precisa de um degrau em @media nesta mesma folha`);
+  }
 });
 
 console.log('Dashboard regression suite completed successfully.');

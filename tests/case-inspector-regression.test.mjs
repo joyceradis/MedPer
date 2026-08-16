@@ -53,6 +53,10 @@ test('renders a recognition-oriented summary without turning into a mini workspa
   assert.match(html, /2 pendências/);
   assert.match(html, /Abrir perícia/);
   assert.doesNotMatch(html, /<textarea|<input|<select|data-bind=/);
+
+  // A etapa aparece pelo nome da etapa, não pelo identificador de rota.
+  assert.match(html, /Exame e método/, 'o rótulo vem de WORKFLOW_STAGES');
+  assert.doesNotMatch(html, />method</, 'o id de rota não vaza para a leitura');
 });
 
 test('uses only the three approved inspector tabs', () => {
