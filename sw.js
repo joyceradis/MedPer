@@ -1,4 +1,4 @@
-const CACHE_NAME='medper-shell-v31-20260815';
+const CACHE_NAME='medper-shell-v32-20260816';
 const APP_SHELL=['./','./index.html','./app.html','./css/marketing.css','./css/design-system.css','./css/styles.css','./css/dashboard.css','./css/inspector.css','./css/methodology.css','./css/guided-methodology.css','./css/context-methodology.css','./css/knowledge.css','./css/auth.css','./css/phase2.css','./js/main.js','./js/core/store.js','./js/core/case-lifecycle.js','./js/methodology/context-resolver.js','./js/methodology/protocols.js','./js/methodology/engine.js','./js/methodology/aipe.js','./js/knowledge/library.js','./js/models/checklists.js','./js/ui/workflow.js','./js/ui/dashboard-model.js','./js/ui/dashboard-view.js','./js/ui/surface-controller.js','./js/ui/case-inspector.js','./js/ui/inspector-controller.js','./js/ui/method-context-controller.js','./js/ui/app.js','./js/ui/dialog-controller.js','./js/auth/auth-controller.js','./js/config/supabase-config.js','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',event=>{

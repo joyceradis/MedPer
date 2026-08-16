@@ -79,6 +79,9 @@ Este documento é a fonte de verdade para a evolução do produto. Novas funcion
 - [x] Base técnica contextual classificada por natureza, autoridade, versão, âmbito e tema, com fonte/localização e divergências explícitas fora do motor decisório.
 - [x] Entrada AIPE derivada da tabela de referência — categoria "Médio" e banda "Severo" passam a ser registráveis, e registros feitos sob a escala anterior aparecem marcados em vez de sumirem da tela (#50).
 - [x] Superfície "Modelos e checklists" deixa de ser placeholder: publica o Protocolo de Conferência Pericial (#51) e o converte em ferramenta com itens marcáveis, progresso e conferência persistida por caso (#53).
+- [x] Etapa do caso aberta pela tarefa que ali se cumpre: a base técnica passa a vir depois do trabalho e a auditoria ganha escopo de etapa — o total de bloqueios e ressalvas do caso continua declarado e a lista integral fica a um clique.
+- [x] Aplicação utilizável em largura de telefone na tela de caso: a navegação de etapas rola dentro de si em vez de empurrar a página para 862px num viewport de 420px.
+- [x] O primeiro clique depois de editar um campo passa a valer: o redesenho espera o ponteiro ser solto em vez de destruir o alvo entre o mousedown e o mouseup.
 - Estrutura de Laudo Pericial Judicial ao lado da etapa Documento — conteúdo pronto em `claude/report-structure-model`, aguardando reimplementação no idioma de ferramenta.
 - Redesenho visual definitivo e identidade de marca.
 - Guia visual mínimo.

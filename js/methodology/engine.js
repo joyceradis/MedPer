@@ -3,6 +3,12 @@ import { getApplicableInstrumentIds, getContextualProtocolProfile, getMethodolog
 
 const has=(o,k)=>{const v=o?.[k];return typeof v==='string'?Boolean(v.trim()):Boolean(v)};
 
+// Cada pendência declara o campo que a originou. É procedência, não classificação:
+// severidade, texto e condição continuam decididos aqui e apenas aqui. A interface
+// usa esse identificador para saber em qual tela a resposta é registrada, sem
+// precisar reinterpretar o significado metodológico da pendência.
+const issue=(severity,field,text)=>({severity,field,text});
+
 export function auditCase(c){
   const issues=[];
   const g=c.methodology?.general||{}, s=c.methodology?.specific||{}, u=c.methodology?.guided||{}, d=c.methodology?.decision||{};
@@ -10,44 +16,44 @@ export function auditCase(c){
   const contextualProfile=getContextualProtocolProfile(c);
   const instrumentIds=new Set(getApplicableInstrumentIds(c));
 
-  if(!has(g,'object'))issues.push({severity:'block',text:'Objeto pericial não delimitado.'});
-  if(!has(g,'methodChoice'))issues.push({severity:'block',text:'Escolha metodológica não justificada.'});
-  if(!has(g,'availableMaterial'))issues.push({severity:'warning',text:'Material analisado não descrito.'});
-  if(!has(g,'objectiveExam')&&c.context?.mode!=='Documental')issues.push({severity:'warning',text:'Exame objetivo não registrado.'});
-  if(!has(d,'alternatives'))issues.push({severity:'warning',text:'Hipóteses alternativas não analisadas.'});
-  if(!has(d,'certainty'))issues.push({severity:'warning',text:'Grau de sustentação não registrado.'});
+  if(!has(g,'object'))issues.push(issue('block','object','Objeto pericial não delimitado.'));
+  if(!has(g,'methodChoice'))issues.push(issue('block','methodChoice','Escolha metodológica não justificada.'));
+  if(!has(g,'availableMaterial'))issues.push(issue('warning','availableMaterial','Material analisado não descrito.'));
+  if(!has(g,'objectiveExam')&&c.context?.mode!=='Documental')issues.push(issue('warning','objectiveExam','Exame objetivo não registrado.'));
+  if(!has(d,'alternatives'))issues.push(issue('warning','alternatives','Hipóteses alternativas não analisadas.'));
+  if(!has(d,'certainty'))issues.push(issue('warning','certainty','Grau de sustentação não registrado.'));
 
   if(c.context?.legalSphereId&&c.context?.matterId&&!contextualProfile.baseProtocolId){
-    issues.push({severity:'warning',text:'Ainda não existe perfil contextual específico validado para esta combinação de esfera e objeto; mantenha o método geral e selecione protocolos/instrumentos manualmente.'});
+    issues.push(issue('warning','context','Ainda não existe perfil contextual específico validado para esta combinação de esfera e objeto; mantenha o método geral e selecione protocolos/instrumentos manualmente.'));
   }
 
   if(!methodologyContext.purposeId){
-    issues.push({severity:'warning',text:'Finalidade médico-pericial ainda não definida.'});
+    issues.push(issue('warning','purpose','Finalidade médico-pericial ainda não definida.'));
   }
 
   const protocolIds=new Set(getApplicableProtocols(c).map(protocol=>protocol.id));
   if(protocolIds.has('aesthetic')){
-    if(u.consolidationStatus!=='Sim, com fundamento registrado')issues.push({severity:'block',text:'Sem consolidação fundamentada, não cabe sequela estética permanente definitiva.'});
-    if(u.objectiveChange!=='Sim')issues.push({severity:'block',text:'A valoração estética exige alteração morfológica objetivamente demonstrada.'});
-    if(!has(s,'topography')||!has(s,'dimensions'))issues.push({severity:'block',text:'Descrição morfológica incompleta: topografia e dimensões são necessárias.'});
-    if(u.priorAppearanceStatus==='Não há informação')issues.push({severity:'warning',text:'Ausência de estado estético anterior limita a comparação.'});
-    if(instrumentIds.has('aipe')&&has(s,'aipeScore')&&!has(s,'aipeRationale'))issues.push({severity:'warning',text:'AIPE registrada sem fundamentação descritiva.'});
-    if(!instrumentIds.has('aipe')&&has(s,'aipeScore'))issues.push({severity:'warning',text:'Há registro AIPE, mas o instrumento não está ativo para o contexto atual; confirme sua pertinência metodológica ou remova o registro da análise ativa.'});
+    if(u.consolidationStatus!=='Sim, com fundamento registrado')issues.push(issue('block','consolidationStatus','Sem consolidação fundamentada, não cabe sequela estética permanente definitiva.'));
+    if(u.objectiveChange!=='Sim')issues.push(issue('block','objectiveChange','A valoração estética exige alteração morfológica objetivamente demonstrada.'));
+    if(!has(s,'topography')||!has(s,'dimensions'))issues.push(issue('block','topography','Descrição morfológica incompleta: topografia e dimensões são necessárias.'));
+    if(u.priorAppearanceStatus==='Não há informação')issues.push(issue('warning','priorAppearanceStatus','Ausência de estado estético anterior limita a comparação.'));
+    if(instrumentIds.has('aipe')&&has(s,'aipeScore')&&!has(s,'aipeRationale'))issues.push(issue('warning','aipeRationale','AIPE registrada sem fundamentação descritiva.'));
+    if(!instrumentIds.has('aipe')&&has(s,'aipeScore'))issues.push(issue('warning','aipeScore','Há registro AIPE, mas o instrumento não está ativo para o contexto atual; confirme sua pertinência metodológica ou remova o registro da análise ativa.'));
   }
   if(protocolIds.has('capacity')){
-    if(u.functionalDeficitStatus!=='Sim')issues.push({severity:'block',text:'Diagnóstico isolado não demonstra incapacidade; falta déficit funcional objetivo.'});
-    if(u.activityKnown!=='Sim, detalhadamente')issues.push({severity:'block',text:'Atividade habitual e exigências ainda não estão suficientemente caracterizadas.'});
-    if(!has(s,'residualCapacity'))issues.push({severity:'warning',text:'Capacidade residual não analisada.'});
+    if(u.functionalDeficitStatus!=='Sim')issues.push(issue('block','functionalDeficitStatus','Diagnóstico isolado não demonstra incapacidade; falta déficit funcional objetivo.'));
+    if(u.activityKnown!=='Sim, detalhadamente')issues.push(issue('block','activityKnown','Atividade habitual e exigências ainda não estão suficientemente caracterizadas.'));
+    if(!has(s,'residualCapacity'))issues.push(issue('warning','residualCapacity','Capacidade residual não analisada.'));
   }
   if(protocolIds.has('causation')){
-    if(!['Sim','Parcialmente'].includes(u.eventProof))issues.push({severity:'block',text:'Evento ou exposição não está suficientemente caracterizado.'});
-    if(!['Compatível','Parcialmente compatível'].includes(u.temporalResult))issues.push({severity:'block',text:'Compatibilidade temporal insuficiente para conclusão causal positiva.'});
-    if(u.alternativesStatus!=='Sim')issues.push({severity:'warning',text:'Causas alternativas não foram integralmente avaliadas.'});
+    if(!['Sim','Parcialmente'].includes(u.eventProof))issues.push(issue('block','eventProof','Evento ou exposição não está suficientemente caracterizado.'));
+    if(!['Compatível','Parcialmente compatível'].includes(u.temporalResult))issues.push(issue('block','temporalResult','Compatibilidade temporal insuficiente para conclusão causal positiva.'));
+    if(u.alternativesStatus!=='Sim')issues.push(issue('warning','alternativesStatus','Causas alternativas não foram integralmente avaliadas.'));
   }
   if(protocolIds.has('liability')){
-    if(!['Sim','Parcialmente'].includes(u.indicationStatus))issues.push({severity:'warning',text:'Indicação técnica não está suficientemente esclarecida.'});
-    if(u.damageStatus!=='Sim')issues.push({severity:'block',text:'Dano atual não está objetivamente demonstrado.'});
-    if(!['Demonstrado','Possível'].includes(u.nexusStatus))issues.push({severity:'block',text:'Resultado adverso não equivale a erro; falta nexo entre eventual desvio e dano.'});
+    if(!['Sim','Parcialmente'].includes(u.indicationStatus))issues.push(issue('warning','indicationStatus','Indicação técnica não está suficientemente esclarecida.'));
+    if(u.damageStatus!=='Sim')issues.push(issue('block','damageStatus','Dano atual não está objetivamente demonstrado.'));
+    if(!['Demonstrado','Possível'].includes(u.nexusStatus))issues.push(issue('block','nexusStatus','Resultado adverso não equivale a erro; falta nexo entre eventual desvio e dano.'));
   }
   return {issues,blocks:issues.filter(x=>x.severity==='block').length,warnings:issues.filter(x=>x.severity==='warning').length};
 }
