@@ -36,3 +36,89 @@
    viewport de 420px e metade de cada painel ficava fora da tela. min-width:0 devolve
    a rolagem para dentro da própria navegação, que é onde overflow:auto já a esperava. */
 .shell .case-sidebar{min-width:0}.shell .case-nav{scrollbar-width:thin}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Passe visual: o trabalho é a âncora, não o inventário do aplicativo.
+   Serif fica reservado aos momentos de identidade — o cumprimento da página e
+   o nome da perícia. Todo o resto era serif também, em tamanhos próximos, e
+   por isso nada dominava. Títulos de seção passam a sans com peso e tracking,
+   criando o degrau de 15–17px que faltava entre o display e o texto miúdo.
+   ───────────────────────────────────────────────────────────────────────── */
+.dashboard-workspace{padding:40px clamp(30px,3.8vw,58px) 72px;background:#fff}
+.dashboard-toolbar{margin-bottom:0;padding-bottom:24px;border-bottom:1px solid var(--mp-line)}
+.dashboard-toolbar h1{font:600 clamp(24px,2.2vw,29px)/1.15 Georgia,'Times New Roman',serif}
+.dashboard-toolbar p{font-size:13px;margin-top:5px}
+
+.work-layout{display:grid;gap:0}
+.work-card{padding:34px 0 32px;border-bottom:1px solid var(--mp-line)}
+.work-role{display:inline-block;font:800 9.5px/1 Inter,system-ui,sans-serif;letter-spacing:.13em;text-transform:uppercase;color:#7d3d48}
+.work-card h2{margin:13px 0 9px;font:600 clamp(27px,2.9vw,36px)/1.1 Georgia,'Times New Roman',serif;letter-spacing:-.015em;color:var(--mp-ink)}
+.work-meta{margin:0;font-size:13px;line-height:1.55;color:var(--mp-muted)}
+.work-card-empty h2{font-size:clamp(22px,2.2vw,27px)}
+
+.work-progress{margin:26px 0 0;max-width:640px}
+.work-progress-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:9px}
+.work-progress-head strong{font-size:14px;font-weight:650;color:var(--mp-ink)}
+.work-progress-head span{font-size:11.5px;color:var(--mp-muted);font-variant-numeric:tabular-nums}
+.work-progress-track{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
+.work-progress-track span{height:4px;border-radius:2px;background:#e3e7eb}
+.work-progress-track .is-done{background:#35658f}
+.work-progress-track .is-current{background:var(--mp-navy);box-shadow:0 0 0 2px rgba(6,23,45,.12)}
+
+.work-open{margin-top:28px;display:inline-flex;align-items:center;gap:9px;border:0;border-radius:9px;background:var(--mp-navy);color:var(--mp-ivory);padding:13px 22px;font:650 13.5px Inter,system-ui,sans-serif;font-family:inherit;cursor:pointer}
+.work-open:hover{background:var(--mp-navy-mid)}
+.work-open svg{width:15px;fill:none;stroke:currentColor;stroke-width:1.8}
+
+.work-side{padding:26px 0;border-bottom:1px solid var(--mp-line)}
+.work-side h3{margin:0 0 14px;font:800 10px Inter,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--mp-muted)}
+.work-pending{display:grid;grid-template-columns:1fr auto;align-items:center;gap:14px;width:100%;text-align:left;border:0;background:none;padding:0;cursor:pointer;font-family:inherit}
+.work-pending strong{font-size:14.5px;color:var(--mp-ink)}
+.work-pending span{grid-column:1;font-size:12px;color:var(--mp-muted)}
+.work-pending svg{grid-row:1/3;width:15px;fill:none;stroke:var(--mp-muted);stroke-width:1.7}
+.work-quiet{margin:24px 0 0;font-size:12.5px;color:var(--mp-muted)}
+
+/* Auditoria: linha densa com marca de status, não pílula pastel de largura
+   inteira. A cor deixa de tingir o fundo e passa a ser só o glifo — o texto
+   volta a ser tinta legível, e as linhas se separam por régua, não por caixa. */
+.audit-totals{margin:0 0 4px;font-size:11.5px}
+.audit-list{border-top:1px solid var(--mp-line)}
+.audit-item{position:relative;background:none;border:0;border-bottom:1px solid var(--mp-line);border-radius:0;padding:12px 0 12px 24px;font-size:13.5px;line-height:1.5;color:var(--mp-ink)}
+.audit-item:before{content:'';position:absolute;left:2px;top:16px;width:9px;height:9px;border-radius:2px;background:var(--mp-muted)}
+.audit-item.block{color:var(--mp-ink)}
+.audit-item.block:before{background:var(--mp-danger)}
+.audit-item.warning{color:var(--mp-ink)}
+.audit-item.warning:before{background:var(--mp-warning)}
+
+/* Painéis: régua e espaço em vez de caixa sobre cinza. O título de seção sai do
+   serif para o sans com peso — é o degrau que faltava na escala. */
+.shell .main.case-layout{background:#fff}
+.shell .panel{box-shadow:none;border-color:#e6eaee;border-radius:12px;padding:24px 26px}
+.shell .panel-head h2{font:650 16.5px/1.25 Inter,system-ui,sans-serif;letter-spacing:-.005em;color:var(--mp-ink)}
+.shell .panel-head p{font-size:12.5px;margin-top:6px}
+.shell .case-title{font-size:clamp(26px,2.8vw,34px);letter-spacing:-.015em}
+/* O fundo pastel sobrevivia por especificidade: `.audit-item.block` vence
+   `.audit-item`. Cor é status, não tinta de fundo. */
+.audit-item.block,.audit-item.warning{background:none}
+.audit-totals{margin:18px 0 2px}
+.shell .panel-head+.audit-totals{margin-top:16px}
+
+.work-cases{list-style:none;margin:0;padding:0;border-top:1px solid var(--mp-line)}
+.work-cases li{border-bottom:1px solid var(--mp-line)}
+.work-cases button{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:6px 20px;width:100%;text-align:left;border:0;background:none;padding:13px 0;cursor:pointer;font-family:inherit}
+.work-cases button:hover .work-case-title{color:var(--mp-navy-mid)}
+.work-case-title{font-size:14.5px;font-weight:600;color:var(--mp-ink)}
+.work-case-meta{grid-column:1;font-size:11.5px;color:var(--mp-muted)}
+.work-case-stage{grid-row:1/3;align-self:center;font-size:11.5px;color:var(--mp-muted);text-align:right;white-space:nowrap}
+.work-case-stage small{display:block;font-size:10.5px;font-variant-numeric:tabular-nums;margin-top:2px}
+/* Medida de leitura: a coluna corria até 1500px e a linha de meta se esticava
+   por toda a largura. Conteúdo de leitura tem medida; tabela de casos respira
+   um pouco mais. */
+.work-layout{max-width:1020px}
+.work-cases button{grid-template-areas:"title stage" "meta stage"}
+.work-case-title{grid-area:title}
+.work-case-meta{grid-area:meta}
+.work-case-stage{grid-area:stage;grid-row:auto}
+.work-cases li:last-child{border-bottom:0}
+.work-side:last-child{border-bottom:0}
+.work-quiet{padding-top:22px;border-top:1px solid var(--mp-line)}
+.work-quiet{padding-top:22px;border-top:0}

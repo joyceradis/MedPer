@@ -1,3 +1,5 @@
+import { WORKFLOW_STAGES } from './workflow.js';
+
 function toDate(value) {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
@@ -12,6 +14,44 @@ export function classifyDeadline(dueAt, now = new Date()) {
   if (hours <= 48) return 'danger';
   if (hours <= 168) return 'warning';
   return 'neutral';
+}
+
+const text=v=>typeof v==='string'?Boolean(v.trim()):Boolean(v);
+const anyText=o=>Object.values(o||{}).some(text);
+
+// Progresso real da perícia, derivado do que está registrado no caso.
+//
+// A versão anterior desta barra era inteiramente fixa: "Etapa 5 de 9" para
+// qualquer caso, com marcos — "Revisão de documentos / Exame / Laudo" — que nem
+// correspondiam às nove etapas da navegação. A tela afirmava sobre o andamento
+// do trabalho algo que não tinha como saber, e num sistema médico-pericial isso
+// não é imprecisão de interface: é declaração falsa sobre o caso.
+//
+// Aqui cada etapa é considerada iniciada quando há registro dela no caso. Não
+// julga qualidade nem suficiência — para isso existe a auditoria em engine.js.
+const STAGE_HAS_RECORD={
+  delimitation:c=>text(c.scope)||text(c.methodology?.general?.object),
+  evidence:c=>(c.evidence?.length||0)>0||(c.facts?.length||0)>0,
+  timeline:c=>(c.events?.length||0)>0,
+  hypotheses:c=>text(c.methodology?.decision?.claim)||text(c.documentGaps),
+  method:c=>['methodChoice','controversies','scopeLimits','availableMaterial','objectiveExam'].some(k=>text(c.methodology?.general?.[k]))||anyText(c.methodology?.specific)||anyText(c.methodology?.guided),
+  reasoning:c=>['favorable','contrary','limits','alternatives'].some(k=>text(c.methodology?.decision?.[k])),
+  conclusion:c=>text(c.methodology?.decision?.certainty)||text(c.methodology?.decision?.admissibleConclusion),
+  questions:c=>(c.questions||[]).some(q=>text(q?.answer)),
+  report:()=>false
+};
+
+export function caseStageProgress(caseData={}){
+  const done=WORKFLOW_STAGES.map(stage=>Boolean(STAGE_HAS_RECORD[stage.id]?.(caseData)));
+  const pending=done.indexOf(false);
+  const currentIndex=pending===-1?WORKFLOW_STAGES.length-1:pending;
+  return{
+    done,
+    started:done.filter(Boolean).length,
+    total:WORKFLOW_STAGES.length,
+    currentIndex,
+    currentLabel:WORKFLOW_STAGES[currentIndex].label
+  };
 }
 
 export function buildDashboardModel(cases = [], now = new Date()) {

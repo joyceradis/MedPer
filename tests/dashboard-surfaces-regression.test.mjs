@@ -27,7 +27,7 @@ test('cases surface is distinct from overview and preserves lifecycle controls',
   const html=renderDashboardSurface(state,'cases','active',{now});
   assert.match(html,/data-dashboard-surface="cases"/);
   assert.match(html,/<h1>Meus casos<\/h1>/);
-  assert.doesNotMatch(html,/Continuar trabalhando/);
+  assert.doesNotMatch(html,/class="work-card"/);
   assert.match(html,/data-case-filter="active"/);
   assert.match(html,/data-case-action="complete"/);
   assert.match(html,/data-inspect-case="case_1"/);
@@ -38,7 +38,7 @@ test('deadlines surface is distinct and renders operational deadlines',()=>{
   assert.match(html,/data-dashboard-surface="deadlines"/);
   assert.match(html,/<h1>Agenda e prazos<\/h1>/);
   assert.match(html,/Exame presencial/);
-  assert.doesNotMatch(html,/Continuar trabalhando/);
+  assert.doesNotMatch(html,/class="work-card"/);
 });
 
 test('references surface is distinct and keeps knowledge governance explicit',()=>{
@@ -48,13 +48,15 @@ test('references surface is distinct and keeps knowledge governance explicit',()
   assert.match(html,/não altera automaticamente o método/i);
 });
 
-test('overview preserves the approved operational hierarchy',()=>{
+test('a visão geral abre pela perícia em aberto, com progresso real',()=>{
   const html=renderDashboardSurface(state,'overview','active',{now});
-  assert.match(html,/Continuar trabalhando/);
-  assert.match(html,/Próximos prazos/);
+  assert.match(html,/class="work-card"/);
   assert.match(html,/Perita do juízo/);
-  assert.match(html,/Etapa 5 de 9/);
-  assert.match(html,/dashboard-pending/);
+  assert.match(html,/Queimadura e sequela cicatricial/);
+  assert.match(html,/Próximos prazos/);
+  // O andamento vem do caso: este não tem registro em etapa nenhuma.
+  assert.match(html,/0 de 9 etapas com registro/);
+  assert.doesNotMatch(html,/Etapa 5 de 9/,'nenhum andamento fixo');
 });
 
 test('renderDashboardHome resolves the visible surface from the application hash',()=>{
