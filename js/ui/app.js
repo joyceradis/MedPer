@@ -4,7 +4,7 @@ import { auditCase, completion, generalMethod } from '../methodology/engine.js';
 import { getApplicableProtocols, getProtocol, getSuggestedProtocolIds, protocols } from '../methodology/protocols.js';
 import { AIPE_CATEGORIES, AIPE_CONTEXTS, AIPE_CRITERIA, AIPE_IMPACT_BANDS } from '../methodology/aipe.js';
 import { getKnowledgeSource, getRelevantDivergences, getRelevantKnowledge, REFERENCE_CLASSES } from '../knowledge/library.js';
-import { normalizeWorkflowTab, WORKFLOW_STAGES } from './workflow.js';
+import { normalizeWorkflowTab, stageForAuditField, WORKFLOW_STAGES } from './workflow.js';
 import { renderDashboardHome } from './dashboard-view.js';
 
 const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
@@ -19,6 +19,17 @@ function setPath(obj,path,value){const parts=path.split('.');let node=obj;for(le
 function header(){return`<header class="topbar"><div class="topbar-inner"><button class="brand" data-home><span class="brand-copy"><strong>MedPer</strong><span>Perícia estruturada</span></span></button><div class="top-actions"><span class="save-state">Salvo neste dispositivo</span><button class="button button-secondary" data-account>Entrar</button><button class="button button-primary" data-new-case>Nova perícia</button></div></div></header>`;}
 function panel(title,help,body,full=true){return`<section class="panel ${full?'panel-full':''}"><div class="panel-head"><div><h2>${esc(title)}</h2>${help?`<p>${esc(help)}</p>`:''}</div></div>${body}</section>`;}
 function textarea(path,label,value,help=''){return`<label class="field"><span>${esc(label)}</span><textarea data-bind="${esc(path)}" placeholder="${esc(help)}">${esc(value||'')}</textarea>${help?`<small class="field-help">${esc(help)}</small>`:''}</label>`;}
+// Quando o título do painel já nomeia o campo, repetir o rótulo e ainda ecoar o
+// texto de apoio dentro e fora do campo é ruído: a mesma frase aparecia três vezes
+// em pouco mais de um palmo de tela. Aqui o rótulo continua existindo para leitores
+// de tela e o texto de apoio aparece uma única vez, como placeholder.
+function bareField(path,label,value,help=''){return`<label class="field field-bare"><span class="sr-only">${esc(label)}</span><textarea data-bind="${esc(path)}" placeholder="${esc(help)}">${esc(value||'')}</textarea></label>`;}
+const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
+// Sair do campo de objeto pericial re-renderiza a tela — é assim que o bloqueio
+// correspondente deixa de aparecer. Mas o re-render destrói o DOM, e uma lista que a
+// médica acabou de abrir voltava fechada. O estado de abertura é preferência de
+// leitura, não dado do caso: vive aqui, fora do store, e sobrevive ao re-render.
+const viewState={auditAheadOpen:false};
 // Um valor já registrado que não consta mais da lista de opções — porque a escala foi
 // corrigida depois — não pode simplesmente sumir da tela: o dado continua no caso e a
 // perita precisa vê-lo para decidir se reclassifica. Ele é exibido ao final, marcado
@@ -30,7 +41,10 @@ function renderHome(state,filter='active'){return renderDashboardHome(state,filt
 
 function sidebar(c,tab){return`<aside class="case-sidebar"><button class="back-link" data-home>← Todos os casos</button><div class="case-identity"><span class="eyebrow">${esc(c.context?.sphere||'Perícia')}</span><h2>${esc(c.title)}</h2><p>${esc(c.reference||'Sem referência')}</p></div><nav class="case-nav">${tabs.map(([id,label])=>`<button data-tab="${id}" class="${tab===id?'is-active':''}"><span>${label}</span></button>`).join('')}</nav></aside>`;}
 function caseHeader(c,tab){return`<header class="case-head"><div><span class="eyebrow">${esc(c.context?.role||'Atuação médico-pericial')}</span><h1 class="case-title">${esc(tabs.find(x=>x[0]===tab)?.[1]||'Caso')}</h1><div class="meta-line"><span>${esc(c.context?.branch||'')}</span><span>${esc(c.context?.matter||'')}</span><span>${esc(c.context?.mode||'')}</span></div></div><button class="button button-secondary button-small" data-export>Exportar JSON</button></header>`;}
-function renderCase(c,tab){const currentIndex=tabs.findIndex(([id])=>id===tab);return`<div class="shell">${header()}<main id="workspace" class="main case-layout">${sidebar(c,tab)}<section class="case-content">${caseHeader(c,tab)}<div class="stage-status">${tabs.map(([id],index)=>`<span class="${index<currentIndex?'is-complete':index===currentIndex?'is-current':''}" title="${esc(tabs[index][1])}"></span>`).join('')}</div>${renderKnowledgePanel(c,tab)}${renderTab(c,tab)}</section></main></div>`;}
+// A base técnica vem depois do trabalho da etapa, não antes. Como referência de
+// consulta, ela empurrava a única tarefa da tela para fora do campo de visão; a
+// posição agora corresponde ao papel que ela declara ter.
+function renderCase(c,tab){const currentIndex=tabs.findIndex(([id])=>id===tab);return`<div class="shell">${header()}<main id="workspace" class="main case-layout">${sidebar(c,tab)}<section class="case-content">${caseHeader(c,tab)}<div class="stage-progress"><span class="stage-progress-label">Etapa ${currentIndex+1} de ${tabs.length}</span><div class="stage-status" role="img" aria-label="Etapa ${currentIndex+1} de ${tabs.length}: ${esc(tabs[currentIndex]?.[1]||'')}">${tabs.map(([id],index)=>`<span class="${index<currentIndex?'is-complete':index===currentIndex?'is-current':''}" title="${esc(tabs[index][1])}"></span>`).join('')}</div></div>${renderTab(c,tab)}${renderKnowledgePanel(c,tab)}</section></main></div>`;}
 
 function renderKnowledgePanel(c,tab){
   const items=getRelevantKnowledge(c,{stageId:tab}),divergences=getRelevantDivergences(c,{stageId:tab});
@@ -41,7 +55,42 @@ function renderKnowledgePanel(c,tab){
 }
 
 function renderTab(c,tab){if(tab==='delimitation')return renderSummary(c);if(tab==='evidence')return renderDocuments(c);if(tab==='timeline')return renderTimeline(c);if(tab==='hypotheses')return renderHypotheses(c);if(tab==='method')return renderMethod(c);if(tab==='reasoning')return renderReasoning(c);if(tab==='conclusion')return renderConclusion(c);if(tab==='questions')return renderQuestions(c);return renderReport(c);}
-function renderSummary(c){const a=auditCase(c);return`<div class="content-grid">${panel('Enquadramento','Contexto que define o método e o documento final.',`<div class="form-grid">${[['Esfera',c.context?.sphere],['Ramo',c.context?.branch],['Papel da médica',c.context?.role],['Matéria',c.context?.matter],['Modalidade',c.context?.mode],['Situação',c.status]].map(([l,v])=>`<div class="list-item"><span class="field-help">${l}</span><strong>${esc(v||'A definir')}</strong></div>`).join('')}</div>`,false)}${panel('Auditoria metodológica','Bloqueios impedem conclusão definitiva; ressalvas limitam seu alcance.',`<div class="audit-summary"><div><strong>${a.blocks}</strong><span>bloqueios</span></div><div><strong>${a.warnings}</strong><span>ressalvas</span></div><div><strong>${c.evidence.length}</strong><span>fontes</span></div><div><strong>${c.facts.length}</strong><span>fatos</span></div></div><div class="audit-list">${a.issues.map(i=>`<div class="audit-item ${i.severity}">${esc(i.text)}</div>`).join('')||'<p class="notice">Nenhuma pendência metodológica identificada.</p>'}</div>`)}${panel('Objeto pericial','Delimite a pergunta técnica antes de examinar ou concluir.',textarea('scope','Objeto pericial',c.scope,'Transcreva ou sintetize o objeto nos limites da nomeação ou contratação.'))}</div>`;}
+function auditItems(issues){return issues.map(i=>`<div class="audit-item ${i.severity}">${esc(i.text)}</div>`).join('');}
+function frameStrip(c){return`<div class="case-frame">${[['Esfera',c.context?.sphere],['Ramo',c.context?.branch],['Papel da médica',c.context?.role],['Matéria',c.context?.matter],['Modalidade',c.context?.mode],['Situação',c.status]].map(([l,v])=>`<span class="case-frame-item"><small>${esc(l)}</small><b>${esc(v||'A definir')}</b></span>`).join('')}</div>`;}
+// A tela abria com referência bibliográfica, enquadramento e nove pendências antes
+// de mostrar o único campo que se preenche aqui. A ordem agora é: a tarefa, o
+// contexto que a enquadra e só então a situação metodológica.
+//
+// A auditoria continua completa — o total de bloqueios e ressalvas do caso é
+// declarado em texto e a lista integral permanece a um clique — mas em primeiro
+// plano ficam apenas as pendências que se resolvem nesta etapa. Um caso recém-aberto
+// exibia cinco bloqueios sobre exame, consolidação e morfologia antes de a médica
+// escrever a primeira palavra; isso ensina a ignorar bloqueio, que é o oposto do
+// que a auditoria existe para fazer. Nenhuma regra de engine.js foi alterada.
+// A auditoria continua completa — o total de bloqueios e ressalvas do caso é
+// declarado em texto e a lista integral permanece a um clique — mas em primeiro
+// plano ficam apenas as pendências que se resolvem nesta etapa. Um caso recém-aberto
+// exibia cinco bloqueios sobre exame, consolidação e morfologia antes de a médica
+// escrever a primeira palavra; isso ensina a ignorar bloqueio, que é o oposto do
+// que a auditoria existe para fazer. Nenhuma regra de engine.js foi alterada.
+//
+// O painel precisa existir em toda etapa que seja destino de roteamento: dizer que
+// uma pendência pertence a outra etapa e não mostrá-la ao chegar lá é pior do que
+// não rotear. A Conclusão é a exceção deliberada — lá o controle de suficiência
+// exibe a lista inteira, sem escopo, porque é o momento em que ela decide.
+function stageAudit(c,stageId,extraCounts=''){
+  const a=auditCase(c);
+  const here=a.issues.filter(i=>stageForAuditField(i.field)===stageId);
+  const elsewhere=a.issues.filter(i=>stageForAuditField(i.field)!==stageId);
+  const totals=`<p class="audit-totals">${plural(a.blocks,'bloqueio','bloqueios')} e ${plural(a.warnings,'ressalva','ressalvas')} no caso${extraCounts}</p>`;
+  const current=here.length?`<div class="audit-list">${auditItems(here)}</div>`:'<p class="notice">Nada pendente nesta etapa.</p>';
+  const other=elsewhere.length?`<details class="audit-ahead"${viewState.auditAheadOpen?' open':''}><summary>${plural(elsewhere.length,'pendência registrada','pendências registradas')} em outras etapas</summary><div class="audit-list">${auditItems(elsewhere)}</div></details>`:'';
+  return panel('Situação metodológica','Bloqueios impedem conclusão definitiva; ressalvas limitam seu alcance.',`${totals}${current}${other}`);
+}
+function renderSummary(c){
+  const counts=` · ${plural(c.evidence.length,'fonte','fontes')} · ${plural(c.facts.length,'fato','fatos')}`;
+  return`<div class="content-grid">${panel('Objeto pericial','A pergunta técnica que o laudo precisa responder. Todo o restante do caso é medido por ela.',bareField('scope','Objeto pericial',c.scope,'Transcreva ou sintetize o objeto nos limites da nomeação ou contratação.'))}${panel('Enquadramento','Contexto que define o método e o documento final.',frameStrip(c))}${stageAudit(c,'delimitation',counts)}</div>`;
+}
 function renderDocuments(c){return`<div class="content-grid">${panel('Fontes','Cadastre documentos e elementos examinados.',`<button class="button button-primary" data-add="evidence">Adicionar fonte</button><div class="item-list" style="margin-top:14px">${c.evidence.map(e=>`<div class="list-item"><h3>${esc(e.title)}</h3><p>${esc(e.description||'')}</p><div class="item-meta"><span>${esc(e.pages||'Sem páginas')}</span></div></div>`).join('')||'<p class="notice">Nenhuma fonte cadastrada.</p>'}</div>`)}${panel('Fatos médico-periciais','Cada fato deve indicar a fonte da qual foi extraído.',`<button class="button button-primary" data-add="fact">Adicionar fato</button><div class="item-list" style="margin-top:14px">${c.facts.map(f=>`<div class="list-item"><h3>${esc(f.text)}</h3><p>${esc(f.nature||'')}</p><div class="item-meta"><span>${esc(f.page||'Sem página')}</span></div></div>`).join('')||'<p class="notice">Nenhum fato extraído.</p>'}</div>`)}</div>`;}
 function renderTimeline(c){return panel('Cronologia','Organize eventos clínicos, documentais e processuais.',`<button class="button button-primary" data-add="event">Adicionar evento</button><div class="timeline" style="margin-top:14px">${c.events.map(e=>`<div class="timeline-item"><div class="timeline-date">${esc(e.date||'Data incerta')}<span class="timeline-kind">${esc(e.kind||'Evento')}</span></div><div><strong>${esc(e.title)}</strong><p>${esc(e.description||'')}</p></div></div>`).join('')||'<p class="notice">Nenhum evento registrado.</p>'}</div>`);}
 function renderAipeReference(){
@@ -56,9 +105,9 @@ function renderMethod(c){
   const general=generalMethod.map((phase,i)=>panel(phase.title,'Método geral obrigatório.',`<div class="form-grid">${phase.fields.map(f=>textarea(`methodology.general.${f.id}`,f.label,c.methodology.general[f.id],f.help)).join('')}</div><p class="notice">${done.general[i]?'Etapa concluída':'Etapa em andamento'}</p>`)).join('');
   const selector=panel('Métodos aplicáveis','O MedPer sugere pelo contexto e pelo objeto. Você mantém o controle sobre os módulos adicionais.',protocolSelector(c,applicable));
   const specific=applicable.map(p=>panel(`Protocolo · ${p.title}`,p.id==='aesthetic'?'AIPE disponível neste caso.':'Somente as etapas pertinentes a este objeto ficam abertas.',`${p.id==='aesthetic'?renderAipeReference():''}<div class="guided-methodology">${p.steps.map((s,i)=>`<details class="guided-step" ${i===0?'open':''}><summary><span>${esc(s.title)}</span><small>${done.specificByProtocol?.[p.id]?.[i]?'Concluído':'Em andamento'}</small></summary><div class="guided-step-body">${s.fields.map(f=>f.type==='narrative'?textarea(`methodology.specific.${f.id}`,f.label,c.methodology.specific[f.id],f.help):choices(`methodology.guided.${f.id}`,f.label,c.methodology.guided[f.id],f.options)).join('')}</div></details>`).join('')}</div>`)).join('');
-  return`<div class="methodology-stack">${general}${selector}${specific}</div>`;
+  return`<div class="methodology-stack">${stageAudit(c,'method')}${general}${selector}${specific}</div>`;
 }
-function renderHypotheses(c){const d=c.methodology.decision;return`<div class="content-grid">${panel('Hipóteses a testar','Explicite a proposição principal e as explicações concorrentes antes da conclusão.',`<div class="form-grid">${textarea('methodology.decision.claim','Proposição técnico-pericial',d.claim,'Qual hipótese está sendo testada?')}${textarea('methodology.decision.alternatives','Hipóteses alternativas',d.alternatives,'Quais outras explicações razoáveis precisam ser confrontadas?')}</div>`)}${panel('Necessidades de diligência','Registre o que ainda falta para responder ao objeto.',textarea('documentGaps','Lacunas e diligências necessárias',c.documentGaps,'Documentos, imagens, exame presencial, avaliação especializada ou esclarecimentos necessários.'))}</div>`;}
+function renderHypotheses(c){const d=c.methodology.decision;return`<div class="content-grid">${panel('Hipóteses a testar','Explicite a proposição principal e as explicações concorrentes antes da conclusão.',`<div class="form-grid">${textarea('methodology.decision.claim','Proposição técnico-pericial',d.claim,'Qual hipótese está sendo testada?')}${textarea('methodology.decision.alternatives','Hipóteses alternativas',d.alternatives,'Quais outras explicações razoáveis precisam ser confrontadas?')}</div>`)}${panel('Necessidades de diligência','Registre o que ainda falta para responder ao objeto.',textarea('documentGaps','Lacunas e diligências necessárias',c.documentGaps,'Documentos, imagens, exame presencial, avaliação especializada ou esclarecimentos necessários.'))}${stageAudit(c,'hypotheses')}</div>`;}
 function renderReasoning(c){const d=c.methodology.decision;return panel('Fundamentação técnico-científica','Confronte os dados favoráveis e contrários, hipóteses alternativas e limitações.',`<div class="form-grid">${textarea('methodology.decision.favorable','Elementos favoráveis',d.favorable,'Dados que sustentam a proposição.')}${textarea('methodology.decision.contrary','Elementos contrários',d.contrary,'Dados que enfraquecem a proposição.')}${textarea('methodology.decision.alternatives','Hipóteses alternativas',d.alternatives,'Compare explicações concorrentes.')}${textarea('methodology.decision.limits','Limitações relevantes',d.limits,'Restrições documentais, temporais, técnicas ou de examinabilidade.')}</div>`);}
 function renderConclusion(c){const a=auditCase(c),d=c.methodology.decision;return`<div class="content-grid">${panel('Conclusão admissível','A linguagem deve ser proporcional à suficiência real dos elementos.',`<div class="form-grid">${textarea('methodology.decision.certainty','Grau de sustentação',d.certainty,'Suficiente, limitado, inconclusivo ou incompatível.')}${textarea('methodology.decision.admissibleConclusion','Conclusão',d.admissibleConclusion,'Responda ao objeto sem extrapolar os dados.')}</div>`)}${panel('Controle de suficiência','Bloqueios impedem conclusão definitiva; ressalvas limitam seu alcance.',`<div class="audit-list">${a.issues.map(i=>`<div class="audit-item ${i.severity}"><strong>${i.severity==='block'?'Bloqueio':'Ressalva'}:</strong> ${esc(i.text)}</div>`).join('')||'<p class="notice">Método apto para conclusão.</p>'}</div>`)}</div>`;}
 function renderQuestions(c){return panel('Quesitos','Responda diretamente e fundamente.',`<button class="button button-primary" data-add="question">Adicionar quesito</button><div class="question-list" style="margin-top:14px">${c.questions.map((q,i)=>`<div class="list-item"><h3>${esc(q.text)}</h3>${textarea(`questions.${i}.answer`,'Resposta',q.answer,'Resposta direta e fundamentada.')}</div>`).join('')||'<p class="notice">Nenhum quesito cadastrado.</p>'}</div>`);}
@@ -69,7 +118,32 @@ function demoCase(){return normalizeCase({id:uid('case'),title:'Caso demonstrati
 export function createApp({store,root,toast}){
   let wizard=null;
   let caseFilter='active';
-  const render=()=>{const state=store.getState(),r=route(),c=r.caseId?findCase(state,r.caseId):null;root.innerHTML=c?renderCase(c,r.tab):renderHome(state,caseFilter);};
+  // Redesenhar troca todo o DOM sob os pés de quem está digitando. Escrever num
+  // campo e clicar direto no seguinte destruía o campo que acabara de receber o
+  // foco, e as teclas seguintes não iam a lugar nenhum — sem erro, sem aviso, o
+  // texto simplesmente não aparecia. O foco e a posição do cursor são restaurados
+  // pelo caminho do dado, que é a identidade estável do campo entre um render e
+  // outro. Radio é localizado também pelo valor, senão o foco saltaria para a
+  // primeira opção do grupo.
+  const captureFocus=()=>{
+    const el=document.activeElement;
+    const path=el?.dataset?.bind;
+    if(!path||!root.contains(el))return null;
+    let start=null,end=null;
+    try{start=el.selectionStart;end=el.selectionEnd;}catch{}
+    return{path,radioValue:el.type==='radio'?el.value:null,start,end};
+  };
+  const restoreFocus=mark=>{
+    if(!mark)return;
+    const selector=mark.radioValue==null
+      ?`[data-bind="${CSS.escape(mark.path)}"]`
+      :`[data-bind="${CSS.escape(mark.path)}"][value="${CSS.escape(mark.radioValue)}"]`;
+    const el=root.querySelector(selector);
+    if(!el)return;
+    el.focus({preventScroll:true});
+    if(mark.start!=null&&typeof el.setSelectionRange==='function'){try{el.setSelectionRange(mark.start,mark.end);}catch{}}
+  };
+  const render=()=>{const mark=captureFocus();const state=store.getState(),r=route(),c=r.caseId?findCase(state,r.caseId):null;root.innerHTML=c?renderCase(c,r.tab):renderHome(state,caseFilter);restoreFocus(mark);};
   const commitBoundValue=(target,{notify=true}={})=>{
     const path=target?.dataset?.bind;
     if(!path)return;
@@ -82,16 +156,35 @@ export function createApp({store,root,toast}){
   };
   store.subscribe(render);
   const notify=msg=>{toast.textContent=msg;toast.classList.add('is-visible');setTimeout(()=>toast.classList.remove('is-visible'),2200);};
-  root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.home!==undefined){location.hash='';render();return;}if(b.dataset.scrollTarget){document.getElementById(b.dataset.scrollTarget)?.scrollIntoView({behavior:'smooth',block:'start'});return;}if(b.dataset.caseFilter){caseFilter=b.dataset.caseFilter;render();return;}if(b.dataset.caseAction){handleCaseAction(b.dataset.caseId,b.dataset.caseAction);return;}if(b.dataset.openCase){location.hash=`#/case/${b.dataset.openCase}/delimitation`;return;}if(b.dataset.tab){const r=route();location.hash=`#/case/${r.caseId}/${b.dataset.tab}`;return;}if(b.dataset.protocolToggle){toggleProtocol(b.dataset.protocolToggle);return;}if(b.dataset.newCase!==undefined){openWizard();return;}if(b.dataset.demo!==undefined){store.update(s=>{const c=demoCase();s.cases.unshift(c);s.currentCaseId=c.id;});location.hash=`#/case/${store.getState().cases[0].id}/delimitation`;return;}if(b.dataset.add){addEntity(b.dataset.add);return;}if(b.dataset.export!==undefined){const r=route(),c=findCase(store.getState(),r.caseId);const blob=new Blob([JSON.stringify(c,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${c.id}.json`;a.click();URL.revokeObjectURL(a.href);}});
+  root.addEventListener('click',e=>{const disclosure=e.target.closest('.audit-ahead>summary');if(disclosure){viewState.auditAheadOpen=!disclosure.parentElement.open;return;}const b=e.target.closest('button');if(!b)return;if(b.dataset.home!==undefined){location.hash='';render();return;}if(b.dataset.scrollTarget){document.getElementById(b.dataset.scrollTarget)?.scrollIntoView({behavior:'smooth',block:'start'});return;}if(b.dataset.caseFilter){caseFilter=b.dataset.caseFilter;render();return;}if(b.dataset.caseAction){handleCaseAction(b.dataset.caseId,b.dataset.caseAction);return;}if(b.dataset.openCase){location.hash=`#/case/${b.dataset.openCase}/delimitation`;return;}if(b.dataset.tab){const r=route();location.hash=`#/case/${r.caseId}/${b.dataset.tab}`;return;}if(b.dataset.protocolToggle){toggleProtocol(b.dataset.protocolToggle);return;}if(b.dataset.newCase!==undefined){openWizard();return;}if(b.dataset.demo!==undefined){store.update(s=>{const c=demoCase();s.cases.unshift(c);s.currentCaseId=c.id;});location.hash=`#/case/${store.getState().cases[0].id}/delimitation`;return;}if(b.dataset.add){addEntity(b.dataset.add);return;}if(b.dataset.export!==undefined){const r=route(),c=findCase(store.getState(),r.caseId);const blob=new Blob([JSON.stringify(c,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${c.id}.json`;a.click();URL.revokeObjectURL(a.href);}});
   root.addEventListener('input',e=>{
     const path=e.target?.dataset?.bind;
     if(!path)return;
     commitBoundValue(e.target,{notify:e.target.type==='radio'});
   });
+  // Sair de um campo de texto redesenha a tela — é assim que o bloqueio correspondente
+  // deixa de aparecer. Só que o blur acontece no mousedown: o redesenho destruía o
+  // elemento sob o ponteiro antes do mouseup, e o clique que causou o blur nunca
+  // chegava ao destino. Na prática, depois de escrever qualquer campo, o primeiro
+  // clique era engolido — ao trocar de etapa, ao abrir uma lista, ao adicionar uma
+  // fonte. O valor continua sendo gravado na hora; apenas o redesenho espera o
+  // ponteiro ser solto, e ocorre depois de o clique ter produzido seu efeito.
+  // O redesenho adiado precisa passar por store.notify(), não pelo render() local:
+  // este módulo não é o único assinante do store. O card de contexto metodológico
+  // (method-context-controller) e o inspetor de caso se reinjetam ao serem
+  // notificados, e são apagados por `root.innerHTML`. Chamar só o render daqui
+  // fazia o card sumir da etapa Exame e método até a próxima navegação.
+  let renderQueued=false,pointerDown=false;
+  const flushRender=()=>{pointerDown=false;if(!renderQueued)return;renderQueued=false;setTimeout(()=>store.notify(),0);};
+  document.addEventListener('pointerdown',()=>{pointerDown=true;},true);
+  document.addEventListener('pointerup',flushRender,true);
+  document.addEventListener('pointercancel',flushRender,true);
   root.addEventListener('change',e=>{
     const path=e.target?.dataset?.bind;
     if(!path||e.target.type==='radio')return;
-    commitBoundValue(e.target,{notify:true});
+    commitBoundValue(e.target,{notify:false});
+    if(pointerDown){renderQueued=true;return;}
+    store.notify();
   });
   window.addEventListener('hashchange',render);
 
@@ -136,3 +229,7 @@ export function createApp({store,root,toast}){
   function addEntity(kind){const r=route();const prompts={evidence:['Título da fonte','Páginas ou identificação'],fact:['Fato médico-pericial','Página ou trecho'],event:['Título do evento','Data (AAAA-MM-DD)'],question:['Texto do quesito','']};const [label,second]=prompts[kind];const d=document.createElement('dialog');d.className='modal modal-small';d.innerHTML=`<form method="dialog"><header class="modal-header"><div><h2>${esc(label)}</h2></div></header><div class="form-stack"><label class="field"><span>${esc(label)}</span><textarea name="primary" required></textarea></label>${second?`<label class="field"><span>${esc(second)}</span><input name="secondary"></label>`:''}</div><footer class="modal-footer modal-footer-end"><button class="button button-secondary" value="cancel">Cancelar</button><button class="button button-primary" value="confirm">Salvar</button></footer></form>`;document.body.appendChild(d);d.addEventListener('close',()=>{if(d.returnValue==='confirm'){const fd=new FormData(d.querySelector('form')),primary=String(fd.get('primary')||'').trim(),secondary=String(fd.get('secondary')||'').trim();if(primary)store.update(s=>{const c=findCase(s,r.caseId);if(kind==='evidence')c.evidence.push({id:uid('ev'),title:primary,pages:secondary,description:''});if(kind==='fact')c.facts.push({id:uid('fact'),text:primary,page:secondary,nature:'Documentado'});if(kind==='event')c.events.push({id:uid('event'),title:primary,date:secondary,kind:'Evento'});if(kind==='question')c.questions.push({id:uid('q'),text:primary,answer:''});});}d.remove();});d.showModal();}
   render();
 }
+
+// Superfície de caso exposta como função pura para regressão: a mesma string que o
+// navegador renderiza pode ser verificada sem DOM.
+export { renderCase as renderCaseSurface };

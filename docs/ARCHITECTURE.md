@@ -253,6 +253,8 @@ Isso impede que uma escala auxiliar seja confundida com protocolo ou conclusão.
 
 No dano estético, AIPE só gera a salvaguarda de fundamentação quando está ativa para o contexto. Se houver registro AIPE sem instrumento ativo, o motor produz ressalva para revisão da pertinência.
 
+Cada pendência emitida declara o campo que a originou (`{severity, field, text}`). É procedência, não classificação: severidade, redação e condição continuam decididas apenas aqui. A interface usa esse identificador para saber em qual etapa a resposta é registrada, sem reinterpretar o significado metodológico da pendência — o mapa campo→etapa vive em `js/ui/workflow.js` e nenhuma pendência deixa de existir por causa dele.
+
 ---
 
 ## 8. Knowledge layer
@@ -289,6 +291,8 @@ Referência não vira regra automaticamente.
 7. Conclusão
 8. Quesitos
 9. Documento
+
+Também mantém o roteamento das pendências da auditoria por etapa (`stageForAuditField`): em qual tela a médica registra a resposta de cada uma. É decisão de interface — o padrão é `Exame e método`, a tela que renderiza método geral e protocolos por inteiro. A tela de cada etapa põe em primeiro plano as pendências que ali se resolvem, declara em texto o total de bloqueios e ressalvas do caso e mantém a lista integral a um clique.
 
 ### 9.3 Contexto metodológico na UI
 
@@ -330,12 +334,13 @@ O shell inclui `context-resolver.js`, `method-context-controller.js` e `context-
 | `store.js` | estado/migração/persistência | renderização |
 | `context-resolver.js` | enquadramento metodológico contextual | conclusão jurídica |
 | `protocols.js` | método geral e protocolos-base | DOM |
-| `engine.js` | audit/completude/salvaguardas | apresentação |
+| `engine.js` | audit/completude/salvaguardas, com procedência de campo | apresentação, ordem de exibição |
+| `ui/workflow.js` | etapas cognitivas e roteamento de pendências por etapa | severidade, redação ou condição de pendência |
 | `aipe.js` | referência declarativa AIPE | decisão/pontuação automática |
 | `knowledge/library.js` | provenance e pertinência documental | alterar método |
 | `models/checklists.js` | checklist declarativo de conferência de laudo | assumir motor decisório, produzir pontuação ou avaliar mérito clínico |
 | `method-context-controller.js` | apresentar contexto e registrar escolha explícita | persistência direta |
-| `ui/app.js` | workspace/interação | `localStorage` direto |
+| `ui/app.js` | workspace/interação | `localStorage` direto, redesenho que não notifique os demais assinantes |
 | `sw.js` | cache/offline | autorização/dados |
 
 ---

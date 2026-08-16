@@ -86,7 +86,7 @@ O MedPer está em fase de **protótipo funcional e engenharia cognitiva**.
 - múltiplos protocolos aplicáveis no mesmo caso, com sugestão conservadora a partir do objeto e controle médico explícito;
 - AIPE restrita ao dano estético, com tabelas de impressão, categorias 0–50 e critérios complementares abertas quando aplicável;
 - matriz de decisão pericial;
-- bloqueios e ressalvas metodológicas;
+- bloqueios e ressalvas metodológicas, com a etapa aberta pela tarefa que ali se cumpre e as pendências das etapas seguintes registradas a um clique, sem que o total do caso deixe de ser declarado;
 - quesitos;
 - prévia do documento final;
 - exportação JSON;
