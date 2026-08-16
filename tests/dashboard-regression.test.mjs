@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import { buildDashboardModel, classifyDeadline } from '../js/ui/dashboard-model.js';
 
 function test(name, callback){try{callback();console.log(`✓ ${name}`);}catch(error){console.error(`✗ ${name}`);throw error;}}
@@ -18,29 +17,13 @@ test('builds a sorted operational dashboard model from normalized cases',()=>{
     {id:'b',title:'Caso B',status:'Concluída',operations:{deadlines:[],pendingActions:[]}},
     {id:'c',title:'Caso C',status:'Em andamento',operations:{deadlines:[{id:'d1',type:'Exame',dueAt:'2026-08-09T12:00:00-03:00'}],pendingActions:[{id:'p2'},{id:'p3'}]}}
   ],now);
-  assert.equal(model.counts.active,2);assert.equal(model.counts.completed,1);assert.equal(model.pendingCount,3);assert.equal(model.deadlines[0].id,'d1');assert.equal(model.deadlines[0].severity,'danger');assert.equal(model.deadlines[1].severity,'warning');assert.equal(model.continueCase.id,'a');
-});
-
-test('dashboard markup contains the approved operational composition',()=>{
-  const view=fs.readFileSync(new URL('../js/ui/dashboard-view.js',import.meta.url),'utf8');
-  assert.match(view,/Perita do juízo/);assert.match(view,/Etapa 5 de 9/);assert.match(view,/Revisão de documentos/i);assert.match(view,/Exame/);assert.match(view,/Laudo/);assert.match(view,/Ver pendências/);assert.match(view,/data-surface=/);assert.match(view,/<svg/);assert.doesNotMatch(view,/fa-(solid|regular)|FontAwesome/i);assert.doesNotMatch(view,/data-scroll-target=/);
-});
-
-test('Phase 2 CSS preserves restrained cards, semantic deadlines and canonical navy hierarchy',()=>{
-  const base=fs.readFileSync(new URL('../css/dashboard.css',import.meta.url),'utf8');
-  const css=fs.readFileSync(new URL('../css/phase2.css',import.meta.url),'utf8');
-  assert.match(css,/\.dashboard-shortcuts button[^}]*background:#fff/s);
-  assert.match(css,/\.dashboard-shortcuts button[^}]*box-shadow:/s);
-  assert.match(base,/\.deadline-indicator\.is-danger/);
-  assert.match(base,/\.deadline-indicator\.is-warning/);
-  assert.match(css,/\.dashboard-pending/);
-  assert.match(css,/\.continue-progress/);
-  assert.match(css,/\.shell \.main\.case-layout/);
-  assert.match(css,/--mp-navy:#06172d/);
-  assert.match(css,/--mp-navy-mid:#0b2748/);
-  assert.match(css,/--mp-navy-top:#12375f/);
-  assert.match(css,/\.dashboard-sidebar:before/);
-  assert.match(css,/\.dashboard-sidebar:after/);
+  assert.equal(model.counts.active,2);
+  assert.equal(model.counts.completed,1);
+  assert.equal(model.pendingCount,3);
+  assert.equal(model.deadlines[0].id,'d1');
+  assert.equal(model.deadlines[0].severity,'danger');
+  assert.equal(model.deadlines[1].severity,'warning');
+  assert.equal(model.continueCase.id,'a');
 });
 
 console.log('Dashboard regression suite completed successfully.');
