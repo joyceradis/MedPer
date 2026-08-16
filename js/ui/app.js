@@ -118,7 +118,32 @@ function demoCase(){return normalizeCase({id:uid('case'),title:'Caso demonstrati
 export function createApp({store,root,toast}){
   let wizard=null;
   let caseFilter='active';
-  const render=()=>{const state=store.getState(),r=route(),c=r.caseId?findCase(state,r.caseId):null;root.innerHTML=c?renderCase(c,r.tab):renderHome(state,caseFilter);};
+  // Redesenhar troca todo o DOM sob os pés de quem está digitando. Escrever num
+  // campo e clicar direto no seguinte destruía o campo que acabara de receber o
+  // foco, e as teclas seguintes não iam a lugar nenhum — sem erro, sem aviso, o
+  // texto simplesmente não aparecia. O foco e a posição do cursor são restaurados
+  // pelo caminho do dado, que é a identidade estável do campo entre um render e
+  // outro. Radio é localizado também pelo valor, senão o foco saltaria para a
+  // primeira opção do grupo.
+  const captureFocus=()=>{
+    const el=document.activeElement;
+    const path=el?.dataset?.bind;
+    if(!path||!root.contains(el))return null;
+    let start=null,end=null;
+    try{start=el.selectionStart;end=el.selectionEnd;}catch{}
+    return{path,radioValue:el.type==='radio'?el.value:null,start,end};
+  };
+  const restoreFocus=mark=>{
+    if(!mark)return;
+    const selector=mark.radioValue==null
+      ?`[data-bind="${CSS.escape(mark.path)}"]`
+      :`[data-bind="${CSS.escape(mark.path)}"][value="${CSS.escape(mark.radioValue)}"]`;
+    const el=root.querySelector(selector);
+    if(!el)return;
+    el.focus({preventScroll:true});
+    if(mark.start!=null&&typeof el.setSelectionRange==='function'){try{el.setSelectionRange(mark.start,mark.end);}catch{}}
+  };
+  const render=()=>{const mark=captureFocus();const state=store.getState(),r=route(),c=r.caseId?findCase(state,r.caseId):null;root.innerHTML=c?renderCase(c,r.tab):renderHome(state,caseFilter);restoreFocus(mark);};
   const commitBoundValue=(target,{notify=true}={})=>{
     const path=target?.dataset?.bind;
     if(!path)return;

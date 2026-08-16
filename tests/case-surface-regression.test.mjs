@@ -172,6 +172,30 @@ test('committing a field never redraws the screen while the pointer is still dow
   assert.doesNotMatch(source, /commitBoundValue\(e\.target,\{notify:true\}\)/, 'blur must not redraw synchronously');
 });
 
+// Escrever num campo e clicar direto no seguinte destruía o campo que acabara de
+// receber o foco, e as teclas seguintes não iam a lugar nenhum — sem erro e sem
+// aviso, o texto simplesmente não aparecia. Perda de dado, não incômodo.
+test('a redraw returns focus and caret to the field the physician is in', () => {
+  const source = readFileSync(new URL('../js/ui/app.js', import.meta.url), 'utf8');
+  const from = source.indexOf('const captureFocus');
+  const to = source.indexOf('const commitBoundValue');
+  assert.ok(from !== -1 && to > from, 'the focus-preserving redraw was not found where expected');
+  const block = source.slice(from, to);
+
+  assert.match(block, /document\.activeElement/, 'the redraw must know which field was in use');
+  assert.match(block, /setSelectionRange/, 'the caret position must survive the redraw, not just the focus');
+  assert.match(block, /root\.contains\(el\)/, 'focus outside the workspace must not be recaptured');
+  assert.match(block, /\[value="\$\{CSS\.escape\(mark\.radioValue\)\}"\]/, 'a radio must be found by value, or focus jumps to the first option of the group');
+  assert.ok(
+    block.indexOf('captureFocus()') < block.indexOf('root.innerHTML'),
+    'focus must be captured before the DOM is replaced'
+  );
+  assert.ok(
+    block.indexOf('root.innerHTML') < block.indexOf('restoreFocus(mark)'),
+    'focus must be restored after the DOM is replaced'
+  );
+});
+
 // app.js não é o único assinante do store: o card de contexto metodológico e o
 // inspetor de caso se reinjetam ao serem notificados, e `root.innerHTML` os apaga.
 // Um redesenho que chame apenas o render local deste módulo faz esses componentes
