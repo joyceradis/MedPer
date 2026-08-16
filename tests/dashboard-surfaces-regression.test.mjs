@@ -19,8 +19,34 @@ test('sidebar navigation targets real dashboard surfaces',()=>{
   assert.match(html,/data-surface="overview"/);
   assert.match(html,/data-surface="cases"/);
   assert.match(html,/data-surface="deadlines"/);
+  assert.match(html,/data-surface="indicators"/);
   assert.match(html,/data-surface="references"/);
   assert.doesNotMatch(html,/data-scroll-target=/);
+});
+
+test('a superfície de indicadores lê a carteira e não oferece nenhum controle de edição',()=>{
+  const html=renderDashboardSurface(state,'indicators','active',{now,hash:'#/dashboard/indicators'});
+  assert.match(html,/data-dashboard-surface="indicators"/);
+  assert.match(html,/<h1>Indicadores<\/h1>/);
+  assert.match(html,/Por esfera/);
+  assert.match(html,/Por matéria/);
+  assert.match(html,/Etapa atual das perícias/);
+  assert.match(html,/Prazos por urgência/);
+  assert.match(html,/Conferência pericial por caso/);
+  assert.match(html,/Cível/);
+  assert.match(html,/Dano estético/);
+  // A honestidade da régua fica declarada na própria tela.
+  assert.match(html,/contam registros; não avaliam mérito/);
+  // Leitura, não formulário: nada editável nesta superfície.
+  assert.doesNotMatch(html,/<input|<textarea|<select/);
+
+  // A rota resolve pelo hash como as demais.
+  assert.match(renderDashboardHome(state,'active',{now,hash:'#/dashboard/indicators'}),/data-dashboard-surface="indicators"/);
+
+  // Sem casos, a superfície diz isso — não desenha grade vazia.
+  const vazio=renderDashboardSurface({cases:[]},'indicators','active',{now});
+  assert.match(vazio,/Sem casos para medir/);
+  assert.doesNotMatch(vazio,/ind-grid/);
 });
 
 test('cases surface is distinct from overview and preserves lifecycle controls',()=>{
@@ -150,6 +176,29 @@ test('a dimensão aberta é a primeira com trabalho pendente, não a primeira da
     abertas(renderDashboardSurface({ cases: [{ ...state.cases[0], conference: tudo }] },
       'models', 'active', { now, conferenceCaseId: 'case_1' })),
     [], 'conferência completa não abre dimensão');
+});
+
+test('os documentos operacionais são rascunhos administrativos copiáveis, fora do conteúdo pericial', async () => {
+  const { OPERATIONAL_LETTERS } = await import('../js/models/letters.js');
+  const html = renderDashboardSurface(state, 'models', 'active', { now });
+
+  assert.match(html, /Documentos operacionais/);
+  assert.ok(OPERATIONAL_LETTERS.length >= 5, 'aceite, escusa, agendamento, prazo e documentos');
+  for (const letter of OPERATIONAL_LETTERS) {
+    assert.ok(html.includes(letter.title), `modelo "${letter.title}" renderiza`);
+    assert.match(html, new RegExp(`data-copy-letter="${letter.id}"`), `"${letter.title}" tem botão de copiar`);
+    assert.match(letter.body, /«[^»]+»/, 'o corpo declara os campos a preencher — nada vem pronto');
+    assert.match(letter.basis, /^CPC, art/, 'a base declarada é procedimental, do CPC');
+    // Rascunho administrativo: o corpo não afirma conclusão médico-pericial.
+    assert.doesNotMatch(letter.body, /nexo causal|incapacidade|dano estético|diagnóstic/i,
+      'o expediente não carrega conteúdo médico-pericial');
+  }
+  // O texto copiado vem do módulo de dados, não de scraping do DOM.
+  const controller = readFileSync(new URL('../js/ui/surface-controller.js', import.meta.url), 'utf8');
+  assert.match(controller, /OPERATIONAL_LETTERS/, 'o controlador copia a partir do módulo');
+  // E o módulo permanece declarativo, fora do motor e do armazenamento.
+  const source = readFileSync(new URL('../js/models/letters.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /core\/store|localStorage|engine\.js/, 'letters.js é dado, não comportamento');
 });
 
 test('item ids survive a rewording of the item text', () => {

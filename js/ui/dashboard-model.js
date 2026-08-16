@@ -54,6 +54,53 @@ export function caseStageProgress(caseData={}){
   };
 }
 
+// Indicadores da prática — a transposição do "Health Analytics" (Expert
+// Ocupacional) para a escala de uma perita: leitura agregada da própria
+// carteira, derivada SOMENTE do que está registrado nos casos. Conta e
+// distribui; não julga mérito, não interpreta, não recomenda. O que não foi
+// registrado aparece como "Não registrado" — nunca é inventado.
+export function buildPracticeIndicators(cases = [], now = new Date()) {
+  const active = cases.filter(c => c.status === 'Em andamento');
+  const completed = cases.filter(c => c.status === 'Concluída');
+
+  const tally = pick => {
+    const map = new Map();
+    for (const c of active) {
+      const key = (pick(c) || '').trim() || 'Não registrado';
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    return [...map.entries()]
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'pt-BR'));
+  };
+
+  const stageCount = new Map();
+  for (const c of active) {
+    const p = caseStageProgress(c);
+    stageCount.set(p.currentIndex, (stageCount.get(p.currentIndex) || 0) + 1);
+  }
+  const byStage = WORKFLOW_STAGES
+    .map((stage, i) => ({ id: stage.id, label: stage.label, count: stageCount.get(i) || 0 }))
+    .filter(entry => entry.count > 0);
+
+  const deadlines = { danger: 0, warning: 0, neutral: 0 };
+  for (const c of active) {
+    for (const d of c.operations?.deadlines || []) {
+      if (!toDate(d.dueAt)) continue;
+      deadlines[classifyDeadline(d.dueAt, now)] += 1;
+    }
+  }
+
+  return {
+    counts: { active: active.length, completed: completed.length },
+    bySphere: tally(c => c.context?.legalSphere || c.context?.branch),
+    byMatter: tally(c => c.context?.matter),
+    byStage,
+    deadlines,
+    pending: active.reduce((total, c) => total + (c.operations?.pendingActions?.length || 0), 0)
+  };
+}
+
 export function buildDashboardModel(cases = [], now = new Date()) {
   const active = cases.filter(item => item.status === 'Em andamento');
   const completed = cases.filter(item => item.status === 'Concluída');

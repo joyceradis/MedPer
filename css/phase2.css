@@ -723,7 +723,45 @@ button:focus-visible{box-shadow:none}
   background:var(--mp-tint);color:#fff;font-size:13px;font-weight:500}
 .case-inspector-footer button:hover{background:var(--mp-tint-hover)}
 
-/* ── 15. Respostas a largura ────────────────────────────────────────────── */
+/* ── 15. Indicadores e documentos operacionais ──────────────────────────── */
+/* Indicadores: a ideia do "Health Analytics" (expertocupacional.com.br)
+   transposta para a escala de uma perita — distribuição da própria carteira em
+   listas com barra. Conta registros; não interpreta mérito. */
+.ind-summary{display:flex;gap:30px;flex-wrap:wrap;padding:2px 4px 0}
+.ind-summary div{display:grid;gap:1px}
+.ind-summary strong{font-size:22px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.ind-summary span{font-size:11px;color:var(--mp-label-2)}
+.ind-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+.ind-card{background:var(--mp-window);border-radius:var(--mp-r);box-shadow:var(--mp-hairline);padding:13px 16px 15px}
+.ind-card-wide{grid-column:1/-1}
+.ind-card h3{margin:0 0 10px;font-size:13px;font-weight:600;letter-spacing:-.008em}
+.ind-list{display:grid;gap:8px}
+.ind-row{display:grid;grid-template-columns:minmax(0,1fr) 96px auto;gap:12px;align-items:center}
+.ind-label{font-size:12.5px;color:var(--mp-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:7px}
+.ind-dot{width:7px;height:7px;border-radius:2px;background:var(--mp-label-3);flex:none}
+.ind-dot.is-danger{background:var(--mp-red)}
+.ind-dot.is-warning{background:var(--mp-orange)}
+.ind-bar{height:4px;border-radius:2px;background:var(--mp-fill-strong);overflow:hidden}
+.ind-bar span{display:block;height:100%;background:var(--mp-tint)}
+.ind-bar span.is-danger{background:var(--mp-red)}
+.ind-bar span.is-warning{background:var(--mp-orange)}
+.ind-bar span.is-neutral{background:var(--mp-label-3)}
+.ind-value{font-size:12px;color:var(--mp-label-2);font-variant-numeric:tabular-nums;min-width:3ch;text-align:right}
+.ind-empty{margin:0;font-size:12px;color:var(--mp-label-3)}
+.ind-note{margin:14px 4px 0;font-size:11px;line-height:1.5;color:var(--mp-label-3)}
+
+/* Documentos operacionais: rascunhos copiáveis do expediente do encargo
+   (referência de produto: laudomatic.com.br). O corpo preserva as quebras de
+   linha da petição; o glifo da linha é documento, não código de dimensão. */
+.letters-surface{margin-top:30px}
+.letter-row .conf-code,.letter-row[open] .conf-code{background:transparent;padding:0;display:flex;align-items:center;justify-content:center}
+.letter-row .conf-code svg{width:15px;height:15px;fill:none;stroke:var(--mp-label-2);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.letter-body{white-space:pre-line;font-size:12.5px;line-height:1.6;color:var(--mp-ink);background:var(--mp-grouped);border-radius:var(--mp-r-sm);padding:12px 14px;margin:0 0 10px}
+.letter-copy{min-height:30px;padding:0 13px;border-radius:var(--mp-r-sm);background:var(--mp-tint);color:#fff;font-size:12.5px;font-weight:500}
+.letter-copy:hover{background:var(--mp-tint-hover)}
+.letter-copy:disabled{background:var(--mp-green);color:#fff;opacity:1}
+
+/* ── 16. Respostas a largura ────────────────────────────────────────────── */
 @media (width<=1080px){
   .app-shell-dashboard{grid-template-columns:206px minmax(0,1fr)}
   .reference-library-grid{grid-template-columns:1fr}
@@ -741,6 +779,8 @@ button:focus-visible{box-shadow:none}
   .protocol-selector{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (width<=760px){
+  .ind-grid{grid-template-columns:minmax(0,1fr)}
+  .ind-row{grid-template-columns:minmax(0,1fr) 72px auto}
   .app-shell-dashboard{display:block}
   .dashboard-sidebar{position:relative;height:auto;padding:10px 12px}
   .dashboard-profile{display:none}
@@ -779,4 +819,6 @@ button:focus-visible{box-shadow:none}
   .guided-step-body,.method-context-card{padding:12px 14px}
   .guided-header{flex-direction:column;align-items:flex-start;gap:10px}
   .guided-progress{width:100%;text-align:left}
+  .letter-row summary{grid-template-columns:26px minmax(0,1fr)}
+  .letter-row .conf-count{display:none}
 }

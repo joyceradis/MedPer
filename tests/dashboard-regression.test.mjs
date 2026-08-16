@@ -55,6 +55,31 @@ test('caseStageProgress reflete o que está registrado no caso',async()=>{
   assert.equal(comAutos.currentLabel,'Cronologia');
 });
 
+test('os indicadores da prática contam o registrado e nomeiam o ausente, sem interpretar',async()=>{
+  const {buildPracticeIndicators}=await import('../js/ui/dashboard-model.js');
+  const ind=buildPracticeIndicators([
+    {id:'a',status:'Em andamento',context:{legalSphere:'Cível',matter:'Dano estético'},scope:'x',
+      operations:{deadlines:[{id:'d1',dueAt:'2026-08-09T12:00:00-03:00'},{id:'d2',dueAt:'2026-08-20T12:00:00-03:00'}],pendingActions:[{id:'p1'}]}},
+    {id:'b',status:'Em andamento',context:{legalSphere:'Cível',matter:'Incapacidade'},
+      operations:{deadlines:[{id:'d3',dueAt:'2026-08-12T12:00:00-03:00'}],pendingActions:[{id:'p2'},{id:'p3'}]}},
+    {id:'c',status:'Em andamento',context:{},operations:{}},
+    {id:'d',status:'Concluída',context:{legalSphere:'Trabalhista'},operations:{}},
+    {id:'e',status:'Lixeira',context:{legalSphere:'Penal'},operations:{}}
+  ],now);
+
+  assert.equal(ind.counts.active,3);
+  assert.equal(ind.counts.completed,1);
+  // A lixeira não entra em nenhuma contagem; a concluída só no total dela.
+  assert.ok(!ind.bySphere.some(x=>x.label==='Penal'||x.label==='Trabalhista'));
+  assert.deepEqual(ind.bySphere[0],{label:'Cível',count:2},'ordenado por frequência');
+  assert.ok(ind.bySphere.some(x=>x.label==='Não registrado'),'o ausente é nomeado, nunca inventado');
+  assert.deepEqual(ind.deadlines,{danger:1,warning:1,neutral:1},'mesma régua do classifyDeadline');
+  assert.equal(ind.pending,3);
+  // Etapa atual deriva de caseStageProgress: 'a' tem objeto (→ Autos e evidências),
+  // 'b' e 'c' não têm nada (→ Delimitação).
+  assert.deepEqual(ind.byStage.map(s=>`${s.label}:${s.count}`),['Delimitação:2','Autos e evidências:1']);
+});
+
 test('Phase 2 CSS preserves semantic deadlines and the canonical navy, without ornament',()=>{
   const base=fs.readFileSync(new URL('../css/dashboard.css',import.meta.url),'utf8');
   const css=fs.readFileSync(new URL('../css/phase2.css',import.meta.url),'utf8');
