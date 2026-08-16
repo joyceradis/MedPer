@@ -3,6 +3,7 @@ import { applyLifecycleAction } from '../core/case-lifecycle.js';
 import { auditCase, completion, generalMethod } from '../methodology/engine.js';
 import { getApplicableProtocols, getProtocol, getSuggestedProtocolIds, protocols } from '../methodology/protocols.js';
 import { AIPE_CATEGORIES, AIPE_CONTEXTS, AIPE_CRITERIA, AIPE_IMPACT_BANDS } from '../methodology/aipe.js';
+import { normalizeRegimeId, resolveFunctionalBaremaTrack } from '../methodology/barema-routing.js';
 import { getKnowledgeSource, getRelevantDivergences, getRelevantKnowledge, REFERENCE_CLASSES } from '../knowledge/library.js';
 import { normalizeWorkflowTab, stageForAuditField, WORKFLOW_STAGES } from './workflow.js';
 import { renderDashboardHome } from './dashboard-view.js';
@@ -106,6 +107,22 @@ function renderTimeline(c){return panel('Cronologia','Organize eventos clínicos
 function renderAipeReference(){
   return`<section class="aipe-workspace"><header><div><span class="eyebrow">AIPE</span><h3>Tabelas de referência</h3><p>Consulta aberta para apoiar a valoração. A categoria e a pontuação permanecem uma decisão médico-pericial fundamentada.</p></div></header><div class="aipe-table-wrap"><table class="aipe-table"><thead><tr><th>Critério</th><th>0</th><th>1</th><th>2</th></tr></thead><tbody>${AIPE_CRITERIA.map(row=>`<tr><th>${esc(row.label)}</th>${row.options.map(option=>`<td>${esc(option)}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="aipe-table-wrap"><table class="aipe-table aipe-category-table"><thead><tr><th>Categoria</th><th>Faixa</th><th>Graduação dentro da faixa</th></tr></thead><tbody>${AIPE_CATEGORIES.map(category=>`<tr><th>${esc(category.label)}</th><td><strong>${category.range[0]===category.range[1]?category.range[0]:`${category.range[0]}–${category.range[1]}`}</strong></td><td>${(AIPE_IMPACT_BANDS[category.id]||[]).map(([level,points])=>`<span class="aipe-band"><span>${esc(level)}</span><strong>${esc(points)}</strong></span>`).join('')||'<span class="field-help">Sem graduação adicional</span>'}</td></tr>`).join('')}</tbody></table></div><div class="aipe-contexts"><span class="field-help">Contextos complementares previstos</span>${AIPE_CONTEXTS.map(context=>`<span>${esc(context.label)}</span>`).join('')}</div><p class="aipe-source">Referência documental: Fernandes et al., Saúde Debate. 2016;40(108):118–130 — AIPE/Brasil, quadros 1–4, pp. 122–125. Eventuais divergências da publicação são mantidas explícitas na base técnica.</p></section>`;
 }
+// O roteamento existia e era descartado: engine.js calculava o trilho e lia
+// apenas se havia ambiguidade, de modo que a perita recebia aviso e nunca a
+// resposta. Aqui o resultado aparece — qual tabela é principal, qual é
+// subsidiária, e o que o MedPer não tem. Leitura, nada persistido: o roteamento
+// é recalculado a partir do regime declarado, e nenhuma pontuação é produzida.
+function renderBaremaRouting(c){
+  const regimeId=normalizeRegimeId(c.methodology?.general?.valuationRegime);
+  if(!regimeId)return'';
+  const dpvatQuesitoExplicit=(Array.isArray(c.questions)?c.questions:[]).some(question=>/dpvat/i.test(String(question?.text||'')));
+  const routing=resolveFunctionalBaremaTrack({regimeId,dpvatQuesitoExplicit});
+  const track=t=>`<div class="barema-track barema-${esc(t.role)}"><span class="barema-role">${t.role==='principal'?'Barema principal':'Cálculo subsidiário'}</span><strong>${esc(t.label)}</strong>${t.rationale?`<p>${esc(t.rationale)}</p>`:''}<small>${esc(t.note)}</small>${t.hasScoringData?'':'<em>O MedPer não contém a pontuação desta tabela. Consulta e cálculo permanecem com a perita.</em>'}</div>`;
+  const body=routing.principal
+    ?`${track(routing.principal)}${routing.subsidiary.map(track).join('')}`
+    :'';
+  return panel('Barema funcional aplicável','Resultado do roteamento pelo regime declarado. Referência para consulta — o MedPer não pontua nem conclui.',`<p class="barema-rationale">${esc(routing.rationale)}</p>${body}`);
+}
 function protocolSelector(c,applicable){
   const primaryId=getProtocol(c.context?.matter).id,applicableIds=new Set(applicable.map(p=>p.id)),suggestedIds=new Set(getSuggestedProtocolIds(c));
   return`<div class="protocol-selector">${Object.values(protocols).map(protocol=>{const selected=applicableIds.has(protocol.id),primary=protocol.id===primaryId,suggested=suggestedIds.has(protocol.id);return`<button type="button" class="protocol-chip ${selected?'is-active':''}" data-protocol-toggle="${esc(protocol.id)}" ${primary?'disabled':''}><span>${esc(protocol.title)}</span><small>${primary?'Principal':suggested?'Sugerido':selected?'Adicionado':'Adicionar'}</small></button>`;}).join('')}</div>`;
@@ -115,7 +132,7 @@ function renderMethod(c){
   const general=generalMethod.map((phase,i)=>panel(phase.title,'Método geral obrigatório.',`<div class="form-grid">${phase.fields.map(f=>f.type==='narrative'?textarea(`methodology.general.${f.id}`,f.label,c.methodology.general[f.id],f.help):choices(`methodology.general.${f.id}`,f.label,c.methodology.general[f.id],f.options,f.optional)).join('')}</div><p class="notice">${done.general[i]?'Etapa concluída':'Etapa em andamento'}</p>`)).join('');
   const selector=panel('Métodos aplicáveis','O MedPer sugere pelo contexto e pelo objeto. Você mantém o controle sobre os módulos adicionais.',protocolSelector(c,applicable));
   const specific=applicable.map(p=>panel(`Protocolo · ${p.title}`,p.id==='aesthetic'?'AIPE disponível neste caso.':'Somente as etapas pertinentes a este objeto ficam abertas.',`${p.id==='aesthetic'?renderAipeReference():''}<div class="guided-methodology">${p.steps.map((s,i)=>`<details class="guided-step" ${i===0?'open':''}><summary><span>${esc(s.title)}</span><small>${done.specificByProtocol?.[p.id]?.[i]?'Concluído':'Em andamento'}</small></summary><div class="guided-step-body">${s.fields.map(f=>f.type==='narrative'?textarea(`methodology.specific.${f.id}`,f.label,c.methodology.specific[f.id],f.help):choices(`methodology.guided.${f.id}`,f.label,c.methodology.guided[f.id],f.options,f.optional)).join('')}</div></details>`).join('')}</div>`)).join('');
-  return`<div class="methodology-stack">${stageAudit(c,'method')}${general}${selector}${specific}</div>`;
+  return`<div class="methodology-stack">${stageAudit(c,'method')}${general}${renderBaremaRouting(c)}${selector}${specific}</div>`;
 }
 function renderHypotheses(c){const d=c.methodology.decision;return`<div class="content-grid">${panel('Hipóteses a testar','Explicite a proposição principal e as explicações concorrentes antes da conclusão.',`<div class="form-grid">${textarea('methodology.decision.claim','Proposição técnico-pericial',d.claim,'Qual hipótese está sendo testada?')}${textarea('methodology.decision.alternatives','Hipóteses alternativas',d.alternatives,'Quais outras explicações razoáveis precisam ser confrontadas?')}</div>`)}${panel('Necessidades de diligência','Registre o que ainda falta para responder ao objeto.',textarea('documentGaps','Lacunas e diligências necessárias',c.documentGaps,'Documentos, imagens, exame presencial, avaliação especializada ou esclarecimentos necessários.'))}${stageAudit(c,'hypotheses')}</div>`;}
 function renderReasoning(c){const d=c.methodology.decision;return panel('Fundamentação técnico-científica','Confronte os dados favoráveis e contrários, hipóteses alternativas e limitações.',`<div class="form-grid">${textarea('methodology.decision.favorable','Elementos favoráveis',d.favorable,'Dados que sustentam a proposição.')}${textarea('methodology.decision.contrary','Elementos contrários',d.contrary,'Dados que enfraquecem a proposição.')}${textarea('methodology.decision.alternatives','Hipóteses alternativas',d.alternatives,'Compare explicações concorrentes.')}${textarea('methodology.decision.limits','Limitações relevantes',d.limits,'Restrições documentais, temporais, técnicas ou de examinabilidade.')}</div>`);}

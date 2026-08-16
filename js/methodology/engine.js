@@ -1,6 +1,5 @@
 import { generalMethod, getApplicableProtocols, getProtocol } from './protocols.js';
 import { getApplicableInstrumentIds, getContextualProtocolProfile, getMethodologyContext } from './context-resolver.js';
-import { normalizeRegimeId, resolveFunctionalBaremaTrack } from './barema-routing.js';
 
 const has=(o,k)=>{const v=o?.[k];return typeof v==='string'?Boolean(v.trim()):Boolean(v)};
 
@@ -50,18 +49,6 @@ export function auditCase(c){
     if(!['Sim','Parcialmente'].includes(u.eventProof))issues.push(issue('block','eventProof','Evento ou exposição não está suficientemente caracterizado.'));
     if(!['Compatível','Parcialmente compatível'].includes(u.temporalResult))issues.push(issue('block','temporalResult','Compatibilidade temporal insuficiente para conclusão causal positiva.'));
     if(u.alternativesStatus!=='Sim')issues.push(issue('warning','alternativesStatus','Causas alternativas não foram integralmente avaliadas.'));
-  }
-  // Roteamento de barema pelo regime declarado (issue #56). A ressalva existe
-  // apenas sobre o que a perita DECLAROU — nunca cobra a declaração. Cobrar exigiria
-  // decidir em quais casos um barema funcional é obrigatório, que é classificação
-  // médico-pericial; e a versão anterior disto, uma lista de matérias mantida à mão,
-  // já nasceu incompleta. Quando houver valoração funcional registrada no caso, a
-  // ressalva por ausência de regime volta a fazer sentido e será derivada dela.
-  const regimeId=normalizeRegimeId(g.valuationRegime);
-  if(regimeId){
-    const dpvatQuesitoExplicit=(Array.isArray(c.questions)?c.questions:[]).some(question=>/dpvat/i.test(String(question?.text||'')));
-    const barema=resolveFunctionalBaremaTrack({regimeId,dpvatQuesitoExplicit});
-    if(barema.requiresManualChoice)issues.push(issue('warning','valuationRegime',barema.rationale));
   }
   if(protocolIds.has('liability')){
     if(!['Sim','Parcialmente'].includes(u.indicationStatus))issues.push(issue('warning','indicationStatus','Indicação técnica não está suficientemente esclarecida.'));

@@ -176,19 +176,55 @@ function capacityCase(overrides = {}) {
 }
 
 
-test('auditCase fica em silêncio quando o regime declarado resolve sem ambiguidade', () => {
-  const declared = capacityCase({ general: { valuationRegime: 'civil_liability' } });
-  const { issues } = auditCase(declared);
-  assert.ok(!issues.some(i => /regime de valora/i.test(i.text)),
-    'resolvido sem ambiguidade não deve virar ruído permanente na auditoria');
+// O roteamento é referência de consulta, não pendência. Uma limitação do MedPer
+// — não haver trilho registrado para um regime — não é pendência da perícia, e
+// como pendência era irresolvível: a ressalva mandava "selecione manualmente e
+// registre a justificativa" sem que existisse campo algum para isso.
+test('o roteamento de barema não produz pendência de auditoria', () => {
+  for (const regime of ['civil_liability', 'insurance_dpvat', 'social_security', 'labor', '']) {
+    const c = capacityCase({ general: { valuationRegime: regime } });
+    assert.ok(!auditCase(c).issues.some(i => /barema|regime de valora/i.test(i.text)),
+      `regime "${regime}" não pode gerar pendência`);
+  }
+  const engine = readFileSync(new URL('../js/methodology/engine.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(engine, /barema-routing/, 'o motor de auditoria não deve conhecer o roteador');
 });
 
-test('auditCase aponta ambiguidade quando o regime declarado ainda não tem trilho próprio', () => {
-  const declared = capacityCase({ general: { valuationRegime: 'labor' } });
-  const { issues } = auditCase(declared);
-  const found = issues.find(i => /trilho de barema funcional/.test(i.text));
-  assert.equal(found?.severity, 'warning');
-  assert.equal(found?.field, 'valuationRegime', 'a pendência declara o campo que a originou');
+// O resolvedor calculava o trilho e o resultado era descartado: engine.js lia
+// apenas `requiresManualChoice`, de modo que a perita recebia aviso e nunca a
+// resposta. Um quesito pedindo DPVAT criava um trilho subsidiário que nunca
+// chegava à tela.
+test('a tela mostra o trilho resolvido, principal e subsidiário', async () => {
+  const { renderCaseSurface } = await import('../js/ui/app.js');
+  const caso = (regime, questions = []) => ({
+    id: 'c1', title: 'T', reference: 'R', status: 'Em preparação',
+    context: { sphere: 'Judicial', branch: 'Cível', role: 'Perita do juízo', matter: 'Dano corporal', mode: 'Presencial' },
+    methodology: { general: { valuationRegime: regime }, specific: {}, guided: {}, decision: {}, activeProtocolIds: [], dismissedProtocolIds: [] },
+    questions, evidence: [], facts: [], events: []
+  });
+
+  assert.doesNotMatch(renderCaseSurface(caso(''), 'method'), /Barema funcional aplicável/,
+    'sem regime declarado não há trilho a exibir');
+
+  const civil = renderCaseSurface(caso('civil_liability'), 'method');
+  assert.match(civil, /Barema funcional aplicável/);
+  assert.match(civil, /Tabela Brasileira para Apuração do Dano Corporal/);
+  assert.match(civil, /Barema principal/);
+  assert.doesNotMatch(civil, /Cálculo subsidiário/, 'sem quesito de DPVAT não há subsidiário');
+  assert.match(civil, /não contém a pontuação desta tabela/, 'a ausência de dado precisa estar dita na tela');
+
+  const comQuesito = renderCaseSurface(caso('civil_liability', [{ id: 'q1', text: 'Calcular conforme tabela DPVAT.' }]), 'method');
+  assert.match(comQuesito, /Cálculo subsidiário/);
+  assert.match(comQuesito, /não substitui o barema principal/);
+  assert.match(comQuesito, /Barema principal/, 'o subsidiário nunca substitui o principal em silêncio');
+
+  const semTrilho = renderCaseSurface(caso('labor'), 'method');
+  assert.match(semTrilho, /não tem trilho de barema funcional registrado/);
+  assert.doesNotMatch(semTrilho, /Barema principal/);
+  // Não instruir ação sem controle: não há campo de barema manual nem de
+  // justificativa no repositório, então a tela não pode mandar preenchê-los.
+  assert.doesNotMatch(semTrilho, /registre a justificativa/i);
+  assert.doesNotMatch(semTrilho, /[Ss]elecione manualmente/);
 });
 
 // Decisão da assistente técnica/UX: a pergunta fica disponível em toda perícia e

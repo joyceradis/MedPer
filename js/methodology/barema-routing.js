@@ -116,7 +116,11 @@ export function resolveFunctionalBaremaTrack({ regimeId, dpvatQuesitoExplicit = 
       principal: null,
       subsidiary: [],
       requiresManualChoice: true,
-      rationale: `Regime de valoração "${regimeId}" reconhecido, mas o MedPer ainda não tem um trilho de barema funcional específico registrado para ele. Selecione manualmente e registre a justificativa.`
+      // Não instrui uma ação que não tem controle. O MedPer declara o próprio limite
+      // e diz onde a decisão vive; não existe campo de barema manual nem de
+      // justificativa no repositório, e mandar "registre a justificativa" produziria
+      // uma instrução impossível de cumprir.
+      rationale: `Regime de valoração "${regimeId}" reconhecido. O MedPer não tem trilho de barema funcional registrado para ele: a seleção da tabela e sua fundamentação permanecem inteiramente com a perita, fora do sistema.`
     };
   }
 
