@@ -43,14 +43,22 @@ test('responsabilidade civil + amputação + dano estético → ABMLPM (função
   assert.ok(Object.isFrozen(combined), 'o agrupamento é congelado — nada o transforma depois em soma');
 });
 
-test('múltiplas sequelas funcionais → Balthazard apenas quando indicado pelo barema, nunca soma direta', () => {
-  // Exemplo publicado (perda de membro superior 70% + visão de um olho 30% +
-  // anquilose de quadril 20%): soma direta dá 120%, impossível; capacidade
-  // restante dá 83% — verificado contra a literatura antes de implementar.
-  const restante = remainingCapacity([70, 30, 20]);
-  const somaDireta = 70 + 30 + 20;
-  assert.ok(restante < somaDireta, 'capacidade restante deve ser menor que a soma direta, nunca igual');
-  assert.equal(Math.round(restante), 83);
+// Este teste verifica a ARITMÉTICA da capacidade restante e nada além dela.
+//
+// Qual método de cumulação se aplica a um caso — capacidade restante, soma
+// direta para sequelas sinérgicas, ou outro — é regra do barema aplicável e não
+// é decidida pelo MedPer. A #56 autoriza Balthazard somente quando o barema
+// permitir, e a #55 registra que a regra de cumulação da ABMLPM não foi
+// confirmada por leitura direta. Uma versão anterior deste teste se chamava
+// "nunca soma direta" e chamava a soma de "impossível": transformava hipótese
+// não confirmada em contrato de regressão, que é justamente o que a camada de
+// conhecimento deste repositório existe para impedir.
+test('remainingCapacity compõe sobre o percentual restante, não sobre 100% de novo', () => {
+  // Exemplo publicado: 70% + 30% + 20% pela composição de capacidade restante.
+  assert.equal(remainingCapacity([70, 30, 20]), 83.2);
+  // Segunda sequela incide sobre o que restou da primeira, não sobre o todo.
+  assert.equal(remainingCapacity([50, 50]), 75);
+  assert.equal(remainingCapacity([]), 0);
 });
 
 test('licenciamento vencido isolado → não reduz escore funcional/AIPE nem gera culpa concorrente automaticamente', () => {
