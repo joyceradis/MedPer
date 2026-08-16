@@ -36,3 +36,4 @@
    viewport de 420px e metade de cada painel ficava fora da tela. min-width:0 devolve
    a rolagem para dentro da própria navegação, que é onde overflow:auto já a esperava. */
 .shell .case-sidebar{min-width:0}.shell .case-nav{scrollbar-width:thin}
+.guided-clear{margin-top:11px;border:1px solid var(--mp-line);background:#fff;border-radius:8px;padding:6px 12px;font-family:inherit;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#496b8d;cursor:pointer}.guided-clear:hover{border-color:var(--mp-navy-mid);color:var(--mp-ink)}

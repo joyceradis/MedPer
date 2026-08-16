@@ -234,5 +234,31 @@ test('o regime não colide com a finalidade médico-pericial canônica', async (
   assert.equal(completion(previdenciario).general[0], true);
 });
 
+// Radio não desmarca por clique. Com a pergunta opcional e visível em toda
+// perícia, um clique acidental gravava um regime falso e não havia caminho de
+// volta ao estado "não declarado" — que é legítimo justamente porque o campo é
+// opcional. O controle de limpar só existe quando há algo a limpar.
+test('uma pergunta opcional pode voltar ao estado não declarado pela interface', async () => {
+  const { renderCaseSurface } = await import('../js/ui/app.js');
+  const base = () => ({
+    id: 'c1', title: 'T', reference: 'R', status: 'Em preparação',
+    context: { sphere: 'Judicial', branch: 'Cível', role: 'Perita do juízo', matter: 'Dano corporal', mode: 'Presencial' },
+    methodology: { general: {}, specific: {}, guided: {}, decision: {}, activeProtocolIds: [], dismissedProtocolIds: [] },
+    questions: [], evidence: [], facts: [], events: []
+  });
+
+  const semResposta = renderCaseSurface(base(), 'method');
+  assert.doesNotMatch(semResposta, /data-clear-choice="methodology\.general\.valuationRegime"/,
+    'sem valor gravado não há o que limpar');
+
+  const comResposta = base();
+  comResposta.methodology.general.valuationRegime = 'social_security';
+  assert.match(renderCaseSurface(comResposta, 'method'), /data-clear-choice="methodology\.general\.valuationRegime"/,
+    'com valor gravado a perita precisa de caminho de volta');
+
+  // As demais perguntas do método não são opcionais e não ganham o controle.
+  assert.equal((renderCaseSurface(comResposta, 'method').match(/data-clear-choice=/g) || []).length, 1);
+});
+
 console.log('Barema routing regression suite completed successfully.');
 
