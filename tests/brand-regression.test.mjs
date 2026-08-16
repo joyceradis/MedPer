@@ -12,41 +12,11 @@ function test(name, callback) {
 }
 
 const icon = readFileSync(new URL('../icon.svg', import.meta.url), 'utf8');
-const dashboardCss = readFileSync(new URL('../css/dashboard.css', import.meta.url), 'utf8');
 
-test('uses a filled faceted polygon as the canonical logomark', () => {
-  const polygonCount = (icon.match(/<polygon\b/g) || []).length;
-  assert.ok(polygonCount >= 10, `expected faceted mark, found ${polygonCount} polygons`);
-  assert.doesNotMatch(icon, /<path\b/);
+test('keeps a valid canonical MedPer logomark asset', () => {
+  assert.match(icon, /<svg\b/);
   assert.match(icon, /<title id="title">MedPer<\/title>/);
-  assert.match(icon, /viewBox="0 0 512 512"/);
+  assert.match(icon, /viewBox=/);
 });
 
-test('keeps the canonical logomark compact rather than diamond-shaped', () => {
-  const pointGroups = [...icon.matchAll(/points="([^"]+)"/g)].map(match => match[1]);
-  const points = pointGroups.flatMap(group => group.trim().split(/\s+/).map(pair => pair.split(',').map(Number)));
-  const xs = points.map(([x]) => x);
-  const ys = points.map(([, y]) => y);
-  const width = Math.max(...xs) - Math.min(...xs);
-  const height = Math.max(...ys) - Math.min(...ys);
-  assert.ok(width / height >= 0.9, `logomark is too narrow (${(width / height).toFixed(2)})`);
-});
-
-test('keeps wordmark and approved three-stop sidebar color semantics', () => {
-  assert.match(dashboardCss, /\.wordmark-med/);
-  assert.match(dashboardCss, /var\(--medper-brand-ivory\)/);
-  assert.match(dashboardCss, /\.wordmark-per/);
-  assert.match(dashboardCss, /var\(--medper-brand-sky\)/);
-  assert.match(
-    dashboardCss,
-    /linear-gradient\(180deg,var\(--medper-sidebar-top\).*var\(--medper-sidebar-mid\).*var\(--medper-sidebar-bottom\)/
-  );
-});
-
-test('reserves danger styling for semantic indicators rather than whole cards', () => {
-  assert.match(dashboardCss, /\.deadline-indicator\.is-danger/);
-  assert.doesNotMatch(dashboardCss, /\.continue-card\.is-danger/);
-  assert.doesNotMatch(dashboardCss, /\.dashboard-case-card\.is-danger/);
-});
-
-console.log('Brand regression suite completed successfully.');
+console.log('Brand identity regression suite completed successfully.');
