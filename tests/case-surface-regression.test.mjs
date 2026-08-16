@@ -47,11 +47,32 @@ test('every audit pendency declares the field that produced it', () => {
 
 test('audit fields route to the stage that renders the answer, defaulting to the method screen', () => {
   assert.equal(stageForAuditField('object'), 'delimitation');
-  assert.equal(stageForAuditField('purpose'), 'delimitation');
   assert.equal(stageForAuditField('alternatives'), 'hypotheses');
   assert.equal(stageForAuditField('certainty'), 'conclusion');
   assert.equal(stageForAuditField('consolidationStatus'), 'method');
   assert.equal(stageForAuditField('campo-que-ainda-nao-existe'), 'method');
+});
+
+// O destino é onde vive o controle que resolve a pendência, não onde a situação
+// se origina. A ressalva de perfil contextual manda selecionar protocolos e
+// instrumentos manualmente, e esses controles existem só em Exame e método —
+// apontá-la para a Delimitação a punha ao lado de uma faixa somente-leitura.
+test('a pendency lands on a stage that offers the control it asks for', () => {
+  const caseData = emptyAesthetic();
+
+  assert.equal(stageForAuditField('context'), 'method');
+  assert.equal(stageForAuditField('purpose'), 'method');
+  assert.match(
+    renderCaseSurface(caseData, stageForAuditField('context')),
+    /data-protocol-toggle=/,
+    'the contextual-profile warning asks for manual protocol selection; the stage must offer it'
+  );
+
+  const toDelimitation = auditCase(caseData).issues
+    .filter(i => stageForAuditField(i.field) === 'delimitation')
+    .map(i => i.field);
+  assert.deepEqual([...new Set(toDelimitation)], ['object'], 'delimitation renders one control and must receive only its pendency');
+  assert.match(renderCaseSurface(caseData, 'delimitation'), /data-bind="scope"/);
 });
 
 test('delimitation opens with the task, not with reference material', () => {
