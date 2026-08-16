@@ -64,18 +64,21 @@ export const VALUATION_REGIME_OPTIONS = Object.freeze([
 // arquitetura: label visível não é contrato do domínio, e id interno estável tem
 // de sobreviver à mudança de redação da UI. Rótulos de versões anteriores deste
 // campo continuam sendo reconhecidos aqui, para que nenhum registro fique órfão.
-const LEGACY_REGIME_LABELS = Object.freeze({
-  'Finalidade securitária — DPVAT ou tabela normativa equivalente': 'insurance_dpvat',
-  'Securitário — DPVAT ou tabela normativa equivalente': 'insurance_dpvat'
-});
-
+// Falha fechado, inclusive para rótulos antigos. Uma versão anterior deste campo
+// oferecia "DPVAT ou tabela normativa equivalente": quem escolheu aquela opção
+// pode ter querido dizer tabela contratual privada, e o registro não distingue.
+// Migrar esse valor para `insurance_dpvat` faria a tela afirmar a Lei nº
+// 6.194/1974 sobre um caso que talvez não a siga — a mesma inferência insegura
+// que a opção estreitada foi removida para impedir, entrando por outra porta.
+//
+// Valor ambíguo não é convertido nem apagado: fica sem resolver até a perita
+// reclassificar, e `choices()` o exibe como "registro anterior — fora da escala
+// atual", que é o mecanismo que este repositório já usa para escala corrigida.
 export function normalizeRegimeId(value) {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
   if (VALUATION_REGIME_OPTIONS.some(option => option.id === raw)) return raw;
-  return VALUATION_REGIME_OPTIONS.find(option => option.label === raw)?.id
-    || LEGACY_REGIME_LABELS[raw]
-    || '';
+  return VALUATION_REGIME_OPTIONS.find(option => option.label === raw)?.id || '';
 }
 
 function withRole(track, role) {

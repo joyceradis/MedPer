@@ -139,8 +139,16 @@ test('normalizeRegimeId aceita id, tolera rótulo legado e falha fechado', () =>
     assert.equal(normalizeRegimeId(option.label), option.id, 'casos gravados antes da correção guardaram o rótulo');
   }
   assert.equal(normalizeRegimeId('A definir'), '', 'a sentinela removida não declara finalidade');
-  assert.equal(normalizeRegimeId('Securitário — DPVAT ou tabela normativa equivalente'), 'insurance_dpvat',
-    'o rótulo anterior, que prometia tabela equivalente, continua resolvendo');
+  // Rótulo ambíguo não migra. Quem escolheu "DPVAT ou tabela normativa
+  // equivalente" pode ter querido dizer tabela contratual privada, e o registro
+  // não distingue: converter para insurance_dpvat faria a tela afirmar a Lei nº
+  // 6.194/1974 sobre um caso que talvez não a siga.
+  for (const ambiguo of [
+    'Securitário — DPVAT ou tabela normativa equivalente',
+    'Finalidade securitária — DPVAT ou tabela normativa equivalente'
+  ]) {
+    assert.equal(normalizeRegimeId(ambiguo), '', `não migrar valor ambíguo: ${ambiguo}`);
+  }
   assert.equal(normalizeRegimeId(''), '');
   assert.equal(normalizeRegimeId(undefined), '');
 });
@@ -318,6 +326,23 @@ test('a opção securitária nomeia exatamente o trilho que existe', () => {
     'não prometer cobertura normativa que o repositório não tem');
   const track = resolveFunctionalBaremaTrack({ regimeId: 'insurance_dpvat' }).principal;
   assert.match(track.note, /6\.194/, 'o trilho cita a norma específica — por isso o rótulo precisa ser específico');
+});
+
+// O valor ambíguo não pode ser convertido nem apagado: fica visível e sem
+// resolver, para a perita reclassificar.
+test('registro ambíguo aparece na tela sem virar trilho normativo', async () => {
+  const { renderCaseSurface } = await import('../js/ui/app.js');
+  const ambiguo = 'Securitário — DPVAT ou tabela normativa equivalente';
+  const caso = {
+    id: 'c1', title: 'T', reference: 'R', status: 'Em preparação',
+    context: { sphere: 'Judicial', branch: 'Cível', role: 'Perita do juízo', matter: 'Dano corporal', mode: 'Presencial' },
+    methodology: { general: { valuationRegime: ambiguo }, specific: {}, guided: {}, decision: {}, activeProtocolIds: [], dismissedProtocolIds: [] },
+    questions: [], evidence: [], facts: [], events: []
+  };
+  const html = renderCaseSurface(caso, 'method');
+  assert.doesNotMatch(html, /Barema funcional aplicável/, 'valor ambíguo não resolve trilho');
+  assert.doesNotMatch(html, /6\.194/, 'nenhuma base normativa é afirmada a partir dele');
+  assert.match(html, /registro anterior — fora da escala atual/, 'o registro continua visível para reclassificação');
 });
 
 console.log('Barema routing regression suite completed successfully.');
