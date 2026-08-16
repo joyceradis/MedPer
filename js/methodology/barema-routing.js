@@ -1,8 +1,15 @@
-// Roteamento de barema funcional por finalidade médico-jurídica.
+// Roteamento de barema funcional pelo regime de valoração declarado.
 //
 // Decisão da Founder (issue #56): a seleção do barema é determinada pela
 // finalidade/natureza médico-jurídica da perícia — nunca pela etiologia do
 // trauma. Um acidente de trânsito não implica automaticamente tabela DPVAT.
+//
+// O MedPer separa duas dimensões que a palavra "finalidade" confundia:
+//   context.purposeId  — O QUE se avalia (dano pessoal, previdenciária, …)
+//   regime de valoração — QUAL TABELA governa a quantificação funcional
+// Este módulo trata apenas da segunda. Nada aqui afirma equivalência entre as
+// duas listas; se elas se correspondem, e como, é decisão médico-pericial que
+// permanece em aberto na issue #56.
 //
 // Este módulo não contém pontuação, fórmula de pontos nem conteúdo de escala
 // de nenhum barema. Cada trilho é só uma referência (id + rótulo + status do
@@ -29,17 +36,25 @@ export const FUNCTIONAL_BAREMA_TRACKS = Object.freeze({
   })
 });
 
-// Rótulos exibidos na UI (protocols.js deriva as opções daqui, no mesmo idioma
-// já usado para AIPE: a entrada nunca duplica a taxonomia à mão). A perita
-// declara a finalidade explicitamente — esta lista não é inferida de nada.
-export const FINALIDADE_OPTIONS = Object.freeze([
+// Regime de valoração: QUAL TABELA governa a quantificação funcional.
+//
+// Não confundir com a finalidade médico-pericial, que já existe em
+// `context.purposeId` e responde a outra pergunta — O QUE está sendo avaliado
+// (dano pessoal, previdenciária, trabalhista, forense). São duas dimensões
+// distintas e assim nomeadas, por decisão da assistente técnica/UX: a primeira
+// versão deste campo se chamava "finalidade" e colidia com a canônica, de modo
+// que a mesma tela podia exibir duas finalidades diferentes e a auditoria
+// declarava não-declarado algo que o sistema já conhecia.
+//
+// A perita declara o regime explicitamente — esta lista não é inferida de nada.
+export const VALUATION_REGIME_OPTIONS = Object.freeze([
   Object.freeze({
     id: 'civil_liability',
     label: 'Responsabilidade civil — indenização contra causador, empresa ou empregador'
   }),
   Object.freeze({
     id: 'insurance_dpvat',
-    label: 'Finalidade securitária — DPVAT ou tabela normativa equivalente'
+    label: 'Securitário — DPVAT ou tabela normativa equivalente'
   }),
   Object.freeze({ id: 'social_security', label: 'Benefício previdenciário' }),
   Object.freeze({ id: 'labor', label: 'Trabalhista/ocupacional' })
@@ -47,34 +62,19 @@ export const FINALIDADE_OPTIONS = Object.freeze([
 
 // O caso persiste o `id`, nunca o rótulo. Invariante de engenharia 3/4 da
 // arquitetura: label visível não é contrato do domínio, e id interno estável tem
-// de sobreviver à mudança de redação da UI. Casos gravados antes desta correção
-// guardaram o rótulo; são reconhecidos aqui e migrados pelo store.
-export function normalizeFinalidadeId(value) {
+// de sobreviver à mudança de redação da UI. Rótulos de versões anteriores deste
+// campo continuam sendo reconhecidos aqui, para que nenhum registro fique órfão.
+const LEGACY_REGIME_LABELS = Object.freeze({
+  'Finalidade securitária — DPVAT ou tabela normativa equivalente': 'insurance_dpvat'
+});
+
+export function normalizeRegimeId(value) {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
-  if (FINALIDADE_OPTIONS.some(option => option.id === raw)) return raw;
-  return FINALIDADE_OPTIONS.find(option => option.label === raw)?.id || '';
-}
-
-// Em quais casos a escolha de barema funcional está em jogo — e, portanto, a
-// finalidade precisa estar declarada.
-//
-// Esta é a lista mínima conservadora, não uma classificação médico-pericial
-// completa. Cobre o protocolo de incapacidade e a matéria "Dano corporal", que é
-// oferecida no cadastro, não tem protocolo próprio (cai no genérico) e é a
-// matéria a que a Tabela Brasileira para Apuração do Dano Corporal se dirige pelo
-// próprio nome. Gatear apenas em `capacity` deixava justamente o caso central da
-// issue #56 fora do roteador. Ampliar ou reduzir esta lista é decisão
-// metodológica e não deve ser feita aqui em silêncio.
-//
-// Como o resolvedor, não recebe etiologia nem tipo de trauma.
-const FUNCTIONAL_BAREMA_MATTERS = Object.freeze(['Dano corporal']);
-const FUNCTIONAL_BAREMA_MATTER_IDS = Object.freeze(['capacity']);
-
-export function functionalBaremaIsAtStake({ matter = '', matterId = '', protocolIds = [] } = {}) {
-  if (new Set(protocolIds).has('capacity')) return true;
-  if (FUNCTIONAL_BAREMA_MATTER_IDS.includes(String(matterId).trim())) return true;
-  return FUNCTIONAL_BAREMA_MATTERS.includes(String(matter).trim());
+  if (VALUATION_REGIME_OPTIONS.some(option => option.id === raw)) return raw;
+  return VALUATION_REGIME_OPTIONS.find(option => option.label === raw)?.id
+    || LEGACY_REGIME_LABELS[raw]
+    || '';
 }
 
 function withRole(track, role) {
@@ -86,8 +86,8 @@ function withRole(track, role) {
 // o trilho aparece como subsidiário, nunca substitui o principal em silêncio
 // (issue #56: "pode haver cálculo subsidiário e separado, sem substituir
 // silenciosamente o barema principal").
-export function resolveFunctionalBaremaTrack({ finalidadeId, dpvatQuesitoExplicit = false } = {}) {
-  if (finalidadeId === 'civil_liability') {
+export function resolveFunctionalBaremaTrack({ regimeId, dpvatQuesitoExplicit = false } = {}) {
+  if (regimeId === 'civil_liability') {
     const subsidiary = dpvatQuesitoExplicit
       ? [{
           ...withRole(FUNCTIONAL_BAREMA_TRACKS.dpvat, 'subsidiary'),
@@ -102,21 +102,21 @@ export function resolveFunctionalBaremaTrack({ finalidadeId, dpvatQuesitoExplici
     };
   }
 
-  if (finalidadeId === 'insurance_dpvat') {
+  if (regimeId === 'insurance_dpvat') {
     return {
       principal: withRole(FUNCTIONAL_BAREMA_TRACKS.dpvat, 'principal'),
       subsidiary: [],
       requiresManualChoice: false,
-      rationale: 'Finalidade securitária/normativa específica declarada: a tabela correspondente (DPVAT ou equivalente) é o barema principal desta perícia.'
+      rationale: 'Regime securitário/normativo específico declarado: a tabela correspondente (DPVAT ou equivalente) é o barema principal desta perícia.'
     };
   }
 
-  if (finalidadeId === 'social_security' || finalidadeId === 'labor') {
+  if (regimeId === 'social_security' || regimeId === 'labor') {
     return {
       principal: null,
       subsidiary: [],
       requiresManualChoice: true,
-      rationale: `Finalidade "${finalidadeId}" reconhecida, mas o MedPer ainda não tem um trilho de barema funcional específico registrado para ela. Selecione manualmente e registre a justificativa.`
+      rationale: `Regime de valoração "${regimeId}" reconhecido, mas o MedPer ainda não tem um trilho de barema funcional específico registrado para ele. Selecione manualmente e registre a justificativa.`
     };
   }
 
@@ -124,7 +124,7 @@ export function resolveFunctionalBaremaTrack({ finalidadeId, dpvatQuesitoExplici
     principal: null,
     subsidiary: [],
     requiresManualChoice: true,
-    rationale: 'Finalidade médico-jurídica da perícia ainda não foi declarada. A escolha do barema funcional depende dela — não deve ser inferida da causa do trauma.'
+    rationale: 'Regime de valoração ainda não declarado. A escolha do barema funcional depende dele — não deve ser inferida da causa do trauma.'
   };
 }
 

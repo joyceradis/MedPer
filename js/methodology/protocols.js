@@ -1,11 +1,9 @@
 import {AIPE_CATEGORIES,AIPE_IMPACT_BANDS} from './aipe.js';
-import {FINALIDADE_OPTIONS,functionalBaremaIsAtStake,normalizeFinalidadeId} from './barema-routing.js';
-// Um campo pode declarar duas coisas sobre si. `answeredBy`: o que conta como
-// resposta — sem ele basta haver valor; com ele o valor precisa ter significado
-// para o método, o que impede uma opção-sentinela de fechar a etapa enquanto a
-// auditoria diz que o dado não foi declarado. `appliesTo`: se a pergunta cabe
-// neste caso — sem ele a pergunta é universal; com ele ela desaparece de casos
-// onde nenhuma resposta seria verdadeira, em vez de forçar uma resposta falsa.
+import {VALUATION_REGIME_OPTIONS} from './barema-routing.js';
+// `optional:true` marca a pergunta que fica disponível sem ser exigida: aparece
+// sempre, e a etapa fecha sem ela. É o que permite oferecer um registro útil sem
+// classificar de antemão em quais casos ele cabe — classificação que seria
+// médico-pericial e envelheceria em silêncio numa lista mantida à mão.
 const q=(id,label,options,extra)=>extra?({id,label,options,...extra}):({id,label,options});
 const n=(id,label,help)=>({id,label,help,type:'narrative'});
 // A entrada da perita representa a tabela de referência em vez de copiá-la à mão.
@@ -16,29 +14,17 @@ const n=(id,label,help)=>({id,label,help,type:'narrative'});
 const aipeRange=category=>category.range[0]===category.range[1]?`${category.range[0]}`:`${category.range[0]}–${category.range[1]}`;
 const AIPE_CATEGORY_OPTIONS=AIPE_CATEGORIES.map(category=>`${category.label} (${aipeRange(category)})`);
 const AIPE_LEVEL_OPTIONS=[...new Set(Object.values(AIPE_IMPACT_BANDS).flatMap(bands=>bands.map(([level])=>level)))].concat('Não definido');
-// A finalidade médico-jurídica é declarada aqui, na delimitação — antes de
-// qualquer escolha de barema funcional (issue #56). As opções vêm de
-// FINALIDADE_OPTIONS para que a UI nunca duplique a taxonomia que o roteamento
-// usa; ver js/methodology/barema-routing.js.
-// As opções carregam id e rótulo: o caso persiste o id, a tela exibe o rótulo.
-// Não há opção "A definir": ela gravava um valor e fazia a etapa contar como
-// concluída enquanto a auditoria dizia que a finalidade não estava declarada — a
-// tela afirmava duas coisas contraditórias sobre o mesmo campo. Não responder já
-// é exatamente o estado que "A definir" tentava expressar, e a auditoria já o
-// aponta.
-const FINALIDADE_CHOICE_OPTIONS=FINALIDADE_OPTIONS.map(option=>({id:option.id,label:option.label}));
-// A pergunta só cabe onde a escolha de barema funcional está em jogo. Num dano
-// estético criminal, nenhuma das quatro finalidades descreve a avaliação: exigi-la
-// obrigaria a perita a declarar algo falso ou a deixar a Delimitação eternamente
-// em andamento. É o MESMO predicado que gateia a ressalva em engine.js — completude
-// e auditoria concordam por construção, não por coincidência mantida à mão.
-const finalidadeApplies=caseData=>functionalBaremaIsAtStake({
-  matter:caseData?.context?.matter,
-  matterId:caseData?.context?.matterId,
-  protocolIds:getApplicableProtocols(caseData).map(protocol=>protocol.id)
-});
+// Regime de valoração: qual tabela governa a quantificação funcional (issue #56).
+// NÃO é a finalidade médico-pericial — essa já existe em `context.purposeId` e
+// responde a outra pergunta. Os nomes foram separados justamente porque a versão
+// anterior deste campo colidia com ela e a tela exibia duas finalidades.
+//
+// Opcional por decisão: fica disponível em toda perícia e nunca trava a etapa.
+// A alternativa seria uma lista de matérias que "exigem barema funcional" — e
+// essa lista, mantida à mão, já nasceu incompleta.
+const REGIME_CHOICE_OPTIONS=VALUATION_REGIME_OPTIONS.map(option=>({id:option.id,label:option.label}));
 export const generalMethod=[
-{id:'delimitation',title:'Delimitação',fields:[n('object','Objeto pericial','Registre exatamente o que deve ser esclarecido.'),q('finalidadeChoice','Finalidade médico-jurídica da perícia',FINALIDADE_CHOICE_OPTIONS,{answeredBy:normalizeFinalidadeId,appliesTo:finalidadeApplies}),n('controversies','Pontos controvertidos','Questões médicas efetivamente discutidas.'),n('methodChoice','Escolha metodológica','Justifique avaliação presencial, documental, indireta ou combinada.'),n('scopeLimits','Limites da atuação','Questões fora do objeto ou dependentes de outro especialista.')]},
+{id:'delimitation',title:'Delimitação',fields:[n('object','Objeto pericial','Registre exatamente o que deve ser esclarecido.'),q('valuationRegime','Regime de valoração — barema aplicável',REGIME_CHOICE_OPTIONS,{optional:true}),n('controversies','Pontos controvertidos','Questões médicas efetivamente discutidas.'),n('methodChoice','Escolha metodológica','Justifique avaliação presencial, documental, indireta ou combinada.'),n('scopeLimits','Limites da atuação','Questões fora do objeto ou dependentes de outro especialista.')]},
 {id:'material',title:'Material analisado',fields:[n('availableMaterial','Elementos disponíveis','Autos, prontuários, imagens, exames e literatura.'),n('missingMaterial','Elementos ausentes','Documentos ou dados necessários não disponibilizados.'),n('sourceQuality','Qualidade das fontes','Autoria, contemporaneidade, integridade e consistência.'),n('contradictions','Divergências documentais','Incompatibilidades entre registros, relato e exame.')]},
 {id:'execution',title:'Execução técnica',fields:[n('directedHistory','Anamnese pericial dirigida','História orientada ao objeto.'),n('priorState','Estado anterior','Condições preexistentes e funcionalidade prévia.'),n('objectiveExam','Exame objetivo','Achados positivos e negativos relevantes.'),n('complementaryData','Exames complementares','Resultados e interpretação pericial.'),n('consistency','Consistência interna','Compatibilidade entre relato, documentos, exame e evolução.')]}
 ];
