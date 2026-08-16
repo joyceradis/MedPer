@@ -105,6 +105,9 @@ test('finalidades previdenciária e trabalhista são reconhecidas mas exigem esc
   }
 });
 
+// A composição principal + subsidiário é exigida pela #56 e continua correta no
+// módulo. O que falta é a interface saber que existe tal quesito — declaração
+// estruturada, não adivinhação por texto livre.
 test('quesito pedindo DPVAT explicitamente aparece como subsidiário, nunca substitui o principal', () => {
   const semQuesito = resolveFunctionalBaremaTrack({ regimeId: 'civil_liability' });
   const comQuesito = resolveFunctionalBaremaTrack({ regimeId: 'civil_liability', dpvatQuesitoExplicit: true });
@@ -136,6 +139,8 @@ test('normalizeRegimeId aceita id, tolera rótulo legado e falha fechado', () =>
     assert.equal(normalizeRegimeId(option.label), option.id, 'casos gravados antes da correção guardaram o rótulo');
   }
   assert.equal(normalizeRegimeId('A definir'), '', 'a sentinela removida não declara finalidade');
+  assert.equal(normalizeRegimeId('Securitário — DPVAT ou tabela normativa equivalente'), 'insurance_dpvat',
+    'o rótulo anterior, que prometia tabela equivalente, continua resolvendo');
   assert.equal(normalizeRegimeId(''), '');
   assert.equal(normalizeRegimeId(undefined), '');
 });
@@ -213,10 +218,17 @@ test('a tela mostra o trilho resolvido, principal e subsidiário', async () => {
   assert.doesNotMatch(civil, /Cálculo subsidiário/, 'sem quesito de DPVAT não há subsidiário');
   assert.match(civil, /não contém a pontuação desta tabela/, 'a ausência de dado precisa estar dita na tela');
 
-  const comQuesito = renderCaseSurface(caso('civil_liability', [{ id: 'q1', text: 'Calcular conforme tabela DPVAT.' }]), 'method');
-  assert.match(comQuesito, /Cálculo subsidiário/);
-  assert.match(comQuesito, /não substitui o barema principal/);
-  assert.match(comQuesito, /Barema principal/, 'o subsidiário nunca substitui o principal em silêncio');
+  // A interface não infere intenção de quesito por substring. "Explique por que a
+  // tabela DPVAT não se aplica" contém "dpvat" e significa o oposto de pedir o
+  // cálculo; afirmar que o juízo o determinou seria falsificar o processo.
+  const mencaoNegada = renderCaseSurface(caso('civil_liability', [{ id: 'q1', text: 'Explique por que a tabela DPVAT não se aplica.' }]), 'method');
+  assert.doesNotMatch(mencaoNegada, /Cálculo subsidiário/, 'menção literal não estabelece pedido de cálculo');
+  const mencaoAfirmativa = renderCaseSurface(caso('civil_liability', [{ id: 'q1', text: 'Calcular conforme tabela DPVAT.' }]), 'method');
+  assert.doesNotMatch(mencaoAfirmativa, /Cálculo subsidiário/, 'sem declaração estruturada a tela não adivinha nem no caso favorável');
+  const appSource = readFileSync(new URL('../js/ui/app.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(appSource, /\/dpvat\/i/, 'nenhuma regex sobre texto de quesito na interface');
+  const bloco = appSource.slice(appSource.indexOf('function renderBaremaRouting'), appSource.indexOf('function protocolSelector'));
+  assert.doesNotMatch(bloco, /\.questions/, 'o roteamento exibido não pode ler texto livre de quesito');
 
   const semTrilho = renderCaseSurface(caso('labor'), 'method');
   assert.match(semTrilho, /não tem trilho de barema funcional registrado/);
@@ -294,6 +306,18 @@ test('uma pergunta opcional pode voltar ao estado não declarado pela interface'
 
   // As demais perguntas do método não são opcionais e não ganham o controle.
   assert.equal((renderCaseSurface(comResposta, 'method').match(/data-clear-choice=/g) || []).length, 1);
+});
+
+// O rótulo prometia "DPVAT ou tabela normativa equivalente" e o trilho cita a Lei
+// nº 6.194/1974 nominalmente: num seguro privado com tabela contratual, a tela
+// afirmaria base normativa que não governa o caso.
+test('a opção securitária nomeia exatamente o trilho que existe', () => {
+  const securitario = VALUATION_REGIME_OPTIONS.find(o => o.id === 'insurance_dpvat');
+  assert.match(securitario.label, /DPVAT/);
+  assert.doesNotMatch(securitario.label, /equivalente/i,
+    'não prometer cobertura normativa que o repositório não tem');
+  const track = resolveFunctionalBaremaTrack({ regimeId: 'insurance_dpvat' }).principal;
+  assert.match(track.note, /6\.194/, 'o trilho cita a norma específica — por isso o rótulo precisa ser específico');
 });
 
 console.log('Barema routing regression suite completed successfully.');

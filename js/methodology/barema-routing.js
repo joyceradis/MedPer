@@ -54,7 +54,7 @@ export const VALUATION_REGIME_OPTIONS = Object.freeze([
   }),
   Object.freeze({
     id: 'insurance_dpvat',
-    label: 'Securitário — DPVAT ou tabela normativa equivalente'
+    label: 'Securitário — DPVAT (seguro obrigatório)'
   }),
   Object.freeze({ id: 'social_security', label: 'Benefício previdenciário' }),
   Object.freeze({ id: 'labor', label: 'Trabalhista/ocupacional' })
@@ -65,7 +65,8 @@ export const VALUATION_REGIME_OPTIONS = Object.freeze([
 // de sobreviver à mudança de redação da UI. Rótulos de versões anteriores deste
 // campo continuam sendo reconhecidos aqui, para que nenhum registro fique órfão.
 const LEGACY_REGIME_LABELS = Object.freeze({
-  'Finalidade securitária — DPVAT ou tabela normativa equivalente': 'insurance_dpvat'
+  'Finalidade securitária — DPVAT ou tabela normativa equivalente': 'insurance_dpvat',
+  'Securitário — DPVAT ou tabela normativa equivalente': 'insurance_dpvat'
 });
 
 export function normalizeRegimeId(value) {
@@ -102,6 +103,13 @@ export function resolveFunctionalBaremaTrack({ regimeId, dpvatQuesitoExplicit = 
     };
   }
 
+  // O rótulo desta opção dizia "DPVAT ou tabela normativa equivalente" e resolvia
+  // sempre para o trilho DPVAT, cuja nota cita a Lei nº 6.194/1974 nominalmente.
+  // Num seguro privado com tabela contratual, a tela afirmaria uma base normativa
+  // que não governa o caso — o pior erro possível aqui, porque a perita pode
+  // confiar nela. A opção passa a nomear exatamente o trilho que existe; regimes
+  // securitários sem trilho registrado simplesmente não têm opção, que é o estado
+  // verdadeiro do repositório.
   if (regimeId === 'insurance_dpvat') {
     return {
       principal: withRole(FUNCTIONAL_BAREMA_TRACKS.dpvat, 'principal'),

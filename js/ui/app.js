@@ -115,8 +115,13 @@ function renderAipeReference(){
 function renderBaremaRouting(c){
   const regimeId=normalizeRegimeId(c.methodology?.general?.valuationRegime);
   if(!regimeId)return'';
-  const dpvatQuesitoExplicit=(Array.isArray(c.questions)?c.questions:[]).some(question=>/dpvat/i.test(String(question?.text||'')));
-  const routing=resolveFunctionalBaremaTrack({regimeId,dpvatQuesitoExplicit});
+  // Não se infere intenção de quesito por busca de substring. "Explique por que a
+  // tabela DPVAT não se aplica" contém "dpvat" e significa o oposto de pedir o
+  // cálculo — a tela afirmaria que o juízo determinou cálculo subsidiário que
+  // ninguém pediu. O módulo continua sabendo compor principal + subsidiário
+  // (issue #56, coberto por teste); falta à interface uma declaração estruturada
+  // de que existe tal quesito, e até lá ela não adivinha. Ver issue de follow-up.
+  const routing=resolveFunctionalBaremaTrack({regimeId});
   const track=t=>`<div class="barema-track barema-${esc(t.role)}"><span class="barema-role">${t.role==='principal'?'Barema principal':'Cálculo subsidiário'}</span><strong>${esc(t.label)}</strong>${t.rationale?`<p>${esc(t.rationale)}</p>`:''}<small>${esc(t.note)}</small>${t.hasScoringData?'':'<em>O MedPer não contém a pontuação desta tabela. Consulta e cálculo permanecem com a perita.</em>'}</div>`;
   const body=routing.principal
     ?`${track(routing.principal)}${routing.subsidiary.map(track).join('')}`
