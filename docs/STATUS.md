@@ -5,11 +5,11 @@
 **Branch canônica:** `main`  
 **Estado:** GATES VERDES — VALIDAÇÃO METODOLÓGICA DA TABELA AIPE PENDENTE
 
-> Este cabeçalho descreve estado e por isso envelhece. O estado executável é `npm run audit` na `main`; as frentes abertas e seus donos ficam na issue #43; o que uma lane entregou fica no corpo da PR correspondente. Onde houver conflito, a `main` e os testes vencem este arquivo.
+> Este cabeçalho descreve estado e por isso envelhece. `npm run audit` é a cadeia executável **local (Node)**: sintaxe dos módulos e suítes de regressão de frontend/metodologia — ela não cobre backend (pytest/PostgreSQL), auditoria de autenticação nem CodeQL. Os gates completos são os workflows do GitHub Actions sobre a `main`. As frentes abertas e seus donos ficam na issue #43; o que uma lane entregou fica no corpo da PR correspondente. Onde houver conflito, a `main`, os testes e os workflows vencem este arquivo.
 
 **Desde o checkpoint anterior:** entrada AIPE derivada da referência (#50); Protocolo de Conferência publicado (#51) e convertido em ferramenta com conferência persistida por caso (#53); camada de segurança do pipeline de revisão (#47) sobre a linha canônica de CI (#41, #46).
 
-**Único item aguardando a Founder:** conferência da tabela AIPE em `js/methodology/aipe.js` contra a fonte publicada — nomenclatura das sete categorias, amplitude de `Importantíssimo` (31–50) e correspondência entre pontuação, categoria e banda. Detalhe e alternativas na issue #45. A interface hoje representa fielmente o que está versionado; a dúvida é se o versionado corresponde à fonte.
+**Aguardando a Founder nesta frente:** conferência da tabela AIPE em `js/methodology/aipe.js` contra a fonte publicada — nomenclatura das sete categorias, amplitude de `Importantíssimo` (31–50) e correspondência entre pontuação, categoria e banda. Detalhe e alternativas na issue #45. A interface hoje representa fielmente o que está versionado; a dúvida é se o versionado corresponde à fonte.
 
 Este arquivo é a âncora operacional para retomada do trabalho. Se houver conflito entre uma sessão de conversa e este documento, conferir `docs/PRODUCT_ANCHOR.md`, `docs/PRODUCT_MAP.md`, `docs/PRODUCT_AUDIT.md`, `docs/CONTEXT_MODEL.md`, `docs/MEDPER_METHOD.md` e o estado real da `main` antes de alterar código.
 
