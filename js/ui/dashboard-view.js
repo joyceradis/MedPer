@@ -91,7 +91,13 @@ function modelsSurface(state,options={}){
   const meter=active
     ? `<div class="conf-meter"><div class="conf-meter-head"><strong>${progress.done} de ${progress.total} conferidos</strong><span>${pct}%</span></div><div class="conf-meter-track" role="progressbar" aria-valuenow="${progress.done}" aria-valuemin="0" aria-valuemax="${progress.total}"><span style="width:${pct}%"></span></div></div>`
     : '<p class="conf-hint">Escolha uma perícia para marcar a conferência. Sem caso selecionado, o protocolo aparece como modelo de leitura.</p>';
-  return `${pageHeader('Modelos e checklists','Instrumentos de apoio. Nada aqui altera protocolo, pontuação ou conclusão.',{search:false,newCase:false})}<section class="conf-surface"><header class="conf-head"><div><span class="eyebrow">Instrumento de conferência</span><h2>${esc(p.title)}</h2></div><details class="conf-about"><summary>Critérios e limites</summary><ul>${p.basis.map(b=>`<li>${esc(b)}</li>`).join('')}</ul><p class="conf-scope">${esc(p.scopeLimit)}</p></details></header>${conferencePicker(state,active?active.id:'')}${meter}${severityLegend()}<div class="conf-list">${p.dimensions.map((d,i)=>conferenceRow(d,checked,progress,!active&&i===0,Boolean(active))).join('')}</div></section>`;
+  // Abre a primeira dimensão que ainda tem item por conferir. A regra anterior
+  // (`!active&&i===0`) fechava as oito justamente ao escolher a perícia — ou seja,
+  // no instante em que passa a haver o que fazer. Em modo de leitura nada está
+  // marcado e isso continua sendo a D1; com um caso escolhido, abre onde a perita
+  // parou. Conferência completa não abre nenhuma: não há próximo passo.
+  const openIndex=p.dimensions.findIndex(d=>(progress.byDimension[d.code]||{done:0}).done<d.items.length);
+  return `${pageHeader('Modelos e checklists','Instrumentos de apoio. Nada aqui altera protocolo, pontuação ou conclusão.',{search:false,newCase:false})}<section class="conf-surface"><header class="conf-head"><div><span class="eyebrow">Instrumento de conferência</span><h2>${esc(p.title)}</h2></div><details class="conf-about"><summary>Critérios e limites</summary><ul>${p.basis.map(b=>`<li>${esc(b)}</li>`).join('')}</ul><p class="conf-scope">${esc(p.scopeLimit)}</p></details></header>${conferencePicker(state,active?active.id:'')}${meter}${severityLegend()}<div class="conf-list">${p.dimensions.map((d,i)=>conferenceRow(d,checked,progress,i===openIndex,Boolean(active))).join('')}</div></section>`;
 }
 
 export function renderDashboardSurface(state,surface='overview',filter='active',options={}){const safe=SURFACES.has(surface)?surface:'overview';const displayName=options.displayName||'Dra. Joyce';const content=safe==='cases'?casesSurface(state,filter,options):safe==='deadlines'?deadlinesSurface(state,filter,options):safe==='references'?referencesSurface():safe==='models'?modelsSurface(state,options):overview(state,filter,{...options,displayName});return shell(content,safe,displayName);}

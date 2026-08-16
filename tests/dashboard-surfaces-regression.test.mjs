@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { renderDashboardHome, renderDashboardSurface } from '../js/ui/dashboard-view.js';
-import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY, conferenceItemId, conferenceProgress } from '../js/models/checklists.js';
+import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY, conferenceItemId, conferenceItems, conferenceProgress } from '../js/models/checklists.js';
 
 function test(name, fn){
   try{fn();console.log(`✓ ${name}`);}catch(error){console.error(`✗ ${name}`);throw error;}
@@ -117,6 +117,39 @@ test('the conference is a tool, not a document: it checks, counts and persists p
   assert.doesNotMatch(asModel, /data-conference-item="D1\.1"[^>]*checked/, 'the model view carries no case state');
   assert.match(asModel, /data-conference-item="D1\.1"[^>]*disabled/, 'the model view must not accept disposable marks');
   assert.match(asModel, /conf-hint/, 'the model view must explain how to start checking');
+});
+
+test('a dimensão aberta é a primeira com trabalho pendente, não a primeira da lista', () => {
+  // Encontrado medindo no navegador: escolher a perícia — a única ação que a
+  // própria tela pede para começar — fechava as oito dimensões de uma vez. A
+  // regra abria a D1 apenas enquanto NÃO houvesse caso, então o instante em que
+  // passava a haver o que fazer era exatamente o instante em que tudo se fechava.
+  const abertas = html => [...html.matchAll(/<details class="conf-row[^"]*"( open)?>[\s\S]*?<span class="conf-code">(D\d)</g)]
+    .filter(m => m[1]).map(m => m[2]);
+
+  const semCaso = renderDashboardSurface(state, 'models', 'active', { now });
+  assert.deepEqual(abertas(semCaso), ['D1'], 'em leitura, a D1 abre como amostra do instrumento');
+
+  // D1 tem 5 itens; marcados os cinco, o próximo passo é a D2.
+  const d1Completa = Object.fromEntries(
+    CONFERENCE_PROTOCOL.dimensions[0].items.map((_, i) => [conferenceItemId('D1', i), true]));
+  const comD1 = { cases: [{ ...state.cases[0], conference: d1Completa }] };
+  assert.deepEqual(
+    abertas(renderDashboardSurface(comD1, 'models', 'active', { now, conferenceCaseId: 'case_1' })),
+    ['D2'], 'com a D1 conferida, abre onde a perita parou');
+
+  // Caso recém-escolhido, nada marcado: abre a D1 — nunca as oito fechadas.
+  const zerado = { cases: [{ ...state.cases[0], conference: {} }] };
+  assert.deepEqual(
+    abertas(renderDashboardSurface(zerado, 'models', 'active', { now, conferenceCaseId: 'case_1' })),
+    ['D1'], 'escolher a perícia não pode fechar tudo');
+
+  // Conferência completa não tem próximo passo: nenhuma dimensão abre sozinha.
+  const tudo = Object.fromEntries(conferenceItems().map(item => [item.id, true]));
+  assert.deepEqual(
+    abertas(renderDashboardSurface({ cases: [{ ...state.cases[0], conference: tudo }] },
+      'models', 'active', { now, conferenceCaseId: 'case_1' })),
+    [], 'conferência completa não abre dimensão');
 });
 
 test('item ids survive a rewording of the item text', () => {
