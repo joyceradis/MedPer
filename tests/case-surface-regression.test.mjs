@@ -151,4 +151,18 @@ test('committing a field never redraws the screen while the pointer is still dow
   assert.doesNotMatch(source, /commitBoundValue\(e\.target,\{notify:true\}\)/, 'blur must not redraw synchronously');
 });
 
+// app.js não é o único assinante do store: o card de contexto metodológico e o
+// inspetor de caso se reinjetam ao serem notificados, e `root.innerHTML` os apaga.
+// Um redesenho que chame apenas o render local deste módulo faz esses componentes
+// desaparecerem até a próxima navegação.
+test('the deferred redraw broadcasts to every store subscriber, not just this module', () => {
+  const source = readFileSync(new URL('../js/ui/app.js', import.meta.url), 'utf8');
+  const from = source.indexOf('let renderQueued');
+  const to = source.indexOf("window.addEventListener('hashchange'");
+  assert.ok(from !== -1 && to > from, 'the deferred-redraw block was not found where expected');
+  const deferred = source.slice(from, to);
+  assert.match(deferred, /store\.notify\(\)/, 'the redraw must go through the store broadcast');
+  assert.doesNotMatch(deferred, /\brender\(\)/, 'a bare local render skips the other store subscribers');
+});
+
 console.log('Case surface regression suite completed successfully.');

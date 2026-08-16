@@ -144,8 +144,13 @@ export function createApp({store,root,toast}){
   // clique era engolido — ao trocar de etapa, ao abrir uma lista, ao adicionar uma
   // fonte. O valor continua sendo gravado na hora; apenas o redesenho espera o
   // ponteiro ser solto, e ocorre depois de o clique ter produzido seu efeito.
+  // O redesenho adiado precisa passar por store.notify(), não pelo render() local:
+  // este módulo não é o único assinante do store. O card de contexto metodológico
+  // (method-context-controller) e o inspetor de caso se reinjetam ao serem
+  // notificados, e são apagados por `root.innerHTML`. Chamar só o render daqui
+  // fazia o card sumir da etapa Exame e método até a próxima navegação.
   let renderQueued=false,pointerDown=false;
-  const flushRender=()=>{pointerDown=false;if(!renderQueued)return;renderQueued=false;setTimeout(render,0);};
+  const flushRender=()=>{pointerDown=false;if(!renderQueued)return;renderQueued=false;setTimeout(()=>store.notify(),0);};
   document.addEventListener('pointerdown',()=>{pointerDown=true;},true);
   document.addEventListener('pointerup',flushRender,true);
   document.addEventListener('pointercancel',flushRender,true);
@@ -154,7 +159,7 @@ export function createApp({store,root,toast}){
     if(!path||e.target.type==='radio')return;
     commitBoundValue(e.target,{notify:false});
     if(pointerDown){renderQueued=true;return;}
-    render();
+    store.notify();
   });
   window.addEventListener('hashchange',render);
 

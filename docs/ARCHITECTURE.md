@@ -340,7 +340,7 @@ O shell inclui `context-resolver.js`, `method-context-controller.js` e `context-
 | `knowledge/library.js` | provenance e pertinência documental | alterar método |
 | `models/checklists.js` | checklist declarativo de conferência de laudo | assumir motor decisório, produzir pontuação ou avaliar mérito clínico |
 | `method-context-controller.js` | apresentar contexto e registrar escolha explícita | persistência direta |
-| `ui/app.js` | workspace/interação | `localStorage` direto |
+| `ui/app.js` | workspace/interação | `localStorage` direto, redesenho que não notifique os demais assinantes |
 | `sw.js` | cache/offline | autorização/dados |
 
 ---
