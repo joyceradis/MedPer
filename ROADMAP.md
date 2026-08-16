@@ -17,7 +17,7 @@ Este documento é a fonte de verdade para a evolução do produto. Novas funcion
 | 9. Fazer piloto fechado | Não iniciada | Validação controlada com profissionais reais |
 | 10. Abrir venda pública | Não iniciada | Operação comercial, suporte e segurança prontos |
 
-**Frente transversal — governança de repositório e CI.** Não é etapa do produto e não bloqueia as demais: revisão automatizada em dois modelos sobre cada Pull Request, com o diff tratado como entrada não confiável, permissão mínima do token e regras de revisão lidas sempre da base confiável (#41, #46, #47). Depende de decisão da Founder para ativar os secrets — sem eles o pipeline roda, informa qual chave falta e encerra, sem custo (#40).
+**Frente transversal — governança de repositório e CI.** Não é etapa do produto e não bloqueia as demais: revisão automatizada em dois modelos sobre Pull Requests e pushes na `main`, **com duas exclusões deliberadas** — mudanças exclusivamente documentais (`docs/**` e `*.md` fora de `.github/**`) não geram chamada paga, e PRs de fork não executam os jobs pagos porque o GitHub lhes nega secrets. O diff é tratado como entrada não confiável, o token opera em permissão mínima e as regras de revisão são lidas sempre da base confiável (#41, #46, #47). Depende de decisão da Founder para ativar os secrets — sem eles o pipeline roda, informa qual chave falta e encerra, sem custo (#40).
 
 ---
 
