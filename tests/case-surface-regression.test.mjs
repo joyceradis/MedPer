@@ -88,7 +88,7 @@ test('the audit is scoped to the stage without hiding anything from the case', (
   assert.match(current, /Objeto pericial não delimitado\./);
   assert.doesNotMatch(current, /Sem consolidação fundamentada/);
   assert.match(ahead, /Sem consolidação fundamentada/);
-  assert.match(ahead, /8 pendências registradas para etapas seguintes/);
+  assert.match(ahead, /8 pendências registradas em outras etapas/);
 
   for (const issue of audit.issues) {
     assert.ok(html.includes(issue.text), `pendency dropped from the screen: ${issue.text}`);
@@ -102,6 +102,37 @@ test('a delimited object clears this stage while later stages stay accounted for
   const html = renderCaseSurface(caseData, 'delimitation');
   assert.doesNotMatch(html.slice(0, html.indexOf('<details class="audit-ahead">')), /Objeto pericial não delimitado/);
   assert.match(html, /4 bloqueios e 4 ressalvas no caso/);
+});
+
+// Rotear uma pendência para outra etapa e não mostrá-la ao chegar lá é pior do que
+// não rotear: a tela promete um destino que não cumpre. Toda etapa que é destino
+// precisa exibir em primeiro plano o que lhe foi roteado.
+test('every routing destination shows in the foreground what was routed to it', () => {
+  const caseData = emptyAesthetic();
+  const audit = auditCase(caseData);
+  const foreground = (stage) => {
+    const html = renderCaseSurface(caseData, stage);
+    const cut = html.indexOf('<details class="audit-ahead"');
+    return cut === -1 ? html : html.slice(0, cut);
+  };
+
+  for (const issue of audit.issues) {
+    const destination = stageForAuditField(issue.field);
+    assert.ok(
+      foreground(destination).includes(issue.text),
+      `"${issue.text}" is routed to "${destination}" but does not appear in the foreground there`
+    );
+  }
+});
+
+test('the conclusion keeps the full audit, without stage scoping', () => {
+  const caseData = emptyAesthetic();
+  const html = renderCaseSurface(caseData, 'conclusion');
+  assert.match(html, /Controle de suficiência/);
+  assert.equal(html.indexOf('<details class="audit-ahead"'), -1, 'the sufficiency control must not fold anything away');
+  for (const issue of auditCase(caseData).issues) {
+    assert.ok(html.includes(issue.text), `pendency missing from the sufficiency control: ${issue.text}`);
+  }
 });
 
 test('the stage bar says which stage it is', () => {

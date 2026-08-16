@@ -88,6 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
+          import re
           from pathlib import Path
 
           store = Path('js/core/store.js').read_text(encoding='utf-8')
@@ -107,9 +108,22 @@ jobs:
           if "has(g,'object')" not in engine:
               raise SystemExit('Methodology audit no longer checks the canonical object.')
 
-          if "textarea('scope'" not in app:
+          # O invariante é que a interface continue ligada ao caminho legado `scope`,
+          # que o store sincroniza com methodology.general.object. A verificação
+          # anterior exigia o helper `textarea` pelo nome, o que prendia o gate a uma
+          # escolha de renderização: trocar de helper preservando o binding derrubava
+          # a CI, e passar a renderizar sem binding nenhum poderia não derrubar.
+          if not re.search(r"\b(?:textarea|bareField)\('scope'", app):
               raise SystemExit(
                   'Legacy interface binding changed without a compatibility migration.'
+              )
+
+          # E o binding renderizado precisa continuar sob teste de comportamento —
+          # grep em código-fonte não prova que o atributo chega ao DOM.
+          surface = Path('tests/case-surface-regression.test.mjs').read_text(encoding='utf-8')
+          if 'data-bind="scope"' not in surface:
+              raise SystemExit(
+                  'The rendered legacy binding is no longer covered by a regression test.'
               )
 
           print('Legacy scope and canonical methodology object remain synchronized.')
