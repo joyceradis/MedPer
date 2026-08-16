@@ -1,10 +1,12 @@
 import {AIPE_CATEGORIES,AIPE_IMPACT_BANDS} from './aipe.js';
-import {FINALIDADE_OPTIONS,normalizeFinalidadeId} from './barema-routing.js';
-// `answeredBy` deixa o campo declarar o que conta como resposta. Sem ele, basta
-// haver valor. Com ele, o valor precisa ter significado para o método — é o que
-// impede uma opção-sentinela de fazer a etapa contar como concluída enquanto a
-// auditoria diz que o dado não foi declarado.
-const q=(id,label,options,answeredBy)=>answeredBy?({id,label,options,answeredBy}):({id,label,options});
+import {FINALIDADE_OPTIONS,functionalBaremaIsAtStake,normalizeFinalidadeId} from './barema-routing.js';
+// Um campo pode declarar duas coisas sobre si. `answeredBy`: o que conta como
+// resposta — sem ele basta haver valor; com ele o valor precisa ter significado
+// para o método, o que impede uma opção-sentinela de fechar a etapa enquanto a
+// auditoria diz que o dado não foi declarado. `appliesTo`: se a pergunta cabe
+// neste caso — sem ele a pergunta é universal; com ele ela desaparece de casos
+// onde nenhuma resposta seria verdadeira, em vez de forçar uma resposta falsa.
+const q=(id,label,options,extra)=>extra?({id,label,options,...extra}):({id,label,options});
 const n=(id,label,help)=>({id,label,help,type:'narrative'});
 // A entrada da perita representa a tabela de referência em vez de copiá-la à mão.
 // Rótulo e faixa vêm de AIPE_CATEGORIES; a graduação, de AIPE_IMPACT_BANDS. Este
@@ -25,8 +27,18 @@ const AIPE_LEVEL_OPTIONS=[...new Set(Object.values(AIPE_IMPACT_BANDS).flatMap(ba
 // é exatamente o estado que "A definir" tentava expressar, e a auditoria já o
 // aponta.
 const FINALIDADE_CHOICE_OPTIONS=FINALIDADE_OPTIONS.map(option=>({id:option.id,label:option.label}));
+// A pergunta só cabe onde a escolha de barema funcional está em jogo. Num dano
+// estético criminal, nenhuma das quatro finalidades descreve a avaliação: exigi-la
+// obrigaria a perita a declarar algo falso ou a deixar a Delimitação eternamente
+// em andamento. É o MESMO predicado que gateia a ressalva em engine.js — completude
+// e auditoria concordam por construção, não por coincidência mantida à mão.
+const finalidadeApplies=caseData=>functionalBaremaIsAtStake({
+  matter:caseData?.context?.matter,
+  matterId:caseData?.context?.matterId,
+  protocolIds:getApplicableProtocols(caseData).map(protocol=>protocol.id)
+});
 export const generalMethod=[
-{id:'delimitation',title:'Delimitação',fields:[n('object','Objeto pericial','Registre exatamente o que deve ser esclarecido.'),q('finalidadeChoice','Finalidade médico-jurídica da perícia',FINALIDADE_CHOICE_OPTIONS,normalizeFinalidadeId),n('controversies','Pontos controvertidos','Questões médicas efetivamente discutidas.'),n('methodChoice','Escolha metodológica','Justifique avaliação presencial, documental, indireta ou combinada.'),n('scopeLimits','Limites da atuação','Questões fora do objeto ou dependentes de outro especialista.')]},
+{id:'delimitation',title:'Delimitação',fields:[n('object','Objeto pericial','Registre exatamente o que deve ser esclarecido.'),q('finalidadeChoice','Finalidade médico-jurídica da perícia',FINALIDADE_CHOICE_OPTIONS,{answeredBy:normalizeFinalidadeId,appliesTo:finalidadeApplies}),n('controversies','Pontos controvertidos','Questões médicas efetivamente discutidas.'),n('methodChoice','Escolha metodológica','Justifique avaliação presencial, documental, indireta ou combinada.'),n('scopeLimits','Limites da atuação','Questões fora do objeto ou dependentes de outro especialista.')]},
 {id:'material',title:'Material analisado',fields:[n('availableMaterial','Elementos disponíveis','Autos, prontuários, imagens, exames e literatura.'),n('missingMaterial','Elementos ausentes','Documentos ou dados necessários não disponibilizados.'),n('sourceQuality','Qualidade das fontes','Autoria, contemporaneidade, integridade e consistência.'),n('contradictions','Divergências documentais','Incompatibilidades entre registros, relato e exame.')]},
 {id:'execution',title:'Execução técnica',fields:[n('directedHistory','Anamnese pericial dirigida','História orientada ao objeto.'),n('priorState','Estado anterior','Condições preexistentes e funcionalidade prévia.'),n('objectiveExam','Exame objetivo','Achados positivos e negativos relevantes.'),n('complementaryData','Exames complementares','Resultados e interpretação pericial.'),n('consistency','Consistência interna','Compatibilidade entre relato, documentos, exame e evolução.')]}
 ];

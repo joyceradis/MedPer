@@ -82,11 +82,14 @@ export function completion(c){
   const applicable=getApplicableProtocols(c);
   const g=c.methodology?.general||{}, s=c.methodology?.specific||{}, u=c.methodology?.guided||{};
   // Um campo pode declarar o próprio critério de resposta; sem isso, basta valor.
+  // E pode declarar que não se aplica a este caso: pergunta que não cabe não pode
+  // impedir a etapa de fechar.
   const answered=(bag,f)=>f.answeredBy?Boolean(f.answeredBy(bag?.[f.id])):has(bag,f.id);
-  const stepCompletion=protocol=>protocol.steps.map(step=>step.fields.every(f=>f.type==='narrative'?answered(s,f):answered(u,f)));
+  const applies=f=>!f.appliesTo||f.appliesTo(c);
+  const stepCompletion=protocol=>protocol.steps.map(step=>step.fields.filter(applies).every(f=>f.type==='narrative'?answered(s,f):answered(u,f)));
   const specificByProtocol=Object.fromEntries(applicable.map(protocol=>[protocol.id,stepCompletion(protocol)]));
   return {
-    general:generalMethod.map(x=>x.fields.every(f=>answered(g,f))),
+    general:generalMethod.map(x=>x.fields.filter(applies).every(f=>answered(g,f))),
     specific:specificByProtocol[p.id]||stepCompletion(p),
     specificByProtocol
   };

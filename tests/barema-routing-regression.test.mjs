@@ -234,3 +234,39 @@ test('auditCase aponta ambiguidade quando a finalidade declarada ainda não tem 
 });
 
 console.log('Barema routing regression suite completed successfully.');
+
+// Tornar a finalidade exigente para completude, sem torná-la condicional, obrigava
+// a perita de um dano estético criminal a declarar algo falso ou a deixar a
+// Delimitação eternamente em andamento — nenhuma das quatro opções descreve
+// aquela avaliação. Completude e auditoria passam a usar o MESMO predicado.
+test('a pergunta de finalidade não aparece nem é exigida onde nenhuma resposta seria verdadeira', async () => {
+  const { completion, auditCase: audit } = await import('../js/methodology/engine.js');
+  const { generalMethod } = await import('../js/methodology/protocols.js');
+  const delimitacao = generalMethod.find(step => step.id === 'delimitation');
+  const campo = delimitacao.fields.find(f => f.id === 'finalidadeChoice');
+
+  const preenchido = { object: 'o', controversies: 'c', methodChoice: 'm', scopeLimits: 'l' };
+  const estetico = {
+    context: { sphere: 'Judicial', branch: 'Criminal', role: 'Perita do juízo', matter: 'Dano estético', matterId: 'aesthetic_damage', mode: 'Presencial' },
+    methodology: { general: { ...preenchido }, specific: {}, guided: {}, decision: {} }, questions: [], evidence: [], facts: [], events: []
+  };
+  const corporal = {
+    context: { sphere: 'Judicial', branch: 'Cível', role: 'Perita do juízo', matter: 'Dano corporal', mode: 'Presencial' },
+    methodology: { general: { ...preenchido }, specific: {}, guided: {}, decision: {} }, questions: [], evidence: [], facts: [], events: []
+  };
+
+  assert.equal(campo.appliesTo(estetico), false, 'a pergunta não cabe num caso estético puro');
+  assert.equal(campo.appliesTo(corporal), true, 'a pergunta cabe onde o barema funcional está em jogo');
+
+  assert.equal(completion(estetico).general[0], true, 'a etapa fecha sem uma resposta que seria falsa');
+  assert.equal(completion(corporal).general[0], false, 'onde a pergunta cabe, ela continua exigida');
+
+  corporal.methodology.general.finalidadeChoice = 'civil_liability';
+  assert.equal(completion(corporal).general[0], true);
+
+  // O ponto do achado: as duas leituras não podem divergir.
+  const ressalva = /Finalidade médico-jurídica da perícia não declarada/;
+  assert.equal(audit(estetico).issues.some(i => ressalva.test(i.text)), false, 'auditoria e completude concordam: não cabe');
+  const corporalSemFinalidade = { ...corporal, methodology: { ...corporal.methodology, general: { ...preenchido } } };
+  assert.equal(audit(corporalSemFinalidade).issues.some(i => ressalva.test(i.text)), true, 'auditoria e completude concordam: cabe e falta');
+});
