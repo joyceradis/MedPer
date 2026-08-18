@@ -26,6 +26,7 @@ export function createCaseStateClient({baseUrl='',getAccessToken=()=>'',fetchImp
 
   return {
     enabled,
+    listCases(){return request('/cases');},
     createCase(caseData={}){
       return request('/cases',{
         method:'POST',
@@ -38,9 +39,7 @@ export function createCaseStateClient({baseUrl='',getAccessToken=()=>'',fetchImp
         })
       });
     },
-    load(caseId){
-      return request(`/cases/${encodeURIComponent(caseId)}/state`);
-    },
+    load(caseId){return request(`/cases/${encodeURIComponent(caseId)}/state`);},
     save(caseId,{revision=0,payload={}}={}){
       return request(`/cases/${encodeURIComponent(caseId)}/state`,{
         method:'PUT',
