@@ -1,12 +1,7 @@
 import {AIPE_CATEGORIES,AIPE_IMPACT_BANDS} from './aipe.js';
-import {bodilyDamageProtocol} from './bodily-damage-protocol.js';
+import {bodilyDamageProtocol,getApplicableBodilyDamageProtocol} from './bodily-damage-protocol.js';
 const q=(id,label,options)=>({id,label,options});
 const n=(id,label,help)=>({id,label,help,type:'narrative'});
-// A entrada da perita representa a tabela de referência em vez de copiá-la à mão.
-// Rótulo e faixa vêm de AIPE_CATEGORIES; a graduação, de AIPE_IMPACT_BANDS. Este
-// módulo apresenta a referência como opção selecionável — nunca a altera, nunca
-// decide por ela. A faixa aparece no rótulo para que a escolha seja autoconferível:
-// a categoria selecionada é aquela cuja faixa contém a pontuação registrada.
 const aipeRange=category=>category.range[0]===category.range[1]?`${category.range[0]}`:`${category.range[0]}–${category.range[1]}`;
 const AIPE_CATEGORY_OPTIONS=AIPE_CATEGORIES.map(category=>`${category.label} (${aipeRange(category)})`);
 const AIPE_LEVEL_OPTIONS=[...new Set(Object.values(AIPE_IMPACT_BANDS).flatMap(bands=>bands.map(([level])=>level)))].concat('Não definido');
@@ -97,6 +92,7 @@ export function getApplicableProtocols(caseData={}){
     if(seen.has(id))return [];
     seen.add(id);
     if(id==='generic')return [primary];
+    if(id==='bodily_damage')return [getApplicableBodilyDamageProtocol(caseData)];
     const protocol=protocols[id];
     return protocol?[protocol]:[];
   });
