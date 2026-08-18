@@ -28,6 +28,19 @@ export function createApiAuthClient({baseUrl='',fetchImpl=globalThis.fetch}={}){
 
   return {
     enabled,
+    googleLoginUrl(){
+      if(!enabled)return '';
+      return `${apiBase}/auth/google/login`;
+    },
+    exchangeGoogleCode(code=''){
+      const value=String(code||'').trim();
+      if(!value)throw new Error('Código de autenticação Google ausente.');
+      return request('/auth/google/exchange',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({code:value})
+      });
+    },
     signIn(email,password){
       const body=new URLSearchParams({username:String(email||'').trim(),password:String(password||'')});
       return request('/auth/token',{
