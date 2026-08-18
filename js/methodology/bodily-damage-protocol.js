@@ -1,0 +1,132 @@
+import { evaluatePersonalDamageCase, getVisiblePersonalDamageStepIds } from './personal-damage.js';
+import { POSAS_OBSERVER_ITEMS, POSAS_PATIENT_ITEMS } from './posas.js';
+
+const q = (id, label, options, help = '') => ({ id, label, options, help });
+const n = (id, label, help) => ({ id, label, help, type: 'narrative' });
+
+const AXIS_OPTIONS = ['Demonstrado', 'Não demonstrado', 'Indeterminado', 'Não aplicável'];
+const POSAS_SCORE_OPTIONS = ['1','2','3','4','5','6','7','8','9','10'];
+const ATTRIBUTION_OPTIONS = ['Sim', 'Parcialmente', 'Não', 'Indeterminado'];
+const posasFields = Object.freeze([
+  n('posasArea', 'Área cicatricial escolhida', 'Defina a área cicatricial à qual todos os escores desta aplicação se referem.'),
+  n('posasSelectionCriterion', 'Critério de seleção da área', 'Registre por que esta área foi escolhida quando houver múltiplas cicatrizes ou regiões.'),
+  ...POSAS_PATIENT_ITEMS.map(item => q(`posasPatient_${item.id}`, `Patient — ${item.label}`, POSAS_SCORE_OPTIONS, item.reference)),
+  q('posasPatientGlobal', 'Patient — opinião global', POSAS_SCORE_OPTIONS, 'Permanece separada da soma dos seis itens.'),
+  n('posasPatientObservation', 'Patient — observação espontânea relevante', 'Registre informação relevante sem incorporá-la automaticamente à soma.'),
+  ...POSAS_OBSERVER_ITEMS.map(item => q(`posasObserver_${item.id}`, `Observer — ${item.label}`, POSAS_SCORE_OPTIONS, item.reference)),
+  q('posasObserverGlobal', 'Observer — opinião global', POSAS_SCORE_OPTIONS, 'Permanece separada da soma dos seis itens.'),
+  n('posasLimits', 'POSAS — limitações da aplicação', 'Patient e Observer são independentes; não substituir exame tátil por fotografia; POSAS não é pontuação de dano estético.')
+]);
+
+export const bodilyDamageProtocol = Object.freeze({
+  id: 'bodily_damage',
+  title: 'Dano corporal / dano pessoal',
+  steps: Object.freeze([
+    Object.freeze({
+      id: 'gates',
+      title: '1. Elegibilidade — dano, nexo e consolidação',
+      fields: Object.freeze([
+        q('personalDamageDamageStatus', 'Há dano biológico relevante ao objeto objetivamente demonstrado?', ['Sim', 'Parcialmente', 'Não', 'Inconclusivo']),
+        n('personalDamageDamageBasis', 'Base da demonstração do dano', 'Registre achados, documentos, exames e limitações que sustentam a existência do dano.'),
+        q('personalDamageCausalStatus', 'Conclusão causal médico-pericial', ['Nexo sustentado', 'Indeterminado', 'Nexo afastado', 'Não avaliado']),
+        n('personalDamageCausalBasis', 'Fundamentação causal', 'Descreva mecanismo, topografia, temporalidade, encadeamento clínico, estado anterior, alternativas e lacunas. Não confunda causalidade médica com culpa.'),
+        q('personalDamageConsolidationStatus', 'Situação de cura / consolidação médico-legal', ['Consolidado', 'Não consolidado', 'Indeterminado']),
+        n('personalDamageConsolidationBasis', 'Fundamentação da consolidação', 'Registre por que o quadro pode ou não ser considerado estabilizado para valoração permanente definitiva.')
+      ])
+    }),
+    Object.freeze({
+      id: 'temporary',
+      title: '2. Danos temporários',
+      fields: Object.freeze([
+        n('temporaryFunctionalTotal', 'Déficit funcional temporário total — período', 'Registre datas/período e fonte documental. Tempo de tratamento não equivale automaticamente a incapacidade total.'),
+        n('temporaryFunctionalPartial', 'Déficit funcional temporário parcial — período', 'Registre datas/período, intensidade quando metodologicamente sustentada e fonte.'),
+        n('temporaryProfessional', 'Repercussão profissional temporária', 'Registre apenas interferência profissional demonstrável e separe-a do déficit funcional temporário.'),
+        n('quantumDolorisSummary', 'Sofrimento / Quantum Doloris — síntese', 'Reconstrua lesões, internações, cirurgias, curativos, analgesia, complicações e duração do tratamento; gradue somente se houver referencial aplicável.'),
+        n('temporaryEvidence', 'Fontes e limitações dos danos temporários', 'Indique prontuários, atestados, documentos, relato e lacunas relevantes.')
+      ])
+    }),
+    Object.freeze({
+      id: 'permanent_axes',
+      title: '3. Eixos permanentes — identificar sem somar',
+      fields: Object.freeze([
+        q('permanentFunctionalStatus', 'Déficit funcional permanente', AXIS_OPTIONS),
+        q('permanentAestheticStatus', 'Prejuízo estético permanente', AXIS_OPTIONS),
+        q('permanentProfessionalStatus', 'Repercussão profissional permanente', AXIS_OPTIONS),
+        q('permanentLeisureStatus', 'Repercussão em atividade física / lazer', AXIS_OPTIONS),
+        q('permanentSocialStatus', 'Repercussão social / exposição', AXIS_OPTIONS),
+        q('permanentSexualStatus', 'Repercussão sexual', AXIS_OPTIONS),
+        q('thirdPartyDependenceStatus', 'Dependência de terceira pessoa', AXIS_OPTIONS),
+        q('scarQualityStatus', 'Qualidade cicatricial requer avaliação complementar?', ['Sim', 'Não', 'Não aplicável', 'Indeterminado'])
+      ])
+    }),
+    Object.freeze({
+      id: 'functional',
+      title: '4. Eixo funcional permanente',
+      fields: Object.freeze([
+        n('functionalSequelae', 'Sequelas funcionais elegíveis', 'Descreva cada sequela funcional atribuível ao evento antes de qualquer combinação matemática.'),
+        n('functionalReference', 'Barema / referencial funcional', 'Registre a fonte aplicável e o item utilizado. Não infira a tabela pela etiologia do trauma.'),
+        n('functionalValuation', 'Valoração funcional', 'Registre o resultado por sequela. Balthazard só pode combinar déficits funcionais se o referencial aplicável autorizar.'),
+        n('functionalCombination', 'Regra de combinação, se aplicável', 'Declare capacidade restante/Balthazard ou outra regra somente quando determinada pelo referencial.')
+      ])
+    }),
+    Object.freeze({
+      id: 'aesthetic_scar',
+      title: '5. Eixo estético e qualidade cicatricial',
+      fields: Object.freeze([
+        n('aestheticDescription', 'Alteração da imagem corporal', 'Descreva a alteração antes de selecionar instrumento de valoração.'),
+        n('aestheticReference', 'Método de prejuízo estético', 'Se AIPE for pertinente, utilize o protocolo/instrumento específico e fundamente a escolha.'),
+        n('aestheticValuation', 'Valoração estética, se cabível', 'Não converter POSAS em AIPE e não somar resultado estético ao déficit funcional.'),
+        n('scarQualityReference', 'Qualidade cicatricial — instrumento complementar', 'POSAS, quando aplicável, permanece uma avaliação própria da cicatriz e não uma pontuação de dano estético.')
+      ])
+    }),
+    Object.freeze({
+      id: 'scar_posas',
+      title: '5B. POSAS 2.0 — qualidade cicatricial',
+      fields: posasFields
+    }),
+    Object.freeze({
+      id: 'repercussions',
+      title: '6. Repercussões permanentes e participação',
+      fields: Object.freeze([
+        n('professionalActivityBefore', 'Qual era a atividade profissional antes do evento?', 'Registre profissão/função efetivamente exercida, evitando inferir exigências apenas pelo cargo.'),
+        n('professionalEssentialTasks', 'Quais tarefas essenciais essa atividade exigia?', 'Descreva as tarefas concretas e suas exigências funcionais relevantes.'),
+        n('professionalRelevantSequela', 'Qual sequela atribuível interfere nessas tarefas?', 'Faça a ponte entre sequela demonstrada e tarefa profissional específica.'),
+        q('professionalImpactDemonstrated', 'O impacto profissional está demonstrado?', AXIS_OPTIONS, 'Separe déficit funcional de repercussão profissional.'),
+        n('professionalEvidenceSource', 'Qual documento ou fonte sustenta a repercussão profissional?', 'Indique documento, prontuário, descrição ocupacional, exame ou outro elemento verificável.'),
+        n('professionalLimitsAdaptations', 'Limites, adaptações e observações profissionais', 'Registre adaptações possíveis, esforço suplementar, restrições e incertezas.'),
+        n('leisureBefore', 'Atividade física / lazer — como era antes do evento?', 'Descreva a situação prévia relevante ao objeto.'),
+        n('leisureCurrent', 'Atividade física / lazer — como está atualmente?', 'Descreva a situação atual sem presumir causalidade.'),
+        q('leisureAttribution', 'A diferença é atribuível ao evento?', ATTRIBUTION_OPTIONS, 'Atribua somente o que puder ser sustentado pela sequela e pelo nexo já estabelecido.'),
+        n('leisureEvidence', 'Atividade física / lazer — qual é a fonte?', 'Separe relato do periciado, documento e inferência pericial.'),
+        n('leisureLimits', 'Atividade física / lazer — o que permanece incerto?', 'Registre lacunas, causas alternativas e limites de conclusão.'),
+        n('socialBefore', 'Relações sociais / exposição — como era antes do evento?', 'Registre apenas o que for pertinente ao objeto pericial.'),
+        n('socialCurrent', 'Relações sociais / exposição — como está atualmente?', 'Separe relato, fato documentado e interpretação pericial.'),
+        q('socialAttribution', 'Relações sociais / exposição — a diferença é atribuível ao evento?', ATTRIBUTION_OPTIONS),
+        n('socialEvidence', 'Relações sociais / exposição — qual é a fonte?', 'Indique a base do registro e sua qualidade.'),
+        n('socialLimits', 'Relações sociais / exposição — o que permanece incerto?', 'Registre limites de demonstração e hipóteses alternativas.'),
+        n('sexualRepercussionBasis', 'Repercussão sexual — fundamentação', 'Registrar somente se pertinente ao objeto e sustentada por elementos suficientes.'),
+        n('thirdPartyDependenceBasis', 'Dependência de terceira pessoa — fundamentação', 'Descreva quais atividades exigem auxílio, frequência e fundamento, sem tratar este eixo como sinônimo do percentual funcional.'),
+        n('repercussionValuationRule', 'Regra de valoração das repercussões', 'Sem referencial válido, conclua qualitativamente e registre a limitação; não invente pontuação porque existe um campo de valoração.')
+      ])
+    }),
+    Object.freeze({
+      id: 'integration',
+      title: '7. Integração médico-pericial',
+      fields: Object.freeze([
+        n('personalDamageLimitations', 'Limitações e pontos não demonstrados', 'Registre lacunas, incertezas, hipóteses alternativas e consequências que não podem ser atribuídas com segurança.'),
+        n('personalDamageSynthesis', 'Síntese por eixos independentes', 'Integre temporários e permanentes sem somar constructos heterogêneos e sem converter achados médicos em culpa ou valor indenizatório.')
+      ])
+    })
+  ])
+});
+
+export function getApplicableBodilyDamageProtocol(caseData = {}) {
+  const gate = evaluatePersonalDamageCase(caseData);
+  const visibleIds = new Set(getVisiblePersonalDamageStepIds(gate));
+  if (gate.canValuePermanent && caseData.methodology?.guided?.scarQualityStatus === 'Sim') visibleIds.add('scar_posas');
+  return Object.freeze({
+    ...bodilyDamageProtocol,
+    gate,
+    steps: Object.freeze(bodilyDamageProtocol.steps.filter(step => visibleIds.has(step.id)))
+  });
+}

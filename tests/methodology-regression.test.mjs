@@ -106,9 +106,9 @@ test('respects a physician dismissal of a protocol suggestion', () => {
   );
 });
 
-test('retains a generic fallback for an unsupported primary matter', () => {
+test('retains a generic fallback for a still-unsupported primary matter', () => {
   const resolved = protocolModule.getApplicableProtocols({
-    context: { matter: 'Dano corporal' },
+    context: { matter: 'Outro' },
     methodology: {},
     scope: ''
   });

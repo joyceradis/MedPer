@@ -17,6 +17,10 @@ class CaseIn(BaseModel):
     status: str = "Em coleta"
     scope: str = ""
 
+class CaseStateIn(BaseModel):
+    payload: dict = Field(default_factory=dict)
+    expectedRevision: int = Field(ge=0)
+
 class EvidenceIn(BaseModel):
     type: str
     title: str
