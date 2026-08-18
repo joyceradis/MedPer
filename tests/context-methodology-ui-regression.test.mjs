@@ -15,5 +15,9 @@ assert.doesNotMatch(controller,/activeInstrumentIds\.push\([^)]*suggest/i,'sugge
 assert.match(controller,/evaluatePersonalDamageCase/,'the contextual card must consume the personal-damage domain gate instead of duplicating its rules');
 assert.match(controller,/data-personal-damage-gate/,'personal-damage cases must expose a dedicated gate card');
 assert.match(controller,/Próximo passo/,'the gate card must tell the physician what comes next without exposing the whole engine');
+assert.match(controller,/buildPosasAssessmentFromGuided/,'the UI must derive POSAS totals from persisted guided fields');
+assert.match(controller,/Patient.*\/60/,'the UI must expose the Patient total independently');
+assert.match(controller,/Observer.*\/60/,'the UI must expose the Observer total independently');
+assert.doesNotMatch(controller,/Patient\s*\+\s*Observer|combinedTotal/i,'the UI must never combine Patient and Observer totals');
 
 console.log('Context methodology UI regression suite completed successfully.');
