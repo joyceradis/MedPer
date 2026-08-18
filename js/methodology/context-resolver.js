@@ -37,6 +37,14 @@ const CONTEXT_ADAPTERS = {
 };
 
 const CONTEXTUAL_PROFILES = {
+  'civil:bodily_damage': {
+    id: 'bodily_damage_civil',
+    baseProtocolId: 'bodily_damage',
+    title: 'Dano corporal / dano pessoal · contexto cível',
+    suggestedInstrumentIds: [],
+    priorities: ['objeto pericial', 'dano biológico demonstrável', 'nexo causal antes da valoração', 'cura ou consolidação médico-legal', 'danos temporários', 'eixos permanentes independentes', 'rastreabilidade do referencial utilizado'],
+    cautions: ['Nexo indeterminado não equivale a nexo afastado.', 'Sem consolidação não cabe valoração permanente definitiva.', 'Déficit funcional, prejuízo estético, qualidade cicatricial, dor e repercussões são constructos independentes e não devem ser somados em um escore global.', 'Consequência jurídica e valor indenizatório permanecem fora do motor médico-pericial.']
+  },
   'civil:aesthetic_damage': {
     id: 'aesthetic_damage_civil',
     baseProtocolId: 'aesthetic',
