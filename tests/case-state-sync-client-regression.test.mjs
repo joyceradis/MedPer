@@ -33,7 +33,7 @@ assert.equal(calls[2].options.headers.Authorization,'Bearer token-123');
 const saved=await client.save('remote-1',{revision:4,payload:{id:'case-local',title:'Atualizado'}});
 assert.equal(saved.revision,5);
 assert.equal(calls[3].options.method,'PUT');
-assert.deepEqual(JSON.parse(calls[3].options.body),{revision:4,payload:{id:'case-local',title:'Atualizado'}});
+assert.deepEqual(JSON.parse(calls[3].options.body),{expectedRevision:4,payload:{id:'case-local',title:'Atualizado'}});
 
 const disabled=createCaseStateClient({baseUrl:'',getAccessToken:()=>'',fetchImpl:fakeFetch});
 assert.equal(disabled.enabled,false);
