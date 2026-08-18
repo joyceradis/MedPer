@@ -1,9 +1,21 @@
 import { evaluatePersonalDamageCase, getVisiblePersonalDamageStepIds } from './personal-damage.js';
+import { POSAS_OBSERVER_ITEMS, POSAS_PATIENT_ITEMS } from './posas.js';
 
 const q = (id, label, options, help = '') => ({ id, label, options, help });
 const n = (id, label, help) => ({ id, label, help, type: 'narrative' });
 
 const AXIS_OPTIONS = ['Demonstrado', 'Não demonstrado', 'Indeterminado', 'Não aplicável'];
+const POSAS_SCORE_OPTIONS = ['1','2','3','4','5','6','7','8','9','10'];
+const posasFields = Object.freeze([
+  n('posasArea', 'Área cicatricial escolhida', 'Defina a área cicatricial à qual todos os escores desta aplicação se referem.'),
+  n('posasSelectionCriterion', 'Critério de seleção da área', 'Registre por que esta área foi escolhida quando houver múltiplas cicatrizes ou regiões.'),
+  ...POSAS_PATIENT_ITEMS.map(item => q(`posasPatient_${item.id}`, `Patient — ${item.label}`, POSAS_SCORE_OPTIONS, item.reference)),
+  q('posasPatientGlobal', 'Patient — opinião global', POSAS_SCORE_OPTIONS, 'Permanece separada da soma dos seis itens.'),
+  n('posasPatientObservation', 'Patient — observação espontânea relevante', 'Registre informação relevante sem incorporá-la automaticamente à soma.'),
+  ...POSAS_OBSERVER_ITEMS.map(item => q(`posasObserver_${item.id}`, `Observer — ${item.label}`, POSAS_SCORE_OPTIONS, item.reference)),
+  q('posasObserverGlobal', 'Observer — opinião global', POSAS_SCORE_OPTIONS, 'Permanece separada da soma dos seis itens.'),
+  n('posasLimits', 'POSAS — limitações da aplicação', 'Patient e Observer são independentes; não substituir exame tátil por fotografia; POSAS não é pontuação de dano estético.')
+]);
 
 export const bodilyDamageProtocol = Object.freeze({
   id: 'bodily_damage',
@@ -67,6 +79,11 @@ export const bodilyDamageProtocol = Object.freeze({
       ])
     }),
     Object.freeze({
+      id: 'scar_posas',
+      title: '5B. POSAS 2.0 — qualidade cicatricial',
+      fields: posasFields
+    }),
+    Object.freeze({
       id: 'repercussions',
       title: '6. Repercussões permanentes e participação',
       fields: Object.freeze([
@@ -91,6 +108,7 @@ export const bodilyDamageProtocol = Object.freeze({
 export function getApplicableBodilyDamageProtocol(caseData = {}) {
   const gate = evaluatePersonalDamageCase(caseData);
   const visibleIds = new Set(getVisiblePersonalDamageStepIds(gate));
+  if (gate.canValuePermanent && caseData.methodology?.guided?.scarQualityStatus === 'Sim') visibleIds.add('scar_posas');
   return Object.freeze({
     ...bodilyDamageProtocol,
     gate,
