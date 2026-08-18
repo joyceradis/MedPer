@@ -43,7 +43,7 @@ export function createCaseStateClient({baseUrl='',getAccessToken=()=>'',fetchImp
     save(caseId,{revision=0,payload={}}={}){
       return request(`/cases/${encodeURIComponent(caseId)}/state`,{
         method:'PUT',
-        body:JSON.stringify({revision,payload})
+        body:JSON.stringify({expectedRevision:revision,payload})
       });
     }
   };
