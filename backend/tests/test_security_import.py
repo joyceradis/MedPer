@@ -1,9 +1,10 @@
 from pathlib import Path
 
+import pytest
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 
-from app.config import settings
+from app.config import Settings, settings
 from app.main import app
 
 client = TestClient(app)
@@ -20,6 +21,22 @@ def register(slug: str, email: str):
     return response.json()
 
 
+def test_production_rejects_weak_jwt_secret():
+    insecure = Settings(environment='production', jwt_secret='change-me-in-production')
+    assert 'jwt_secret_insecure' in insecure.security_issues()
+    with pytest.raises(RuntimeError):
+        insecure.assert_secure_startup()
+
+
+def test_required_file_storage_rejects_missing_or_invalid_key():
+    missing = Settings(file_storage_required=True, file_encryption_key='')
+    assert 'file_encryption_key_invalid' in missing.security_issues()
+    invalid = Settings(file_storage_required=True, file_encryption_key='not-a-fernet-key')
+    assert 'file_encryption_key_invalid' in invalid.security_issues()
+    valid = Settings(file_storage_required=True, file_encryption_key=Fernet.generate_key().decode('ascii'))
+    assert 'file_encryption_key_invalid' not in valid.security_issues()
+
+
 def test_refresh_rotation_and_reuse_detection():
     tokens = register('phase2-refresh', 'refresh@example.com')
     first = client.post('/auth/refresh', json={'refresh_token': tokens['refresh_token']})
@@ -31,6 +48,25 @@ def test_refresh_rotation_and_reuse_detection():
 
     family_revoked = client.post('/auth/refresh', json={'refresh_token': first.json()['refresh_token']})
     assert family_revoked.status_code == 401
+
+
+def test_auth_rate_limit_returns_429():
+    previous_attempts = settings.auth_rate_limit_attempts
+    previous_window = settings.auth_rate_limit_window_seconds
+    settings.auth_rate_limit_attempts = 2
+    settings.auth_rate_limit_window_seconds = 60
+    try:
+        email = 'limited@example.com'
+        register('phase2-limit', email)
+        for _ in range(2):
+            response = client.post('/auth/token', data={'username': email, 'password': 'wrong-password'})
+            assert response.status_code == 401
+        limited = client.post('/auth/token', data={'username': email, 'password': 'wrong-password'})
+        assert limited.status_code == 429
+        assert int(limited.headers['Retry-After']) >= 1
+    finally:
+        settings.auth_rate_limit_attempts = previous_attempts
+        settings.auth_rate_limit_window_seconds = previous_window
 
 
 def test_password_reset_revokes_sessions():
@@ -89,24 +125,38 @@ def test_complete_legacy_mlks_import_preserves_snapshot_and_evidence_rule():
     assert body['skippedConclusionsWithoutEvidence'] == 1
 
 
-def test_file_upload_is_encrypted_at_rest(tmp_path: Path):
+def test_file_upload_rejects_unconfigured_encryption_then_encrypts_at_rest(tmp_path: Path):
     tokens = register('phase2-files', 'files@example.com')
     headers = {'Authorization': 'Bearer ' + tokens['access_token']}
     case = client.post('/cases', headers=headers, json={'title': 'Arquivos', 'objectType': 'Dano corporal'})
     assert case.status_code == 201
 
-    settings.file_encryption_key = Fernet.generate_key().decode('ascii')
-    settings.storage_path = str(tmp_path)
+    previous_key = settings.file_encryption_key
+    previous_path = settings.storage_path
+    settings.file_encryption_key = ''
     raw = b'conteudo medico confidencial'
-    upload = client.post(
+    blocked = client.post(
         f"/cases/{case.json()['id']}/files",
         headers=headers,
         files={'upload': ('documento.txt', raw, 'text/plain')},
     )
-    assert upload.status_code == 201, upload.text
-    stored = next(tmp_path.iterdir()).read_bytes()
-    assert raw not in stored
+    assert blocked.status_code == 503
 
-    download = client.get(f"/cases/{case.json()['id']}/files/{upload.json()['id']}", headers=headers)
-    assert download.status_code == 200
-    assert download.content == raw
+    try:
+        settings.file_encryption_key = Fernet.generate_key().decode('ascii')
+        settings.storage_path = str(tmp_path)
+        upload = client.post(
+            f"/cases/{case.json()['id']}/files",
+            headers=headers,
+            files={'upload': ('documento.txt', raw, 'text/plain')},
+        )
+        assert upload.status_code == 201, upload.text
+        stored = next(tmp_path.iterdir()).read_bytes()
+        assert raw not in stored
+
+        download = client.get(f"/cases/{case.json()['id']}/files/{upload.json()['id']}", headers=headers)
+        assert download.status_code == 200
+        assert download.content == raw
+    finally:
+        settings.file_encryption_key = previous_key
+        settings.storage_path = previous_path

@@ -5,6 +5,7 @@ import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .config import settings
 from .routers import auth, cases, files, imports
@@ -12,7 +13,7 @@ from .routers import auth, cases, files, imports
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO), format="%(message)s")
 logger = logging.getLogger("medper.api")
 
-app = FastAPI(title="MedPer API", version="0.2.0")
+app = FastAPI(title="MedPer API", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -20,6 +21,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
+
+
+@app.on_event("startup")
+def validate_startup_security() -> None:
+    settings.assert_secure_startup()
 
 
 @app.middleware("http")
@@ -59,3 +65,18 @@ app.include_router(files.router)
 @app.get("/health")
 def health():
     return {"status": "ok", "version": app.version}
+
+
+@app.get("/ready")
+def ready():
+    issues = settings.security_issues()
+    payload = {
+        "status": "ready" if not issues else "not_ready",
+        "version": app.version,
+        "security": "ok" if not issues else "invalid",
+        "fileStorage": "ready" if settings.file_encryption_key_is_valid else "disabled",
+    }
+    if issues:
+        payload["issues"] = issues
+        return JSONResponse(status_code=503, content=payload)
+    return payload
