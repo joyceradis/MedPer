@@ -68,7 +68,24 @@ test('após consolidação, eixos permanentes tornam-se disponíveis sem escore 
   assert.equal(stepVisible(html, '5. Eixo estético e qualidade cicatricial'), true);
   assert.equal(stepVisible(html, '6. Repercussões permanentes e participação'), true);
   assert.equal(stepVisible(html, '7. Integração médico-pericial'), true);
+  assert.equal(stepVisible(html, 'POSAS 2.0 — qualidade cicatricial'), false);
   assert.doesNotMatch(html, /percentual global do dano|dano total\s*[:=]/i);
+});
+
+test('POSAS só aparece quando a avaliação cicatricial complementar é explicitamente indicada', () => {
+  const html = renderCaseSurface(bodilyCase({
+    personalDamageDamageStatus: 'Sim',
+    personalDamageCausalStatus: 'Nexo sustentado',
+    personalDamageConsolidationStatus: 'Consolidado',
+    scarQualityStatus: 'Sim'
+  }), 'method');
+
+  assert.equal(stepVisible(html, 'POSAS 2.0 — qualidade cicatricial'), true);
+  assert.match(html, /Patient — Dor/);
+  assert.match(html, /Patient — Prurido/);
+  assert.match(html, /Observer — Vascularidade/);
+  assert.match(html, /Observer — Maleabilidade/);
+  assert.match(html, /não.*pontuação de dano estético/i);
 });
 
 console.log('Personal damage UI regression suite completed successfully.');
