@@ -1,11 +1,12 @@
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..audit import record
+from ..config import settings
 from ..deps import current_user, db_session
 from ..models import User
 from ..session_models import StoredFile
@@ -15,6 +16,11 @@ from .cases import owned_case
 router = APIRouter(prefix="/cases", tags=["files"])
 
 
+def require_file_storage_ready() -> None:
+    if not settings.file_encryption_key_is_valid:
+        raise HTTPException(503, "Armazenamento de arquivos indisponível: criptografia não configurada")
+
+
 @router.post("/{case_id}/files", status_code=201)
 async def upload_case_file(
     case_id: str,
@@ -22,6 +28,7 @@ async def upload_case_file(
     db: Session = Depends(db_session),
     user: User = Depends(current_user),
 ):
+    require_file_storage_ready()
     owned_case(db, user, case_id)
     saved = await save_upload(upload)
     row = StoredFile(
@@ -68,6 +75,7 @@ def list_case_files(case_id: str, db: Session = Depends(db_session), user: User 
 
 @router.get("/{case_id}/files/{file_id}")
 def download_case_file(case_id: str, file_id: str, db: Session = Depends(db_session), user: User = Depends(current_user)):
+    require_file_storage_ready()
     owned_case(db, user, case_id)
     row = db.scalar(select(StoredFile).where(
         StoredFile.id == file_id,
@@ -75,7 +83,6 @@ def download_case_file(case_id: str, file_id: str, db: Session = Depends(db_sess
         StoredFile.organization_id == user.organization_id,
     ))
     if not row:
-        from fastapi import HTTPException
         raise HTTPException(404, "Arquivo não encontrado")
     data = read_file(row.storage_key)
     return StreamingResponse(
