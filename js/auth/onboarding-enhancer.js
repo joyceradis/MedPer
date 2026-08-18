@@ -1,3 +1,7 @@
+import { API_CONFIG } from '../config/api-config.js';
+import { createApiAuthClient } from '../api/auth-client.js';
+import { createApiSessionStore } from './api-session.js';
+
 function compactHash(value=''){
   let hash=2166136261;
   for(const char of String(value).trim().toLowerCase()){
@@ -17,6 +21,13 @@ export function validatePasswordConfirmation(password='',confirmation=''){
 
 export function normalizeFullName(value=''){
   return String(value||'').trim().replace(/\s+/g,' ');
+}
+
+export function googleCallbackCode(locationLike={}){
+  const fromSearch=new URLSearchParams(String(locationLike?.search||'')).get('google_code');
+  if(fromSearch)return String(fromSearch).trim();
+  const hash=String(locationLike?.hash||'').replace(/^#/,'');
+  return String(new URLSearchParams(hash).get('google_code')||'').trim();
 }
 
 function ensurePasswordToggle(input){
@@ -68,6 +79,28 @@ function ensureConfirmationField(form){
 function setError(form,message=''){
   const target=form.querySelector('[data-auth-error]');
   if(target)target.textContent=message;
+}
+
+function ensureGoogleAccess(form){
+  if(!form||!API_CONFIG.baseUrl||form.closest('.auth-card')?.querySelector('[data-api-google-login]'))return;
+  const shell=form.closest('.auth-card');
+  if(!shell)return;
+  const button=document.createElement('button');
+  button.type='button';
+  button.className='button button-google';
+  button.dataset.apiGoogleLogin='';
+  button.textContent='Continuar com Google';
+  const divider=document.createElement('div');
+  divider.className='auth-divider';
+  divider.dataset.apiGoogleDivider='';
+  divider.innerHTML='<span>ou</span>';
+  form.insertAdjacentElement('beforebegin',divider);
+  divider.insertAdjacentElement('beforebegin',button);
+  button.addEventListener('click',()=>{
+    const client=createApiAuthClient({baseUrl:API_CONFIG.baseUrl});
+    const target=client.googleLoginUrl();
+    if(target)globalThis.location.assign(target);
+  });
 }
 
 function enterSignupMode(form){
@@ -129,10 +162,40 @@ function enhanceForm(form){
   form.querySelector('[data-api-signup-fields]')?.setAttribute('hidden','');
   const password=form.querySelector('[name="password"]');
   ensurePasswordToggle(password);
+  ensureGoogleAccess(form);
   const toggle=form.querySelector('[data-api-signup-toggle]');
   if(toggle){
     toggle.textContent='Criar minha conta';
     toggle.classList.add('button-create-account-secondary');
+  }
+}
+
+async function consumeGoogleCallback(){
+  if(!API_CONFIG.baseUrl||typeof globalThis.location==='undefined')return false;
+  const code=googleCallbackCode(globalThis.location);
+  if(!code)return false;
+  const client=createApiAuthClient({baseUrl:API_CONFIG.baseUrl});
+  const sessions=createApiSessionStore();
+  try{
+    const pair=await client.exchangeGoogleCode(code);
+    sessions.set({
+      ...pair,
+      email:pair?.email||'',
+      fullName:pair?.full_name||pair?.fullName||''
+    });
+    const clean=new URL(globalThis.location.href);
+    clean.searchParams.delete('google_code');
+    clean.hash='';
+    globalThis.history?.replaceState?.({},'',clean.toString());
+    globalThis.location.reload();
+    return true;
+  }catch(error){
+    const clean=new URL(globalThis.location.href);
+    clean.searchParams.delete('google_code');
+    clean.hash='';
+    clean.searchParams.set('auth_error','google');
+    globalThis.history?.replaceState?.({},'',clean.toString());
+    return false;
   }
 }
 
@@ -187,8 +250,10 @@ export function installOnboardingEnhancer(doc=document){
     if(organizationSlug)organizationSlug.value=workspace.slug;
   },true);
 
+  void consumeGoogleCallback();
   if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',enhance,{once:true});
   else enhance();
+  queueMicrotask(enhance);
   globalThis.addEventListener?.('load',enhance,{once:true});
 }
 
