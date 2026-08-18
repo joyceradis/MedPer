@@ -27,6 +27,12 @@ function bodilyCase(guided = {}) {
 }
 
 const stepVisible = (html, title) => html.includes(title);
+const consolidated = (extra = {}) => bodilyCase({
+  personalDamageDamageStatus: 'Sim',
+  personalDamageCausalStatus: 'Nexo sustentado',
+  personalDamageConsolidationStatus: 'Consolidado',
+  ...extra
+});
 
 test('dano corporal aparece como protocolo principal na tela de método', () => {
   const html = renderCaseSurface(bodilyCase(), 'method');
@@ -56,11 +62,7 @@ test('nexo sustentado sem consolidação revela temporários mas não permanente
 });
 
 test('após consolidação, eixos permanentes tornam-se disponíveis sem escore global', () => {
-  const html = renderCaseSurface(bodilyCase({
-    personalDamageDamageStatus: 'Sim',
-    personalDamageCausalStatus: 'Nexo sustentado',
-    personalDamageConsolidationStatus: 'Consolidado'
-  }), 'method');
+  const html = renderCaseSurface(consolidated(), 'method');
 
   assert.equal(stepVisible(html, '2. Danos temporários'), true);
   assert.equal(stepVisible(html, '3. Eixos permanentes — identificar sem somar'), true);
@@ -72,13 +74,20 @@ test('após consolidação, eixos permanentes tornam-se disponíveis sem escore 
   assert.doesNotMatch(html, /percentual global do dano|dano total\s*[:=]/i);
 });
 
+test('repercussões são guiadas por perguntas operacionais em vez de uma caixa abstrata de valoração', () => {
+  const html = renderCaseSurface(consolidated(), 'method');
+  assert.match(html, /Qual era a atividade profissional antes do evento\?/);
+  assert.match(html, /Quais tarefas essenciais essa atividade exigia\?/);
+  assert.match(html, /Qual sequela atribuível interfere nessas tarefas\?/);
+  assert.match(html, /O impacto profissional está demonstrado\?/);
+  assert.match(html, /Atividade física \/ lazer — como era antes do evento\?/);
+  assert.match(html, /Atividade física \/ lazer — como está atualmente\?/);
+  assert.match(html, /A diferença é atribuível ao evento\?/);
+  assert.match(html, /Sem referencial válido, conclua qualitativamente/i);
+});
+
 test('POSAS só aparece quando a avaliação cicatricial complementar é explicitamente indicada', () => {
-  const html = renderCaseSurface(bodilyCase({
-    personalDamageDamageStatus: 'Sim',
-    personalDamageCausalStatus: 'Nexo sustentado',
-    personalDamageConsolidationStatus: 'Consolidado',
-    scarQualityStatus: 'Sim'
-  }), 'method');
+  const html = renderCaseSurface(consolidated({ scarQualityStatus: 'Sim' }), 'method');
 
   assert.equal(stepVisible(html, 'POSAS 2.0 — qualidade cicatricial'), true);
   assert.match(html, /Patient — Dor/);
