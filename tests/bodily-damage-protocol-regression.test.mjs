@@ -7,7 +7,8 @@ function test(name, fn) {
   catch (error) { console.error(`✗ ${name}`); throw error; }
 }
 
-const fieldIds = protocol => protocol.steps.flatMap(step => step.fields || []).map(field => field.id);
+const fields = protocol => protocol.steps.flatMap(step => step.fields || []);
+const fieldIds = protocol => fields(protocol).map(field => field.id);
 
 test('Dano corporal resolve para protocolo específico, não fallback genérico', () => {
   const protocol = getProtocol('Dano corporal');
@@ -56,9 +57,14 @@ test('protocolo corporal obriga gates antes de eixos e mantém constructos separ
     'o protocolo não pode criar escore global de dano');
 });
 
-test('protocolo corporal não usa culpa ou valor indenizatório como entrada médica', () => {
-  const serialized = JSON.stringify(protocols.bodily_damage);
-  assert.doesNotMatch(serialized, /culpa concorrente|valor indenizat[oó]rio|percentual de responsabilidade/i);
+test('protocolo corporal não solicita culpa, responsabilidade ou valor indenizatório como entrada médica', () => {
+  const inputContract = fields(protocols.bodily_damage).map(({ id, label, options }) => ({ id, label, options }));
+  const serializedInputs = JSON.stringify(inputContract);
+  assert.doesNotMatch(
+    serializedInputs,
+    /culpa concorrente|valor indenizat[oó]rio|percentual de responsabilidade|responsabilidade civil/i,
+    'alertas podem explicar a fronteira jurídica; campos de entrada não podem pedir decisão jurídica à médica'
+  );
 });
 
 console.log('Bodily damage protocol regression suite completed successfully.');
