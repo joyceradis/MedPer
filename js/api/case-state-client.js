@@ -26,6 +26,18 @@ export function createCaseStateClient({baseUrl='',getAccessToken=()=>'',fetchImp
 
   return {
     enabled,
+    createCase(caseData={}){
+      return request('/cases',{
+        method:'POST',
+        body:JSON.stringify({
+          title:caseData.title||'Caso sem título',
+          reference:caseData.reference||'',
+          objectType:caseData.objectType||caseData.context?.matter||'Dano corporal',
+          status:caseData.status||'Em andamento',
+          scope:caseData.scope||''
+        })
+      });
+    },
     load(caseId){
       return request(`/cases/${encodeURIComponent(caseId)}/state`);
     },
