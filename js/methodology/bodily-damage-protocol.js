@@ -6,6 +6,7 @@ const n = (id, label, help) => ({ id, label, help, type: 'narrative' });
 
 const AXIS_OPTIONS = ['Demonstrado', 'Não demonstrado', 'Indeterminado', 'Não aplicável'];
 const POSAS_SCORE_OPTIONS = ['1','2','3','4','5','6','7','8','9','10'];
+const ATTRIBUTION_OPTIONS = ['Sim', 'Parcialmente', 'Não', 'Indeterminado'];
 const posasFields = Object.freeze([
   n('posasArea', 'Área cicatricial escolhida', 'Defina a área cicatricial à qual todos os escores desta aplicação se referem.'),
   n('posasSelectionCriterion', 'Critério de seleção da área', 'Registre por que esta área foi escolhida quando houver múltiplas cicatrizes ou regiões.'),
@@ -87,11 +88,25 @@ export const bodilyDamageProtocol = Object.freeze({
       id: 'repercussions',
       title: '6. Repercussões permanentes e participação',
       fields: Object.freeze([
-        n('professionalRepercussionBasis', 'Repercussão profissional — fundamentação', 'Profissão habitual → tarefas essenciais → exigências funcionais → sequela atribuível → interferência concreta → prova → conclusão.'),
-        n('leisureRepercussionBasis', 'Atividade física / lazer — fundamentação', 'Compare situação prévia e atual e indique se a diferença é explicada pela sequela atribuível.'),
-        n('socialRepercussionBasis', 'Relações sociais / exposição — fundamentação', 'Separe relato, evidência e inferência médico-pericial.'),
+        n('professionalActivityBefore', 'Qual era a atividade profissional antes do evento?', 'Registre profissão/função efetivamente exercida, evitando inferir exigências apenas pelo cargo.'),
+        n('professionalEssentialTasks', 'Quais tarefas essenciais essa atividade exigia?', 'Descreva as tarefas concretas e suas exigências funcionais relevantes.'),
+        n('professionalRelevantSequela', 'Qual sequela atribuível interfere nessas tarefas?', 'Faça a ponte entre sequela demonstrada e tarefa profissional específica.'),
+        q('professionalImpactDemonstrated', 'O impacto profissional está demonstrado?', AXIS_OPTIONS, 'Separe déficit funcional de repercussão profissional.'),
+        n('professionalEvidenceSource', 'Qual documento ou fonte sustenta a repercussão profissional?', 'Indique documento, prontuário, descrição ocupacional, exame ou outro elemento verificável.'),
+        n('professionalLimitsAdaptations', 'Limites, adaptações e observações profissionais', 'Registre adaptações possíveis, esforço suplementar, restrições e incertezas.'),
+        n('leisureBefore', 'Atividade física / lazer — como era antes do evento?', 'Descreva a situação prévia relevante ao objeto.'),
+        n('leisureCurrent', 'Atividade física / lazer — como está atualmente?', 'Descreva a situação atual sem presumir causalidade.'),
+        q('leisureAttribution', 'A diferença é atribuível ao evento?', ATTRIBUTION_OPTIONS, 'Atribua somente o que puder ser sustentado pela sequela e pelo nexo já estabelecido.'),
+        n('leisureEvidence', 'Atividade física / lazer — qual é a fonte?', 'Separe relato do periciado, documento e inferência pericial.'),
+        n('leisureLimits', 'Atividade física / lazer — o que permanece incerto?', 'Registre lacunas, causas alternativas e limites de conclusão.'),
+        n('socialBefore', 'Relações sociais / exposição — como era antes do evento?', 'Registre apenas o que for pertinente ao objeto pericial.'),
+        n('socialCurrent', 'Relações sociais / exposição — como está atualmente?', 'Separe relato, fato documentado e interpretação pericial.'),
+        q('socialAttribution', 'Relações sociais / exposição — a diferença é atribuível ao evento?', ATTRIBUTION_OPTIONS),
+        n('socialEvidence', 'Relações sociais / exposição — qual é a fonte?', 'Indique a base do registro e sua qualidade.'),
+        n('socialLimits', 'Relações sociais / exposição — o que permanece incerto?', 'Registre limites de demonstração e hipóteses alternativas.'),
         n('sexualRepercussionBasis', 'Repercussão sexual — fundamentação', 'Registrar somente se pertinente ao objeto e sustentada por elementos suficientes.'),
-        n('thirdPartyDependenceBasis', 'Dependência de terceira pessoa — fundamentação', 'Descreva quais atividades exigem auxílio, frequência e fundamento, sem tratar este eixo como sinônimo do percentual funcional.')
+        n('thirdPartyDependenceBasis', 'Dependência de terceira pessoa — fundamentação', 'Descreva quais atividades exigem auxílio, frequência e fundamento, sem tratar este eixo como sinônimo do percentual funcional.'),
+        n('repercussionValuationRule', 'Regra de valoração das repercussões', 'Sem referencial válido, conclua qualitativamente e registre a limitação; não invente pontuação porque existe um campo de valoração.')
       ])
     }),
     Object.freeze({
