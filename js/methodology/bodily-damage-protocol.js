@@ -1,3 +1,5 @@
+import { evaluatePersonalDamageCase, getVisiblePersonalDamageStepIds } from './personal-damage.js';
+
 const q = (id, label, options, help = '') => ({ id, label, options, help });
 const n = (id, label, help) => ({ id, label, help, type: 'narrative' });
 
@@ -85,3 +87,13 @@ export const bodilyDamageProtocol = Object.freeze({
     })
   ])
 });
+
+export function getApplicableBodilyDamageProtocol(caseData = {}) {
+  const gate = evaluatePersonalDamageCase(caseData);
+  const visibleIds = new Set(getVisiblePersonalDamageStepIds(gate));
+  return Object.freeze({
+    ...bodilyDamageProtocol,
+    gate,
+    steps: Object.freeze(bodilyDamageProtocol.steps.filter(step => visibleIds.has(step.id)))
+  });
+}
