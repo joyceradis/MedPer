@@ -1,3 +1,6 @@
+import { API_CONFIG, isApiConfigured } from '../config/api-config.js';
+import { createApiAuthClient } from '../api/auth-client.js';
+
 function compactHash(value=''){
   let hash=2166136261;
   for(const char of String(value).trim().toLowerCase()){
@@ -65,6 +68,22 @@ function ensureConfirmationField(form){
   return input;
 }
 
+function ensureGoogleButton(form){
+  if(!isApiConfigured()||!form||form.closest('.auth-card')?.querySelector('[data-api-google]'))return;
+  const card=form.closest('.auth-card');
+  if(!card)return;
+  const button=document.createElement('button');
+  button.type='button';
+  button.className='button button-google';
+  button.dataset.apiGoogle='';
+  button.textContent='Continuar com Google';
+  const divider=document.createElement('div');
+  divider.className='auth-divider';
+  divider.innerHTML='<span>ou</span>';
+  form.insertAdjacentElement('beforebegin',divider);
+  divider.insertAdjacentElement('beforebegin',button);
+}
+
 function setError(form,message=''){
   const target=form.querySelector('[data-auth-error]');
   if(target)target.textContent=message;
@@ -129,6 +148,7 @@ function enhanceForm(form){
   form.querySelector('[data-api-signup-fields]')?.setAttribute('hidden','');
   const password=form.querySelector('[name="password"]');
   ensurePasswordToggle(password);
+  ensureGoogleButton(form);
   const toggle=form.querySelector('[data-api-signup-toggle]');
   if(toggle){
     toggle.textContent='Criar minha conta';
@@ -145,6 +165,20 @@ export function installOnboardingEnhancer(doc=document){
   },true);
 
   doc.addEventListener('click',event=>{
+    const google=event.target?.closest?.('[data-api-google]');
+    if(google){
+      event.preventDefault();
+      google.disabled=true;
+      try{
+        const client=createApiAuthClient({baseUrl:API_CONFIG.baseUrl});
+        window.location.assign(client.googleStartUrl());
+      }catch(error){
+        google.disabled=false;
+        const form=google.closest('.auth-card')?.querySelector('[data-auth-form]');
+        if(form)setError(form,error?.message||'Não foi possível iniciar o login com Google.');
+      }
+      return;
+    }
     const signup=event.target?.closest?.('[data-api-signup-toggle]');
     if(signup){
       event.preventDefault();
