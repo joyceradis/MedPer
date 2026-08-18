@@ -8,6 +8,7 @@ import { installInspectorController } from './ui/inspector-controller.js';
 import { installSurfaceController } from './ui/surface-controller.js';
 import { installMethodContextController } from './ui/method-context-controller.js';
 import { createAuthController } from './auth/auth-controller.js';
+import { installOnboardingEnhancer } from './auth/onboarding-enhancer.js';
 
 const root=document.querySelector('#app');
 const toast=document.querySelector('#toast');
@@ -20,6 +21,7 @@ let methodContext=null;
 let sync=null;
 
 installDialogController(document);
+installOnboardingEnhancer(document);
 
 function showSyncStatus(event){
   if(!toast||!event)return;
