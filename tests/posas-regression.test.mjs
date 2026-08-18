@@ -3,7 +3,8 @@ import {
   POSAS_PATIENT_ITEMS,
   POSAS_OBSERVER_ITEMS,
   scorePosasDomain,
-  buildPosasAssessment
+  buildPosasAssessment,
+  buildPosasAssessmentFromGuided
 } from '../js/methodology/posas.js';
 
 function test(name, fn) {
@@ -38,6 +39,25 @@ test('Patient e Observer nunca são somados entre si e opinião global fica sepa
   assert.equal(result.observer.global, 4);
   assert.equal('total' in result, false);
   assert.equal('combinedTotal' in result, false);
+});
+
+test('campos persistidos da UI viram resultado derivado sem alterar os valores salvos', () => {
+  const guided = {
+    posasArea: 'cicatriz cervical anterior',
+    posasPatient_pain: '1', posasPatient_itch: '2', posasPatient_color: '3',
+    posasPatient_stiffness: '4', posasPatient_thickness: '5', posasPatient_irregularity: '6',
+    posasPatientGlobal: '7',
+    posasObserver_vascularity: '2', posasObserver_pigmentation: '2', posasObserver_thickness: '2',
+    posasObserver_relief: '2', posasObserver_pliability: '2', posasObserver_surface_area: '2',
+    posasObserverGlobal: '4'
+  };
+  const snapshot = JSON.stringify(guided);
+  const result = buildPosasAssessmentFromGuided(guided);
+  assert.equal(result.patient.total, 21);
+  assert.equal(result.observer.total, 12);
+  assert.equal(result.patient.global, 7);
+  assert.equal(result.observer.global, 4);
+  assert.equal(JSON.stringify(guided), snapshot);
 });
 
 test('POSAS permanece qualidade cicatricial e não produz pontuação de dano estético', () => {
