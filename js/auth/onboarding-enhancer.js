@@ -183,7 +183,7 @@ export function installOnboardingEnhancer(doc=document){
     const workspace=personalWorkspaceIdentity(email);
     const organizationName=form.querySelector('[name="organizationName"]');
     const organizationSlug=form.querySelector('[name="organizationSlug"]');
-    if(organizationName)organizationName.value=workspace.name;
+    if(organizationName)organizationName.value=fullName;
     if(organizationSlug)organizationSlug.value=workspace.slug;
   },true);
 
