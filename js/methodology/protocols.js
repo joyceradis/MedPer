@@ -1,4 +1,5 @@
 import {AIPE_CATEGORIES,AIPE_IMPACT_BANDS} from './aipe.js';
+import {bodilyDamageProtocol} from './bodily-damage-protocol.js';
 const q=(id,label,options)=>({id,label,options});
 const n=(id,label,help)=>({id,label,help,type:'narrative'});
 // A entrada da perita representa a tabela de referência em vez de copiá-la à mão.
@@ -15,6 +16,7 @@ export const generalMethod=[
 {id:'execution',title:'Execução técnica',fields:[n('directedHistory','Anamnese pericial dirigida','História orientada ao objeto.'),n('priorState','Estado anterior','Condições preexistentes e funcionalidade prévia.'),n('objectiveExam','Exame objetivo','Achados positivos e negativos relevantes.'),n('complementaryData','Exames complementares','Resultados e interpretação pericial.'),n('consistency','Consistência interna','Compatibilidade entre relato, documentos, exame e evolução.')]}
 ];
 export const protocols={
+bodily_damage:bodilyDamageProtocol,
 aesthetic:{id:'aesthetic',title:'Dano estético',steps:[
 {id:'eligibility',title:'1. Elegibilidade e consolidação',fields:[q('consolidationStatus','A alteração está consolidada?',['Sim, com fundamento registrado','Não','Não foi possível determinar']),q('objectiveChange','Existe alteração morfológica objetivamente examinável?',['Sim','Não','Avaliação exclusivamente documental','Elementos insuficientes']),q('priorAppearanceStatus','Como foi conhecido o estado estético anterior?',['Documentação objetiva','Apenas relato','Não há informação','Não se aplica'])]},
 {id:'description',title:'2. Descrição objetiva',fields:[q('lesionType','Tipo principal de alteração',['Cicatriz','Discromia','Assimetria','Deformidade','Perda de segmento','Alteração de contorno','Outra']),q('topographyChoice','Região anatômica',['Face','Pescoço','Membro superior','Membro inferior','Tronco','Outra']),q('laterality','Lateralidade',['Direita','Esquerda','Mediana','Bilateral','Não aplicável']),q('morphology','Morfologia predominante',['Plana','Elevada','Deprimida','Retrátil','Aderida','Hipertrófica','Queloidiana','Irregular']),q('colorChoice','Coloração predominante',['Normocrômica','Hipocrômica','Hipercrômica','Eritematosa','Heterogênea','Outra']),n('dimensions','Dimensões e mensuração','Comprimento, largura, área aproximada e método de mensuração.'),n('topography','Descrição topográfica','Região, limites anatômicos e relação com áreas expostas.')]},
@@ -56,6 +58,7 @@ const genericProtocol = matter => ({
 });
 
 const legacyMatterToProtocolId = {
+  'Dano corporal':'bodily_damage',
   'Dano estético':'aesthetic',
   'Incapacidade':'capacity',
   'Nexo causal e concausa':'causation',
