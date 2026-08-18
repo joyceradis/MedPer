@@ -23,6 +23,36 @@ const AXIS_STATUS_ALIASES = Object.freeze({
   [AXIS_STATUS.demonstrated]: AXIS_STATUS.demonstrated
 });
 
+const CAUSAL_STATUS_ALIASES = Object.freeze({
+  'Nexo sustentado': CAUSAL_STATUS.supported,
+  'Indeterminado': CAUSAL_STATUS.indeterminate,
+  'Nexo afastado': CAUSAL_STATUS.excluded,
+  'Não avaliado': CAUSAL_STATUS.not_assessed,
+  [CAUSAL_STATUS.supported]: CAUSAL_STATUS.supported,
+  [CAUSAL_STATUS.indeterminate]: CAUSAL_STATUS.indeterminate,
+  [CAUSAL_STATUS.excluded]: CAUSAL_STATUS.excluded,
+  [CAUSAL_STATUS.not_assessed]: CAUSAL_STATUS.not_assessed
+});
+
+const CONSOLIDATION_ALIASES = Object.freeze({
+  'Consolidado': 'consolidated',
+  'Não consolidado': 'not_consolidated',
+  'Indeterminado': 'unknown',
+  consolidated: 'consolidated',
+  not_consolidated: 'not_consolidated',
+  unknown: 'unknown'
+});
+
+const PERSONAL_DAMAGE_STEP_IDS = Object.freeze([
+  'gates',
+  'temporary',
+  'permanent_axes',
+  'functional',
+  'aesthetic_scar',
+  'repercussions',
+  'integration'
+]);
+
 function hasValue(value) {
   if (typeof value === 'number') return Number.isFinite(value);
   return typeof value === 'string' ? Boolean(value.trim()) : value !== null && value !== undefined;
@@ -128,6 +158,29 @@ export function evaluatePersonalDamageGate({
     canValuePermanent: true,
     nextStep: 'Identifique os eixos permanentes aplicáveis e use apenas os instrumentos pertinentes a cada constructo.'
   });
+}
+
+export function evaluatePersonalDamageCase(caseData = {}) {
+  const guided = caseData.methodology?.guided || {};
+  const object = String(caseData.methodology?.general?.object || caseData.scope || '').trim();
+  const damageChoice = String(guided.personalDamageDamageStatus || '').trim();
+  const causalStatus = CAUSAL_STATUS_ALIASES[String(guided.personalDamageCausalStatus || '').trim()]
+    || CAUSAL_STATUS.not_assessed;
+  const consolidationStatus = CONSOLIDATION_ALIASES[String(guided.personalDamageConsolidationStatus || '').trim()]
+    || 'unknown';
+
+  return evaluatePersonalDamageGate({
+    objectDefined: Boolean(object),
+    damageDemonstrated: damageChoice === 'Sim',
+    causalStatus,
+    consolidationStatus
+  });
+}
+
+export function getVisiblePersonalDamageStepIds(gate = {}) {
+  if (gate.canValuePermanent) return PERSONAL_DAMAGE_STEP_IDS;
+  if (gate.canValueTemporary) return Object.freeze(['gates', 'temporary']);
+  return Object.freeze(['gates']);
 }
 
 export function validateAxisValuation(axis = {}) {
