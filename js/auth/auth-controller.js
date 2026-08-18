@@ -1,4 +1,7 @@
 import { SUPABASE_CONFIG, isSupabaseConfigured } from '../config/supabase-config.js';
+import { API_CONFIG, isApiConfigured } from '../config/api-config.js';
+import { createApiAuthClient } from '../api/auth-client.js';
+import { createApiSessionStore } from './api-session.js';
 
 const escapeHtml=(value='')=>String(value??'').replace(/[&<>"']/g,char=>({
   '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
@@ -23,10 +26,40 @@ function authShell(message='') {
         <div class="auth-divider"><span>ou</span></div>
         <form class="auth-form" data-auth-form novalidate>
           <label class="field"><span>E-mail</span><input name="email" type="email" autocomplete="email" required></label>
-          <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" minlength="8" required></label>
+          <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" minlength="12" required></label>
           <div class="auth-actions">
             <button class="button button-primary" type="submit" data-auth-action="signin">Entrar</button>
             <button class="button button-secondary" type="submit" data-auth-action="signup">Criar conta</button>
+          </div>
+          <p class="form-error" data-auth-error role="alert"></p>
+        </form>
+        <p class="auth-legal">Ao continuar, a pessoa usuária concorda com os termos e a política de privacidade que serão publicados antes da comercialização.</p>
+      </section>
+    </main>`;
+}
+
+function apiAuthShell(message='') {
+  return `
+    <main class="auth-shell" id="authShell">
+      <section class="auth-card" aria-labelledby="authTitle">
+        ${brandMarkup('Perícia estruturada')}
+        <div class="auth-copy">
+          <span class="eyebrow">Acesso profissional</span>
+          <h1 id="authTitle">Entre na sua conta</h1>
+          <p>Autenticação e sincronização protegidas pela API MedPer.</p>
+        </div>
+        ${message?`<p class="auth-message" role="status">${escapeHtml(message)}</p>`:''}
+        <form class="auth-form" data-auth-form novalidate>
+          <label class="field"><span>E-mail</span><input name="email" type="email" autocomplete="email" required></label>
+          <label class="field"><span>Senha</span><input name="password" type="password" autocomplete="current-password" minlength="12" required></label>
+          <div data-api-signup-fields hidden>
+            <label class="field"><span>Nome da organização / espaço profissional</span><input name="organizationName" type="text" autocomplete="organization"></label>
+            <label class="field"><span>Identificador da organização</span><input name="organizationSlug" type="text" inputmode="url" placeholder="ex.: clinica-radis"></label>
+          </div>
+          <div class="auth-actions">
+            <button class="button button-primary" type="submit" data-auth-action="signin">Entrar</button>
+            <button class="button button-secondary" type="button" data-api-signup-toggle>Criar conta</button>
+            <button class="button button-secondary" type="submit" data-auth-action="signup" data-api-signup-submit hidden>Criar e entrar</button>
           </div>
           <p class="form-error" data-auth-error role="alert"></p>
         </form>
@@ -65,6 +98,122 @@ function accountDialogMarkup() {
     </dialog>`;
 }
 
+function slugify(value=''){
+  return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80);
+}
+
+async function createFastApiAuthController({root,onAccessGranted,onAccessRevoked}){
+  const client=createApiAuthClient({baseUrl:API_CONFIG.baseUrl});
+  const sessions=createApiSessionStore();
+  let session=sessions.get();
+  let appStarted=false;
+
+  const snapshot=()=>({
+    configured:true,
+    provider:'api',
+    session:session?{user:{email:session.email||''}}:null,
+    workspace:session?.organizationName?{currentOrganization:{name:session.organizationName},currentRole:'member'}:null,
+    appStarted
+  });
+
+  function ensureAccountDialog(){
+    if(document.querySelector('#authAccountDialog'))return;
+    document.body.insertAdjacentHTML('beforeend',accountDialogMarkup());
+    document.querySelector('[data-auth-signout]')?.addEventListener('click',()=>signOut());
+  }
+
+  function openAccount(){
+    ensureAccountDialog();
+    const dialog=document.querySelector('#authAccountDialog');
+    dialog.querySelector('[data-auth-account-email]').textContent=session?.email||'Conta MedPer';
+    dialog.querySelector('[data-auth-account-state]').innerHTML=session?.organizationName
+      ? `<strong>${escapeHtml(session.organizationName)}</strong><p>Sincronização remota ativa.</p>`
+      : '<strong>Conta MedPer</strong><p>Sincronização remota ativa.</p>';
+    dialog.querySelector('[data-auth-signout]').hidden=false;
+    dialog.showModal();
+  }
+
+  async function signOut(){
+    const refreshToken=sessions.getRefreshToken();
+    try{if(refreshToken)await client.logout(refreshToken);}catch{}
+    sessions.clear();
+    session=null;
+    appStarted=false;
+    onAccessRevoked();
+  }
+
+  const grant=(pair,metadata={})=>{
+    session=sessions.set({...pair,...metadata});
+    appStarted=true;
+    onAccessGranted();
+  };
+
+  function render(message=''){
+    root.innerHTML=apiAuthShell(message);
+    const form=root.querySelector('[data-auth-form]');
+    const signupFields=root.querySelector('[data-api-signup-fields]');
+    const signupSubmit=root.querySelector('[data-api-signup-submit]');
+    const signupToggle=root.querySelector('[data-api-signup-toggle]');
+
+    signupToggle?.addEventListener('click',()=>{
+      signupFields.hidden=false;
+      signupSubmit.hidden=false;
+      signupToggle.hidden=true;
+      form.querySelector('[name="organizationName"]').required=true;
+    });
+
+    form?.addEventListener('submit',async event=>{
+      event.preventDefault();
+      if(!form.reportValidity())return;
+      const kind=event.submitter?.dataset.authAction||'signin';
+      const data=new FormData(form);
+      const email=String(data.get('email')||'').trim();
+      const password=String(data.get('password')||'');
+      form.querySelectorAll('button').forEach(button=>button.disabled=true);
+      const errorTarget=form.querySelector('[data-auth-error]');
+      if(errorTarget)errorTarget.textContent='';
+      try{
+        if(kind==='signup'){
+          const organizationName=String(data.get('organizationName')||'').trim();
+          const organizationSlug=slugify(String(data.get('organizationSlug')||'').trim()||organizationName);
+          if(!organizationName||!organizationSlug)throw new Error('Informe o nome da organização ou espaço profissional.');
+          const pair=await client.register({organizationName,organizationSlug,email,password});
+          grant(pair,{email,organizationName,organizationSlug});
+        }else{
+          const pair=await client.signIn(email,password);
+          grant(pair,{email});
+        }
+      }catch(error){
+        if(errorTarget)errorTarget.textContent=error.message||'Não foi possível entrar.';
+      }finally{
+        form.querySelectorAll('button').forEach(button=>button.disabled=false);
+      }
+    });
+  }
+
+  if(session?.refresh_token){
+    try{
+      const refreshed=await client.refresh(session.refresh_token);
+      session=sessions.set({...refreshed,email:session.email||'',organizationName:session.organizationName||'',organizationSlug:session.organizationSlug||''});
+      appStarted=true;
+    }catch{
+      sessions.clear();
+      session=null;
+    }
+  }
+
+  if(!appStarted)render();
+
+  return {
+    configured:true,
+    provider:'api',
+    getState:snapshot,
+    getAccessToken:()=>sessions.getAccessToken(),
+    openAccount,
+    signOut
+  };
+}
+
 async function loadWorkspace(supabase,user) {
   const [{data:profile,error:profileError},{data:memberships,error:membershipError}] = await Promise.all([
     supabase.from('profiles').select('id,full_name,crm,state_registration,avatar_url,default_organization_id').eq('id',user.id).maybeSingle(),
@@ -85,13 +234,15 @@ async function loadWorkspace(supabase,user) {
 }
 
 export async function createAuthController({root,onAccessGranted=()=>{},onAccessRevoked=()=>{}}) {
+  if(isApiConfigured())return createFastApiAuthController({root,onAccessGranted,onAccessRevoked});
+
   const configured=isSupabaseConfigured();
   let supabase=null;
   let session=null;
   let workspace=null;
   let appStarted=false;
 
-  const snapshot=()=>({configured,session,workspace,appStarted});
+  const snapshot=()=>({configured,provider:configured?'supabase':'local',session,workspace,appStarted});
 
   function ensureAccountDialog(){
     if(document.querySelector('#authAccountDialog'))return;
@@ -195,7 +346,7 @@ export async function createAuthController({root,onAccessGranted=()=>{},onAccess
   if(!configured){
     root.innerHTML=setupShell();
     bindAuthScreen();
-    return {configured:false,getState:snapshot,openAccount};
+    return {configured:false,provider:'local',getState:snapshot,getAccessToken:()=>'',openAccount};
   }
 
   const module=await import('https://esm.sh/@supabase/supabase-js@2');
@@ -207,5 +358,5 @@ export async function createAuthController({root,onAccessGranted=()=>{},onAccess
   await handleSession(data.session);
   supabase.auth.onAuthStateChange((_event,nextSession)=>{void handleSession(nextSession)});
 
-  return {configured:true,supabase,getState:snapshot,openAccount,signOut};
+  return {configured:true,provider:'supabase',supabase,getState:snapshot,getAccessToken:()=>session?.access_token||'',openAccount,signOut};
 }
