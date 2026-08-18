@@ -18,7 +18,12 @@ export function createApiAuthClient({baseUrl='',fetchImpl=globalThis.fetch}={}){
 
   const request=async(path,options={})=>{
     if(!enabled)throw new Error('API MedPer não configurada.');
-    return parseResponse(await fetchImpl(`${apiBase}${path}`,options));
+    try{
+      return parseResponse(await fetchImpl(`${apiBase}${path}`,options));
+    }catch(error){
+      if(error instanceof TypeError)throw new Error('Não foi possível conectar ao servidor MedPer. Tente novamente em instantes.');
+      throw error;
+    }
   };
 
   return {
@@ -31,11 +36,13 @@ export function createApiAuthClient({baseUrl='',fetchImpl=globalThis.fetch}={}){
         body
       });
     },
-    register({organizationName='',organizationSlug='',email='',password=''}={}){
+    register({fullName='',organizationName='',organizationSlug='',email='',password=''}={}){
+      const resolvedFullName=String(fullName||organizationName||'').trim();
       return request('/auth/register',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
+          full_name:resolvedFullName,
           organization_name:String(organizationName).trim(),
           organization_slug:String(organizationSlug).trim(),
           email:String(email).trim(),

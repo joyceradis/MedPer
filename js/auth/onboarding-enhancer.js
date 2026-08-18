@@ -15,6 +15,10 @@ export function validatePasswordConfirmation(password='',confirmation=''){
   return String(password)===String(confirmation);
 }
 
+export function normalizeFullName(value=''){
+  return String(value||'').trim().replace(/\s+/g,' ');
+}
+
 function ensurePasswordToggle(input){
   if(!input||input.dataset.passwordToggleReady==='true')return;
   input.dataset.passwordToggleReady='true';
@@ -33,6 +37,18 @@ function ensurePasswordToggle(input){
     input.focus();
   });
   field?.append(button);
+}
+
+function ensureFullNameField(form){
+  let input=form.querySelector('[name="fullName"]');
+  if(input)return input;
+  const email=form.querySelector('[name="email"]');
+  if(!email)return null;
+  const label=document.createElement('label');
+  label.className='field full-name-field';
+  label.innerHTML='<span>Nome e sobrenome</span><input name="fullName" type="text" autocomplete="name" maxlength="160" required>';
+  email.closest('.field')?.insertAdjacentElement('beforebegin',label);
+  return label.querySelector('input');
 }
 
 function ensureConfirmationField(form){
@@ -74,6 +90,7 @@ function enterSignupMode(form){
     submit.classList.remove('button-secondary');
     submit.classList.add('button-primary','button-create-account');
   }
+  ensureFullNameField(form);
   ensureConfirmationField(form);
   let back=form.querySelector('[data-onboarding-signin]');
   if(!back){
@@ -95,13 +112,13 @@ function enterSigninMode(form){
   const title=shell?.querySelector('#authTitle');
   const copy=shell?.querySelector('.auth-copy p');
   if(title)title.textContent='Entre na sua conta';
-  if(copy)copy.textContent='Autenticação e sincronização protegidas pela API MedPer.';
+  if(copy)copy.textContent='Acesse seus casos e continue seu trabalho com segurança.';
   form.querySelector('[data-auth-action="signin"]')?.removeAttribute('hidden');
   form.querySelector('[data-api-signup-toggle]')?.removeAttribute('hidden');
   const submit=form.querySelector('[data-api-signup-submit]');
   if(submit)submit.hidden=true;
-  const confirmation=form.querySelector('.password-confirm-field');
-  if(confirmation)confirmation.remove();
+  form.querySelector('.full-name-field')?.remove();
+  form.querySelector('.password-confirm-field')?.remove();
   const back=form.querySelector('[data-onboarding-signin]');
   if(back)back.hidden=true;
   setError(form,'');
@@ -146,6 +163,14 @@ export function installOnboardingEnhancer(doc=document){
   doc.addEventListener('submit',event=>{
     const form=event.target?.closest?.('[data-auth-form]');
     if(!form||event.submitter?.dataset.authAction!=='signup')return;
+    const fullName=normalizeFullName(ensureFullNameField(form)?.value||'');
+    if(!fullName){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setError(form,'Informe seu nome e sobrenome.');
+      return;
+    }
+    form.querySelector('[name="fullName"]').value=fullName;
     const password=form.querySelector('[name="password"]')?.value||'';
     const confirmation=ensureConfirmationField(form)?.value||'';
     if(!validatePasswordConfirmation(password,confirmation)){
@@ -158,7 +183,7 @@ export function installOnboardingEnhancer(doc=document){
     const workspace=personalWorkspaceIdentity(email);
     const organizationName=form.querySelector('[name="organizationName"]');
     const organizationSlug=form.querySelector('[name="organizationSlug"]');
-    if(organizationName)organizationName.value=workspace.name;
+    if(organizationName)organizationName.value=fullName;
     if(organizationSlug)organizationSlug.value=workspace.slug;
   },true);
 
