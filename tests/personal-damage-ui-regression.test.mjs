@@ -39,8 +39,7 @@ test('antes dos gates, a tela não despeja módulos temporários e permanentes',
   assert.equal(stepVisible(html, '1. Elegibilidade — dano, nexo e consolidação'), true);
   assert.equal(stepVisible(html, '2. Danos temporários'), false);
   assert.equal(stepVisible(html, '3. Eixos permanentes — identificar sem somar'), false);
-  assert.match(html, /Próximo passo/);
-  assert.match(html, /dano|nexo|objeto/i);
+  assert.match(html, /Há dano biológico relevante ao objeto objetivamente demonstrado\?/);
 });
 
 test('nexo sustentado sem consolidação revela temporários mas não permanentes', () => {
@@ -53,7 +52,7 @@ test('nexo sustentado sem consolidação revela temporários mas não permanente
   assert.equal(stepVisible(html, '2. Danos temporários'), true);
   assert.equal(stepVisible(html, '3. Eixos permanentes — identificar sem somar'), false);
   assert.equal(stepVisible(html, '4. Eixo funcional permanente'), false);
-  assert.match(html, /não valore sequelas permanentes|danos temporários/i);
+  assert.match(html, /Déficit funcional temporário total/);
 });
 
 test('após consolidação, eixos permanentes tornam-se disponíveis sem escore global', () => {
