@@ -28,6 +28,17 @@ export function createApiAuthClient({baseUrl='',fetchImpl=globalThis.fetch}={}){
 
   return {
     enabled,
+    googleStartUrl(){
+      if(!enabled)throw new Error('API MedPer não configurada.');
+      return `${apiBase}/auth/google/start`;
+    },
+    exchangeGoogleCode(code=''){
+      return request('/auth/google/exchange',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({code:String(code||'').trim()})
+      });
+    },
     signIn(email,password){
       const body=new URLSearchParams({username:String(email||'').trim(),password:String(password||'')});
       return request('/auth/token',{
