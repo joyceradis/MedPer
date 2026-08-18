@@ -37,11 +37,12 @@ export function createApiAuthClient({baseUrl='',fetchImpl=globalThis.fetch}={}){
       });
     },
     register({fullName='',organizationName='',organizationSlug='',email='',password=''}={}){
+      const resolvedFullName=String(fullName||organizationName||'').trim();
       return request('/auth/register',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          full_name:String(fullName).trim(),
+          full_name:resolvedFullName,
           organization_name:String(organizationName).trim(),
           organization_slug:String(organizationSlug).trim(),
           email:String(email).trim(),
