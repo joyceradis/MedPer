@@ -20,6 +20,13 @@ function validScore(value) {
   return Number.isInteger(value) && value >= 1 && value <= 10;
 }
 
+function numericScore(value) {
+  if (typeof value === 'number') return validScore(value) ? value : null;
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const parsed = Number(value);
+  return validScore(parsed) ? parsed : null;
+}
+
 function normalizeGlobal(value) {
   return validScore(value) ? value : null;
 }
@@ -65,5 +72,19 @@ export function buildPosasAssessment({
     observer: domainFromObject(POSAS_OBSERVER_ITEMS, observerScores, observerGlobal),
     spontaneousObservation: String(spontaneousObservation || '').trim(),
     rule: 'Patient e Observer permanecem independentes; opinião global fica separada; POSAS não é pontuação de dano estético e não substitui exame tátil por fotografia.'
+  });
+}
+
+export function buildPosasAssessmentFromGuided(guided = {}) {
+  const patientScores = Object.fromEntries(POSAS_PATIENT_ITEMS.map(item => [item.id, numericScore(guided[`posasPatient_${item.id}`])]));
+  const observerScores = Object.fromEntries(POSAS_OBSERVER_ITEMS.map(item => [item.id, numericScore(guided[`posasObserver_${item.id}`])]));
+  return buildPosasAssessment({
+    area: guided.posasArea,
+    selectionCriterion: guided.posasSelectionCriterion,
+    patientScores,
+    observerScores,
+    patientGlobal: numericScore(guided.posasPatientGlobal),
+    observerGlobal: numericScore(guided.posasObserverGlobal),
+    spontaneousObservation: guided.posasPatientObservation
   });
 }
