@@ -1,7 +1,9 @@
 import { createStore } from './core/store.js';
 import { createCaseStateSyncController } from './core/case-state-sync-controller.js';
 import { createCaseStateClient } from './api/case-state-client.js';
+import { createApiAuthClient } from './api/auth-client.js';
 import { API_CONFIG } from './config/api-config.js';
+import { createApiSessionStore } from './auth/api-session.js';
 import { createApp } from './ui/app.js';
 import { installDialogController } from './ui/dialog-controller.js';
 import { installInspectorController } from './ui/inspector-controller.js';
@@ -22,6 +24,23 @@ let sync=null;
 
 installDialogController(document);
 installOnboardingEnhancer(document);
+
+async function consumeOAuthCallback(){
+  const url=new URL(window.location.href);
+  const code=url.searchParams.get('oauth_code');
+  if(!code)return;
+  url.searchParams.delete('oauth_code');
+  window.history.replaceState({},document.title,`${url.pathname}${url.search}${url.hash}`);
+  try{
+    const client=createApiAuthClient({baseUrl:API_CONFIG.baseUrl});
+    const pair=await client.exchangeGoogleCode(code);
+    createApiSessionStore().set(pair);
+  }catch(error){
+    sessionStorage.setItem('medper.oauth.error',error?.message||'Não foi possível concluir o login com Google.');
+  }
+}
+
+await consumeOAuthCallback();
 
 function showSyncStatus(event){
   if(!toast||!event)return;
@@ -64,6 +83,13 @@ auth=await createAuthController({
     window.location.reload();
   }
 });
+
+const oauthError=sessionStorage.getItem('medper.oauth.error');
+if(oauthError){
+  sessionStorage.removeItem('medper.oauth.error');
+  const target=root.querySelector('[data-auth-error]');
+  if(target)target.textContent=oauthError;
+}
 
 if(auth.getState().appStarted)startApplication();
 
