@@ -3,6 +3,7 @@ import {
   getContextualProtocolProfile,
   getApplicableInstrumentIds
 } from '../methodology/context-resolver.js';
+import { evaluatePersonalDamageCase } from '../methodology/personal-damage.js';
 
 const LABELS={
   personal_damage_assessment:'Avaliação de dano pessoal',
@@ -10,6 +11,14 @@ const LABELS={
   occupational_medicolegal_assessment:'Avaliação médico-pericial trabalhista/ocupacional',
   social_security_assessment:'Avaliação médico-pericial previdenciária',
   forensic_assessment:'Avaliação médico-pericial'
+};
+
+const STAGE_LABELS={
+  object:'Objeto',
+  damage:'Dano demonstrável',
+  causation:'Nexo causal',
+  temporary:'Danos temporários',
+  permanent:'Eixos permanentes'
 };
 
 const esc=(value='')=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
@@ -42,6 +51,21 @@ function instrumentRow(caseData,profile,instrumentId){
   </div>`;
 }
 
+function personalDamageGateBlock(caseData,profile){
+  if(profile.baseProtocolId!=='bodily_damage')return'';
+  const gate=evaluatePersonalDamageCase(caseData);
+  const state=STAGE_LABELS[gate.stage]||gate.stage||'A definir';
+  const flags=[
+    gate.canValueTemporary?'temporários disponíveis':'temporários bloqueados',
+    gate.canValuePermanent?'permanentes disponíveis':'permanentes bloqueados'
+  ].join(' · ');
+  return `<div class="method-context-priorities" data-personal-damage-gate>
+    <span>Motor de dano pessoal · ${esc(state)}</span>
+    <p><strong>Próximo passo:</strong> ${esc(gate.nextStep||'Complete os gates metodológicos.')}</p>
+    <p>${esc(flags)}</p>
+  </div>`;
+}
+
 function buildCard(caseData){
   const context=getMethodologyContext(caseData);
   const profile=getContextualProtocolProfile(caseData);
@@ -63,6 +87,7 @@ function buildCard(caseData){
       <div><span>Perfil contextual</span><strong>${esc(profile.id)}</strong></div>
       <div><span>Instrumentos ativos</span><strong>${active.length?esc(active.join(', ')):'Nenhum'}</strong></div>
     </div>
+    ${personalDamageGateBlock(caseData,profile)}
     ${profile.priorities?.length?`<div class="method-context-priorities"><span>Prioridades deste contexto</span><p>${profile.priorities.map(esc).join(' · ')}</p></div>`:''}
     ${profile.cautions?.length?`<div class="method-context-cautions">${profile.cautions.map(item=>`<p>${esc(item)}</p>`).join('')}</div>`:''}
     ${instruments.size?`<div class="method-instruments"><div class="method-instruments-head"><strong>Instrumentos auxiliares</strong><span>Sugestão não equivale a adoção.</span></div>${[...instruments].map(id=>instrumentRow(caseData,profile,id)).join('')}</div>`:''}
