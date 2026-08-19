@@ -40,7 +40,12 @@ class Organization(Base):
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (UniqueConstraint("organization_id", "email"),)
+    # O e-mail identifica a conta em TODO o sistema, não dentro da organização.
+    # Com a unicidade anterior — (organization_id, email) — o mesmo endereço abria
+    # conta em organizações diferentes, e o login, que busca só por e-mail,
+    # devolvia a primeira linha que casasse: ou a segunda perita nunca entrava,
+    # ou entrava na organização da primeira e via os casos dela.
+    __table_args__ = (UniqueConstraint("email", name="uq_users_email"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     email: Mapped[str] = mapped_column(String(254), index=True)

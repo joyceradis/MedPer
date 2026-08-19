@@ -14,7 +14,7 @@ arquivo correspondente citado.
 
 ## 1. Que dado o piloto processa
 
-O piloto roda com **perícias reais**. Isso significa dado pessoal sensível de terceiro
+O piloto roda com **perícias reais**, com até 50 peritas. Isso significa dado pessoal sensível de terceiro
 — o periciado —, que não é usuário do sistema e não o escolheu:
 
 | Categoria | Onde vive | Exemplo |
@@ -22,7 +22,7 @@ O piloto roda com **perícias reais**. Isso significa dado pessoal sensível de 
 | Saúde do periciado | `cases.state_payload` | história, exame, achados, sequelas, conclusão |
 | Identificação processual | `cases.reference`, `state_payload` | número do processo, vara, comarca |
 | Documentos dos autos | `stored_files` + disco | prontuário, laudo anterior, CAT, BO |
-| Imagem do periciado | `stored_files` + disco | fotografias de lesão e cicatriz |
+| ~~Imagem do periciado~~ | — | **fora do piloto por decisão**: fotografia de lesão e cicatriz não entra na plataforma nesta fase |
 | Identificação da perita | `users` | nome profissional, e-mail, organização |
 | Vencimentos | `case_deadlines` | tipo e data — projeção consultável, sem conteúdo clínico e sem número de processo |
 
@@ -67,6 +67,11 @@ Duas consequências que distinguem este produto de um SaaS comum:
   Postgres (`backend/scripts/enable_rls.sql`, com `FORCE`).
 - Verificado que uma organização não alcança nem exclui caso de outra:
   `test_privacy.py::test_a_case_cannot_be_deleted_from_another_organization`.
+- **E-mail único em todo o sistema** (migração 0006). A unicidade anterior era
+  (organização, e-mail): o mesmo endereço abria conta em organizações diferentes e
+  o login, que busca só por e-mail, devolvia a primeira linha que casasse — ou a
+  segunda perita nunca entrava, ou entrava na organização da primeira e via os
+  casos dela. Verificado em `test_account_isolation.py`.
 
 ### Eliminação
 
@@ -122,8 +127,11 @@ Declarado aqui para que ninguém opere o piloto supondo que exista:
 
 Vinculantes enquanto o piloto durar:
 
-1. **Uma organização por perita.** O isolamento é por organização; duas peritas na
-   mesma organização enxergam os casos uma da outra.
+1. **Uma organização por perita — garantido pelo cadastro, não por disciplina.**
+   Não há fluxo de convite: cada registro abre a própria organização e recusa slug
+   repetido. O e-mail identifica a conta em todo o sistema, então a mesma pessoa
+   não abre duas contas e o login nunca cai na organização de outra. Verificado em
+   `backend/tests/test_account_isolation.py`.
 2. **A chave de cifragem não entra no repositório**, em nenhuma forma, nem em
    `.env.example`. Custódia separada do backup.
 3. **Nada de dado real em captura de tela, relato de erro ou mensagem de suporte.**
