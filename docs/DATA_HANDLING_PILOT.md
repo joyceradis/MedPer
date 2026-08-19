@@ -1,0 +1,147 @@
+# Tratamento de dados no piloto fechado
+
+Documento **técnico e factual**: descreve o que o sistema faz com o dado, medido no
+código, não o que se pretende que ele faça. Serve a dois usos — orientar a operação
+do piloto e servir de insumo para a análise jurídica.
+
+**Não é parecer jurídico.** A seção final lista o que precisa de advogado e não pode
+sair daqui.
+
+Estado verificado em: `docs/STATUS.md` corrente. Toda afirmação abaixo tem teste ou
+arquivo correspondente citado.
+
+---
+
+## 1. Que dado o piloto processa
+
+O piloto roda com **perícias reais**. Isso significa dado pessoal sensível de terceiro
+— o periciado —, que não é usuário do sistema e não o escolheu:
+
+| Categoria | Onde vive | Exemplo |
+|---|---|---|
+| Saúde do periciado | `cases.state_payload` | história, exame, achados, sequelas, conclusão |
+| Identificação processual | `cases.reference`, `state_payload` | número do processo, vara, comarca |
+| Documentos dos autos | `stored_files` + disco | prontuário, laudo anterior, CAT, BO |
+| Imagem do periciado | `stored_files` + disco | fotografias de lesão e cicatriz |
+| Identificação da perita | `users` | nome profissional, e-mail, organização |
+
+Duas consequências que distinguem este produto de um SaaS comum:
+
+1. **O laudo reidentifica.** Mesmo sem nome, a combinação de número de processo, vara,
+   data e descrição de lesão identifica a pessoa. Não existe "anonimizar o caso" sem
+   destruir o caso.
+2. **O titular não é o cliente.** A perita contrata; o periciado é quem tem o dado
+   exposto. Ele não pode revogar consentimento sem inviabilizar a perícia determinada
+   judicialmente — a base legal aqui não é consentimento.
+
+---
+
+## 2. O que está implementado hoje
+
+### Em repouso
+
+- **Conteúdo da perícia cifrado** — `cases.state_payload` é gravado como envelope
+  Fernet (`backend/app/payload_crypto.py`). A coluna não contém texto legível.
+  Verificado em `backend/tests/test_privacy.py::test_case_content_is_not_readable_in_the_database`.
+- **Anexos cifrados** — `backend/app/storage.py`, Fernet, chave em
+  `MEDPER_FILE_ENCRYPTION_KEY`.
+- **Compatibilidade** — linhas gravadas antes da cifragem continuam legíveis e são
+  cifradas na próxima escrita, sem script que precise ler dado sensível para
+  reescrevê-lo.
+
+> **Consequência operacional:** perder `MEDPER_FILE_ENCRYPTION_KEY` torna todo o
+> conteúdo irrecuperável. A chave precisa de custódia separada do backup do banco —
+> guardar as duas no mesmo lugar anula a cifragem.
+
+### Em trânsito
+
+- HTTPS pelo proxy de borda. **Não verificado por teste automatizado** — depende da
+  configuração de implantação.
+
+### Acesso
+
+- Senha com Argon2; token de acesso curto; refresh opaco guardado como hash
+  (`backend/app/security.py`).
+- Isolamento por organização em toda consulta de caso (`owned_case`), com RLS no
+  Postgres (`backend/scripts/enable_rls.sql`, com `FORCE`).
+- Verificado que uma organização não alcança nem exclui caso de outra:
+  `test_privacy.py::test_a_case_cannot_be_deleted_from_another_organization`.
+
+### Eliminação
+
+- `DELETE /cases/{id}` remove o caso, as entidades dependentes **e os arquivos do
+  disco** — não apenas a linha que os indexava.
+- A **trilha de auditoria sobrevive à exclusão** e registra contagens, nunca conteúdo.
+  Verificado em `test_privacy.py::test_deleting_a_case_removes_its_content_and_keeps_the_audit_record`.
+
+### Rastreabilidade
+
+- `audit_log` registra ator, ação, entidade e momento (`backend/app/audit.py`).
+- Retenção definida em `backend/docs/RETENTION.md`.
+
+---
+
+## 3. O que NÃO está implementado
+
+Declarado aqui para que ninguém opere o piloto supondo que exista:
+
+| Lacuna | Efeito prático |
+|---|---|
+| Sem exportação do caso pelo titular | pedido de acesso (art. 18, II) é atendido manualmente |
+| Sem expurgo automático de casos | a retenção de perícia é decisão manual da organização |
+| Sem `legal_hold` implementado | está na política, não no código |
+| Sem 2FA | conta protegida só por senha |
+| Sem notificação automática de incidente | detecção e comunicação são processo humano |
+| Sem cifragem em trânsito verificada por teste | depende da implantação, não do código |
+| Sem registro de acesso de leitura | a auditoria cobre escrita e exclusão, não consulta |
+
+---
+
+## 4. Regras de operação do piloto
+
+Vinculantes enquanto o piloto durar:
+
+1. **Uma organização por perita.** O isolamento é por organização; duas peritas na
+   mesma organização enxergam os casos uma da outra.
+2. **A chave de cifragem não entra no repositório**, em nenhuma forma, nem em
+   `.env.example`. Custódia separada do backup.
+3. **Nada de dado real em captura de tela, relato de erro ou mensagem de suporte.**
+   Quando for preciso ilustrar um problema, o caso é reconstruído sintético.
+4. **Exclusão a pedido é executada pela rota**, não por edição direta no banco — só
+   a rota apaga os arquivos do disco e registra a trilha.
+5. **Restauração de backup testada antes do primeiro caso real**, não depois.
+6. **Registro de quem teve acesso administrativo à base** durante o piloto.
+
+---
+
+## 5. O que exige advogado — não pode sair deste documento
+
+O sistema não responde nada disto, e engenharia não deve inventar:
+
+1. **Base legal do tratamento.** Perícia determinada judicialmente não se apoia em
+   consentimento do periciado. Qual é a base — cumprimento de obrigação legal,
+   exercício regular de direito em processo, tutela da saúde — é definição jurídica
+   com efeito sobre tudo o mais.
+2. **Papéis.** A perita é controladora do dado do periciado; o MedPer é operador. Isso
+   precisa estar num contrato de operador, não presumido.
+3. **Se cabe RIPD.** Dado sensível de saúde, em escala, sobre titulares que não
+   escolheram o tratamento — a hipótese é forte, a decisão não é minha.
+4. **Prazo de retenção da perícia.** Cruza dever de guarda do CFM, prazo processual e
+   prescrição. Hoje o sistema não expurga caso automaticamente, deliberadamente.
+5. **Termo de uso e política de privacidade** do piloto, incluindo o que se informa
+   ao periciado e por qual via.
+6. **Comunicação de incidente** — prazo, destinatário, forma.
+7. **Sigilo profissional.** O dever médico de sigilo é anterior e independente da
+   LGPD; a plataforma o instrumentaliza, não o substitui.
+
+---
+
+## 6. Antes do primeiro caso real
+
+- [ ] Chave de cifragem gerada, em custódia separada do backup
+- [ ] Restauração de backup testada ponta a ponta
+- [ ] RLS aplicado e verificado no banco de produção
+- [ ] HTTPS confirmado, sem porta em claro exposta
+- [ ] Uma organização por perita, criadas e conferidas
+- [ ] Itens da seção 5 respondidos por advogado
+- [ ] Peritas do piloto cientes por escrito das lacunas da seção 3
