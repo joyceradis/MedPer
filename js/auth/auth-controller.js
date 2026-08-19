@@ -111,7 +111,7 @@ async function createFastApiAuthController({root,onAccessGranted,onAccessRevoked
   const snapshot=()=>({
     configured:true,
     provider:'api',
-    session:session?{user:{email:session.email||''}}:null,
+    session:session?{user:{email:session.email||'',name:session.fullName||''}}:null,
     workspace:session?.organizationName?{currentOrganization:{name:session.organizationName},currentRole:'member'}:null,
     appStarted
   });
@@ -142,10 +142,24 @@ async function createFastApiAuthController({root,onAccessGranted,onAccessRevoked
     onAccessRevoked();
   }
 
+  // A identidade vem do servidor, não de um valor fixo na view. Se /auth/me
+  // falhar — rede instável, backend antigo sem a rota — a sessão continua
+  // válida e a interface simplesmente não exibe nome, em vez de exibir o de
+  // outra pessoa.
   const grant=(pair,metadata={})=>{
     session=sessions.set({...pair,...metadata});
     appStarted=true;
     onAccessGranted();
+    void client.me(pair?.access_token).then(perfil=>{
+      if(!perfil)return;
+      session=sessions.set({
+        ...session,
+        email:perfil.email||session.email||'',
+        fullName:perfil.full_name||'',
+        organizationName:perfil.organization_name||session.organizationName||''
+      });
+      onAccessGranted();
+    }).catch(()=>{});
   };
 
   function render(message=''){

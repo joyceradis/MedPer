@@ -12,7 +12,7 @@ from ..deps import current_user, db_session, set_request_context
 from ..mailer import send_password_reset
 from ..models import Organization, User
 from ..rate_limit import enforce_auth_rate_limit
-from ..schemas import RegisterIn
+from ..schemas import MeOut, RegisterIn
 from ..security import create_access_token, hash_password, opaque_token, token_digest, verify_password
 from ..session_models import PasswordResetToken, RefreshSession
 
@@ -58,7 +58,7 @@ def register(data: RegisterIn, request: Request, db: Session = Depends(db_sessio
     org = Organization(name=data.organization_name, slug=data.organization_slug)
     db.add(org)
     db.flush()
-    user = User(organization_id=org.id, email=str(data.email).lower(), password_hash=hash_password(data.password), role="admin")
+    user = User(organization_id=org.id, email=str(data.email).lower(), full_name=str(data.full_name or "").strip() or None, password_hash=hash_password(data.password), role="admin")
     db.add(user)
     db.flush()
     set_request_context(db, user)
@@ -112,6 +112,24 @@ def refresh(data: RefreshIn, request: Request, db: Session = Depends(db_session)
     record(db, user, "rotate", "refresh_session", row.id)
     db.commit()
     return pair
+
+
+@router.get("/me", response_model=MeOut)
+def me(db: Session = Depends(db_session), user: User = Depends(current_user)):
+    """Identidade da sessão corrente.
+
+    Existe porque a interface não tinha de onde ler quem está logada e caía num
+    nome fixo no código — o que, num piloto com várias peritas, mostrava a
+    identidade de outra pessoa a todas elas.
+    """
+    org = db.get(Organization, user.organization_id)
+    return MeOut(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name or "",
+        role=user.role,
+        organization_name=org.name if org else "",
+    )
 
 
 @router.post("/logout", status_code=204)

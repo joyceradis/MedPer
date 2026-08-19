@@ -5,6 +5,17 @@ class RegisterIn(BaseModel):
     organization_slug: str
     email: EmailStr
     password: str = Field(min_length=12)
+    # O frontend já enviava full_name desde sempre; o schema não o declarava e o
+    # Pydantic o descartava em silêncio, então a perita digitava o próprio nome
+    # no cadastro e o sistema o perdia.
+    full_name: str = ""
+
+class MeOut(BaseModel):
+    id: str
+    email: EmailStr
+    full_name: str = ""
+    role: str
+    organization_name: str = ""
 
 class TokenOut(BaseModel):
     access_token: str
