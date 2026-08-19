@@ -44,6 +44,10 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     email: Mapped[str] = mapped_column(String(254), index=True)
+    # Nome profissional exibido na interface. Anulável de propósito: contas
+    # criadas antes desta coluna continuam válidas e a interface trata a
+    # ausência sem inventar um nome.
+    full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(32), default="perito")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

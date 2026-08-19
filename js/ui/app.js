@@ -41,7 +41,11 @@ const viewState={auditAheadOpen:false};
 // respondida. Nada é reescrito automaticamente; a reclassificação é decisão dela.
 function choices(path,label,value,options){const legacy=value&&!options.includes(value);const list=legacy?[...options,value]:options;return`<fieldset class="guided-question"><legend>${esc(label)}</legend><div class="guided-choices">${list.map(o=>`<label class="guided-choice${legacy&&o===value?' is-legacy':''}"><input type="radio" name="${esc(path)}" data-bind="${esc(path)}" value="${esc(o)}" ${value===o?'checked':''}><span>${esc(o)}${legacy&&o===value?'<small>registro anterior — fora da escala atual</small>':''}</span></label>`).join('')}</div></fieldset>`;}
 
-function renderHome(state,filter='active'){return renderDashboardHome(state,filter);}
+// O nome exibido vem da sessão. Sem sessão remota (modo local) não há nome, e a
+// interface não deve inventar um — muito menos o de outra pessoa.
+function renderHome(state,filter='active',conta={}){
+  return renderDashboardHome(state,filter,{displayName:conta.name||'',accountEmail:conta.email||''});
+}
 
 function sidebar(c,tab){return`<aside class="case-sidebar"><button class="back-link" data-home>← Todos os casos</button><div class="case-identity"><span class="eyebrow">${esc(c.context?.sphere||'Perícia')}</span><h2>${esc(c.title)}</h2><p>${esc(c.reference||'Sem referência')}</p></div><nav class="case-nav">${tabs.map(([id,label])=>`<button data-tab="${id}" class="${tab===id?'is-active':''}"><span>${label}</span></button>`).join('')}</nav></aside>`;}
 function caseHeader(c,tab){return`<header class="case-head"><div><span class="eyebrow">${esc(c.context?.role||'Atuação médico-pericial')}</span><h1 class="case-title">${esc(tabs.find(x=>x[0]===tab)?.[1]||'Caso')}</h1><div class="meta-line"><span>${esc(c.context?.branch||'')}</span><span>${esc(c.context?.matter||'')}</span><span>${esc(c.context?.mode||'')}</span></div></div><button class="button button-secondary button-small" data-export>Exportar JSON</button></header>`;}
@@ -119,7 +123,7 @@ function renderReport(c){const a=auditCase(c),g=c.methodology.general,d=c.method
 
 function demoCase(){return normalizeCase({id:uid('case'),title:'Caso demonstrativo · dano estético',reference:'DEMO-001',status:'Em preparação',context:{sphere:'Judicial',branch:'Cível',role:'Perita do juízo',matter:'Dano estético',mode:'Presencial e documental'},scope:'Apurar a existência de dano estético e sua extensão.',evidence:[{id:uid('ev'),title:'Prontuário inicial',pages:'43–51',description:'Atendimento inicial.'}],facts:[{id:uid('fact'),text:'Queimadura facial documentada.',nature:'Documentado',page:'47'}],events:[{id:uid('event'),date:'2019-03-14',kind:'Clínico',title:'Atendimento inicial'}]});}
 
-export function createApp({store,root,toast}){
+export function createApp({store,root,toast,auth=null}){
   let wizard=null;
   let caseFilter='active';
   // Redesenhar troca todo o DOM sob os pés de quem está digitando. Escrever num
@@ -147,7 +151,7 @@ export function createApp({store,root,toast}){
     el.focus({preventScroll:true});
     if(mark.start!=null&&typeof el.setSelectionRange==='function'){try{el.setSelectionRange(mark.start,mark.end);}catch{}}
   };
-  const render=()=>{const mark=captureFocus();const state=store.getState(),r=route(),c=r.caseId?findCase(state,r.caseId):null;root.innerHTML=c?renderCase(c,r.tab):renderHome(state,caseFilter);restoreFocus(mark);};
+  const render=()=>{const mark=captureFocus();const state=store.getState(),r=route(),c=r.caseId?findCase(state,r.caseId):null;root.innerHTML=c?renderCase(c,r.tab):renderHome(state,caseFilter,auth?.getState?.()?.session?.user||{});restoreFocus(mark);};
   const commitBoundValue=(target,{notify=true}={})=>{
     const path=target?.dataset?.bind;
     if(!path)return;
