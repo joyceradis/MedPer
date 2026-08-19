@@ -117,3 +117,49 @@ class AuditLog(Base):
     entity_id: Mapped[str] = mapped_column(String(36))
     payload: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CaseDeadline(Base):
+    """Projeção consultável dos prazos que a perita registrou no caso.
+
+    Os prazos vivem dentro de `cases.state_payload`, que agora é cifrado — não se
+    consulta "o que vence em dois dias" dentro de um envelope Fernet. Esta tabela
+    é mantida a cada gravação de estado a partir do próprio payload, de modo que
+    continua havendo um único lugar onde a perita registra prazo, e o servidor
+    ganha o que precisa para lembrar.
+
+    Guarda só o que o lembrete exige: tipo e vencimento. Nada de conteúdo clínico,
+    nada do número do processo.
+    """
+
+    __tablename__ = "case_deadlines"
+    __table_args__ = (UniqueConstraint("case_id", "source_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    organization_id: Mapped[str] = mapped_column(String(36), index=True)
+    case_id: Mapped[str] = mapped_column(ForeignKey("cases.id", ondelete="CASCADE"), index=True)
+    # Identificador do prazo dentro do payload, para reconciliar sem duplicar.
+    source_id: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(120), default="Prazo")
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class DeadlineReminder(Base):
+    """Registro do que já foi avisado.
+
+    A unicidade (prazo, marco) é garantida pelo banco e não pela aplicação: o
+    disparador pode rodar de hora em hora, ou duas vezes por engano, sem nunca
+    enviar o mesmo aviso duas vezes. Também serve de trilha do que a perita foi
+    de fato avisada — útil quando alguém perde um prazo e pergunta por quê.
+    """
+
+    __tablename__ = "deadline_reminders"
+    __table_args__ = (UniqueConstraint("deadline_id", "milestone"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    deadline_id: Mapped[str] = mapped_column(ForeignKey("case_deadlines.id", ondelete="CASCADE"), index=True)
+    # Dias restantes no marco em que o aviso foi disparado: 7, 2 ou 0.
+    milestone: Mapped[int] = mapped_column(Integer)
+    sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    delivered: Mapped[bool] = mapped_column(Boolean, default=True)

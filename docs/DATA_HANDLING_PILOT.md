@@ -24,6 +24,7 @@ O piloto roda com **perícias reais**. Isso significa dado pessoal sensível de 
 | Documentos dos autos | `stored_files` + disco | prontuário, laudo anterior, CAT, BO |
 | Imagem do periciado | `stored_files` + disco | fotografias de lesão e cicatriz |
 | Identificação da perita | `users` | nome profissional, e-mail, organização |
+| Vencimentos | `case_deadlines` | tipo e data — projeção consultável, sem conteúdo clínico e sem número de processo |
 
 Duas consequências que distinguem este produto de um SaaS comum:
 
@@ -74,6 +75,25 @@ Duas consequências que distinguem este produto de um SaaS comum:
 - A **trilha de auditoria sobrevive à exclusão** e registra contagens, nunca conteúdo.
   Verificado em `test_privacy.py::test_deleting_a_case_removes_its_content_and_keeps_the_audit_record`.
 
+### Saída de dado por e-mail (lembretes de prazo)
+
+O disparador de lembretes envia e-mail pela conta SMTP configurada — provedor de
+terceiro, mensagem que permanece na caixa de entrada indefinidamente. O conteúdo
+foi restringido por decisão, não por esquecimento:
+
+| Vai no e-mail | Não vai |
+|---|---|
+| tipo do prazo ("Entrega do laudo") | número do processo |
+| data e hora de vencimento | nome ou qualquer dado do periciado |
+| título do caso, escolhido pela perita | qualquer conteúdo clínico |
+| link para a perícia (exige login) | anexos |
+
+O número do processo fica de fora porque é chave pública que liga o caso às
+partes: bastaria ele para reidentificar. **Recomendação operacional:** não usar
+nome de periciado no título do caso, já que o título vai no e-mail.
+
+Implementado em `backend/app/mailer.py::send_deadline_reminder`.
+
 ### Rastreabilidade
 
 - `audit_log` registra ator, ação, entidade e momento (`backend/app/audit.py`).
@@ -92,6 +112,7 @@ Declarado aqui para que ninguém opere o piloto supondo que exista:
 | Sem `legal_hold` implementado | está na política, não no código |
 | Sem 2FA | conta protegida só por senha |
 | Sem notificação automática de incidente | detecção e comunicação são processo humano |
+| Sem cálculo automático de prazo processual | a perita informa a data; o sistema lembra, não deduz do CPC |
 | Sem cifragem em trânsito verificada por teste | depende da implantação, não do código |
 | Sem registro de acesso de leitura | a auditoria cobre escrita e exclusão, não consulta |
 
@@ -145,3 +166,5 @@ O sistema não responde nada disto, e engenharia não deve inventar:
 - [ ] Uma organização por perita, criadas e conferidas
 - [ ] Itens da seção 5 respondidos por advogado
 - [ ] Peritas do piloto cientes por escrito das lacunas da seção 3
+- [ ] SMTP configurado e `send_deadline_reminders.py --dry-run` conferido antes do primeiro disparo real
+- [ ] Cron do disparador de lembretes ativo (de hora em hora)

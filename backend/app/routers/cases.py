@@ -1,9 +1,11 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import delete as sa_delete, select, update
 from sqlalchemy.orm import Session
 from ..audit import record
+from ..db import Base
 from ..deps import current_user, db_session
+from ..deadlines import project_deadlines
 from ..payload_crypto import decrypt_payload, encrypt_payload
 from ..models import Case, Evidence, Observation, Finding, Conclusion, User
 from ..session_models import StoredFile
@@ -62,7 +64,10 @@ def put_case_state(case_id: str, data: CaseStateIn, db: Session = Depends(db_ses
         db.rollback()
         raise HTTPException(409, "O caso foi atualizado em outra sessão; recarregue antes de salvar novamente")
     case = owned_case(db, user, case_id)
-    record(db, user, "update_state", "case", case.id, {"revision": case.state_revision})
+    # Os prazos são espelhados para a tabela consultável a cada gravação: dentro
+    # do payload cifrado não se pergunta "o que vence em dois dias".
+    projetados = project_deadlines(db, case, data.payload)
+    record(db, user, "update_state", "case", case.id, {"revision": case.state_revision, "deadlines": projetados})
     db.commit()
     return {"revision": case.state_revision, "updatedAt": updated_at.isoformat()}
 
@@ -94,12 +99,24 @@ def delete_case(case_id: str, db: Session = Depends(db_session), user: User = De
             apagados += 1
         db.delete(arquivo)
 
+    # As tabelas dependentes são DERIVADAS do metadata, não listadas à mão.
+    # A lista escrita à mão já falhou uma vez nesta mesma função: `case_deadlines`
+    # foi acrescentada ao modelo e a exclusão continuou apagando só as quatro
+    # tabelas que alguém tinha lembrado de escrever. Lista mantida à mão envelhece
+    # em silêncio, e aqui o silêncio significa dado sensível sobrevivendo a um
+    # pedido de eliminação.
+    #
+    # A ordem inversa de dependência remove filhas antes das mães, para que a
+    # exclusão funcione mesmo onde a chave estrangeira não é aplicada — o SQLite
+    # deixa `foreign_keys` desligado por padrão.
     contagens = {}
-    for modelo, rotulo in ((Conclusion, "conclusions"), (Finding, "findings"), (Observation, "observations"), (Evidence, "evidence")):
-        linhas = db.scalars(select(modelo).where(modelo.case_id == case_id)).all()
-        contagens[rotulo] = len(linhas)
-        for linha in linhas:
-            db.delete(linha)
+    for tabela in reversed(Base.metadata.sorted_tables):
+        coluna = tabela.columns.get("case_id")
+        if coluna is None or not any(fk.column.table.name == "cases" for fk in coluna.foreign_keys):
+            continue
+        removidas = db.execute(sa_delete(tabela).where(coluna == case_id)).rowcount
+        if removidas:
+            contagens[tabela.name] = removidas
 
     db.delete(case)
     db.flush()

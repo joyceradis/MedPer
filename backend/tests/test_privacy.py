@@ -142,3 +142,51 @@ def test_deleting_twice_is_not_an_error_the_second_time_it_is_absent():
     }).json()['id']
     assert client.delete(f'/cases/{case_id}', headers=headers).status_code == 200
     assert client.delete(f'/cases/{case_id}', headers=headers).status_code == 404
+
+
+def test_erasure_covers_every_table_that_hangs_off_a_case():
+    """Impede que a exclusão volte a envelhecer.
+
+    A lista de tabelas dentro de `delete_case` já falhou uma vez: `case_deadlines`
+    foi acrescentada ao modelo e a exclusão continuou apagando apenas as quatro
+    tabelas que alguém tinha lembrado de escrever. Aqui o teste DERIVA do metadata
+    quais tabelas pendem de `cases` e exige que todas fiquem vazias — de modo que
+    uma tabela futura acrescentada sem pensar na exclusão quebre o teste em vez de
+    deixar dado sensível sobreviver a um pedido de eliminação.
+    """
+    from app.db import Base
+    from sqlalchemy import text
+
+    headers = _conta("varredura")
+    case_id = client.post('/cases', headers=headers, json={
+        "title": "Completo", "objectType": "Dano estético"
+    }).json()['id']
+    evidencia = client.post(f'/cases/{case_id}/evidence', headers=headers, json={
+        "type": "Documento", "title": "Prontuário", "description": "d"
+    }).json()['id']
+    client.post(f'/cases/{case_id}/observations', headers=headers, json={
+        "evidenceId": evidencia, "title": "Observação", "text": "t"
+    })
+    client.put(f'/cases/{case_id}/state', headers=headers, json={
+        "payload": {"operations": {"deadlines": [
+            {"id": "d1", "type": "Laudo", "dueAt": "2026-12-01T17:00:00"}
+        ]}},
+        "expectedRevision": 0
+    })
+
+    ligadas = [
+        tabela.name
+        for tabela in Base.metadata.sorted_tables
+        if (coluna := tabela.columns.get("case_id")) is not None
+        and any(fk.column.table.name == "cases" for fk in coluna.foreign_keys)
+    ]
+    assert len(ligadas) >= 5, f"o metadata precisa expor as tabelas ligadas ao caso: {ligadas}"
+
+    assert client.delete(f'/cases/{case_id}', headers=headers).status_code == 200
+
+    with SessionLocal() as db:
+        for nome in ligadas:
+            restantes = db.execute(
+                text(f"SELECT COUNT(*) FROM {nome} WHERE case_id = :cid"), {"cid": case_id}
+            ).scalar()
+            assert restantes == 0, f"{nome} ainda tem linha do caso excluído"
