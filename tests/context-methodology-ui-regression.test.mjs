@@ -12,5 +12,14 @@ assert.match(controller,/data-instrument-accept/,'UI must allow explicit accepta
 assert.match(controller,/data-instrument-dismiss/,'UI must allow explicit dismissal of a suggested instrument');
 assert.match(controller,/getContextualProtocolProfile/,'UI must render the contextual profile, not only the matter label');
 assert.doesNotMatch(controller,/activeInstrumentIds\.push\([^)]*suggest/i,'suggestion must not be silently promoted to explicit physician selection');
+assert.match(controller,/evaluatePersonalDamageCase/,'the contextual card must consume the personal-damage domain gate instead of duplicating its rules');
+assert.match(controller,/data-personal-damage-gate/,'personal-damage cases must expose a dedicated gate card');
+assert.match(controller,/Próximo passo/,'the gate card must tell the physician what comes next without exposing the whole engine');
+assert.match(controller,/buildPosasAssessmentFromGuided/,'the UI must derive POSAS totals from persisted guided fields');
+assert.match(controller,/posas\.patient\.total/,'the UI must derive the Patient total independently');
+assert.match(controller,/posas\.observer\.total/,'the UI must derive the Observer total independently');
+assert.match(controller,/\$\{posas\.patient\.total\}\/60/,'the Patient total must keep its own 6–60 range');
+assert.match(controller,/\$\{posas\.observer\.total\}\/60/,'the Observer total must keep its own 6–60 range');
+assert.doesNotMatch(controller,/Patient\s*\+\s*Observer|combinedTotal/i,'the UI must never combine Patient and Observer totals');
 
 console.log('Context methodology UI regression suite completed successfully.');

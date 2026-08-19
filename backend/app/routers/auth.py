@@ -11,6 +11,7 @@ from ..config import settings
 from ..deps import current_user, db_session, set_request_context
 from ..mailer import send_password_reset
 from ..models import Organization, User
+from ..rate_limit import enforce_auth_rate_limit
 from ..schemas import RegisterIn
 from ..security import create_access_token, hash_password, opaque_token, token_digest, verify_password
 from ..session_models import PasswordResetToken, RefreshSession
@@ -69,6 +70,7 @@ def register(data: RegisterIn, request: Request, db: Session = Depends(db_sessio
 
 @router.post("/token", response_model=TokenPair)
 def token(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(db_session)):
+    enforce_auth_rate_limit(request, "token")
     user = db.scalar(select(User).where(User.email == form.username.lower()))
     if not user or not user.is_active or not verify_password(form.password, user.password_hash):
         raise HTTPException(401, "Credenciais inválidas")
@@ -79,17 +81,30 @@ def token(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Ses
 
 @router.post("/refresh", response_model=TokenPair)
 def refresh(data: RefreshIn, request: Request, db: Session = Depends(db_session)):
-    row = db.scalar(select(RefreshSession).where(RefreshSession.token_hash == token_digest(data.refresh_token)))
+    enforce_auth_rate_limit(request, "refresh")
+    digest = token_digest(data.refresh_token)
+    row = db.scalar(select(RefreshSession).where(RefreshSession.token_hash == digest))
     now = datetime.now(timezone.utc)
     if not row or row.revoked_at or utc(row.expires_at) <= now:
         if row:
             db.execute(update(RefreshSession).where(RefreshSession.family_id == row.family_id).values(revoked_at=now))
             db.commit()
         raise HTTPException(401, "Sessão inválida ou reutilizada")
+
+    claimed = db.execute(
+        update(RefreshSession)
+        .where(RefreshSession.id == row.id, RefreshSession.revoked_at.is_(None))
+        .values(revoked_at=now)
+    )
+    if claimed.rowcount != 1:
+        db.execute(update(RefreshSession).where(RefreshSession.family_id == row.family_id).values(revoked_at=now))
+        db.commit()
+        raise HTTPException(401, "Sessão inválida ou reutilizada")
+
     user = db.get(User, row.user_id)
     if not user or not user.is_active:
+        db.rollback()
         raise HTTPException(401, "Usuário inválido")
-    row.revoked_at = now
     pair = issue_pair(db, user, request, row.family_id)
     replacement = db.scalar(select(RefreshSession).where(RefreshSession.token_hash == token_digest(pair.refresh_token)))
     row.replaced_by_id = replacement.id if replacement else None
@@ -115,7 +130,8 @@ def logout_all(db: Session = Depends(db_session), user: User = Depends(current_u
 
 
 @router.post("/forgot-password")
-def forgot_password(data: ForgotIn, background: BackgroundTasks, db: Session = Depends(db_session)):
+def forgot_password(data: ForgotIn, request: Request, background: BackgroundTasks, db: Session = Depends(db_session)):
+    enforce_auth_rate_limit(request, "forgot-password")
     user = db.scalar(select(User).where(User.email == str(data.email).lower()))
     if user:
         raw = opaque_token()

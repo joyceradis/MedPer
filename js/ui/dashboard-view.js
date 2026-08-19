@@ -57,7 +57,7 @@ function caseProgress(c){
 function overview(state,filter,options){
   const now=options.now||new Date(),model=buildDashboardModel(state.cases||[],now),c=model.continueCase;
   const deadlines=model.deadlines.slice(0,3);
-  const work=c?`<article class="work-card"><header><span class="work-role">${esc(c.context?.role||'Perita do juízo')}</span><h2>${esc(c.title||'Perícia sem título')}</h2><p class="work-meta">${[c.reference&&`Processo ${c.reference}`,c.context?.unit||c.context?.tribunal,c.context?.matter].filter(Boolean).map(esc).join(' · ')}</p></header>${caseProgress(c)}<button type="button" class="work-open" data-open-case="${esc(c.id)}">Abrir perícia ${icons.arrow}</button></article>`
+  const work=c?`<article class="work-card"><header><span class="work-role">${esc(c.context?.role||'Perita do juízo')}</span><h2>${esc(c.title||'Perícia sem título')}</h2><p class="work-meta">${[c.reference&&`Processo ${c.reference}`,c.context?.unit||c.context?.tribunal,c.context?.matter,c.context?.feeRegime].filter(Boolean).map(esc).join(' · ')}</p></header>${caseProgress(c)}<button type="button" class="work-open" data-open-case="${esc(c.id)}">Abrir perícia ${icons.arrow}</button></article>`
     :`<article class="work-card work-card-empty"><h2>Nenhuma perícia em andamento</h2><p class="work-meta">Crie uma perícia para iniciar o fluxo estruturado.</p><button type="button" class="work-open" data-new-case>Nova perícia ${icons.arrow}</button></article>`;
   const alerts=[
     model.deadlines.length?null:'nenhum prazo registrado',

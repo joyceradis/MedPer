@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, Table, Column, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, Table, Column, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import Base
 
@@ -57,6 +57,9 @@ class Case(Base):
     object_type: Mapped[str] = mapped_column(String(80))
     status: Mapped[str] = mapped_column(String(40), default="Em coleta")
     scope: Mapped[str] = mapped_column(Text, default="")
+    state_payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    state_revision: Mapped[int] = mapped_column(Integer, default=0)
+    state_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     evidence: Mapped[list["Evidence"]] = relationship(back_populates="case", cascade="all, delete-orphan")
 
