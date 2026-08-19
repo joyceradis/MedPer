@@ -12,7 +12,7 @@ from ..deps import current_user, db_session, set_request_context
 from ..mailer import send_password_reset
 from ..models import Organization, User
 from ..rate_limit import enforce_auth_rate_limit
-from ..schemas import RegisterIn
+from ..schemas import MeOut, RegisterIn
 from ..security import create_access_token, hash_password, opaque_token, token_digest, verify_password
 from ..session_models import PasswordResetToken, RefreshSession
 
@@ -55,10 +55,12 @@ def issue_pair(db: Session, user: User, request: Request, family_id: str | None 
 def register(data: RegisterIn, request: Request, db: Session = Depends(db_session)):
     if db.scalar(select(Organization).where(Organization.slug == data.organization_slug)):
         raise HTTPException(409, "Organização já existe")
+    if db.scalar(select(User).where(User.email == str(data.email).lower())):
+        raise HTTPException(409, "Este e-mail já tem conta no MedPer. Entre com ela ou redefina a senha.")
     org = Organization(name=data.organization_name, slug=data.organization_slug)
     db.add(org)
     db.flush()
-    user = User(organization_id=org.id, email=str(data.email).lower(), password_hash=hash_password(data.password), role="admin")
+    user = User(organization_id=org.id, email=str(data.email).lower(), full_name=str(data.full_name or "").strip() or None, password_hash=hash_password(data.password), role="admin")
     db.add(user)
     db.flush()
     set_request_context(db, user)
@@ -71,7 +73,12 @@ def register(data: RegisterIn, request: Request, db: Session = Depends(db_sessio
 @router.post("/token", response_model=TokenPair)
 def token(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(db_session)):
     enforce_auth_rate_limit(request, "token")
-    user = db.scalar(select(User).where(User.email == form.username.lower()))
+    # `scalars().all()` em vez de `scalar()`: se algum dia houver mais de uma conta
+    # com o mesmo e-mail, o login recusa em vez de escolher uma organização
+    # arbitrária — errar para o lado de não entrar, nunca para o lado de entrar
+    # na conta de outra pessoa.
+    contas = db.scalars(select(User).where(User.email == form.username.lower())).all()
+    user = contas[0] if len(contas) == 1 else None
     if not user or not user.is_active or not verify_password(form.password, user.password_hash):
         raise HTTPException(401, "Credenciais inválidas")
     pair = issue_pair(db, user, request)
@@ -112,6 +119,24 @@ def refresh(data: RefreshIn, request: Request, db: Session = Depends(db_session)
     record(db, user, "rotate", "refresh_session", row.id)
     db.commit()
     return pair
+
+
+@router.get("/me", response_model=MeOut)
+def me(db: Session = Depends(db_session), user: User = Depends(current_user)):
+    """Identidade da sessão corrente.
+
+    Existe porque a interface não tinha de onde ler quem está logada e caía num
+    nome fixo no código — o que, num piloto com várias peritas, mostrava a
+    identidade de outra pessoa a todas elas.
+    """
+    org = db.get(Organization, user.organization_id)
+    return MeOut(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name or "",
+        role=user.role,
+        organization_name=org.name if org else "",
+    )
 
 
 @router.post("/logout", status_code=204)

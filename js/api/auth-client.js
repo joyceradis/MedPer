@@ -63,6 +63,14 @@ export function createApiAuthClient({baseUrl='',fetchImpl=globalThis.fetch}={}){
         })
       });
     },
+    // Identidade da sessão. Sem isto a interface não tem de onde ler quem está
+    // logada — era por isso que o painel caía num nome fixo no código.
+    me(accessToken){
+      return request('/auth/me',{
+        method:'GET',
+        headers:{Authorization:`Bearer ${String(accessToken||'')}`}
+      });
+    },
     refresh(refreshToken){
       return request('/auth/refresh',{
         method:'POST',

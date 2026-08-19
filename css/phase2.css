@@ -807,6 +807,7 @@ button:focus-visible{box-shadow:none}
   .dashboard-toolbar-actions{flex-direction:column;align-items:stretch}
   .dashboard-search,.dashboard-new-case{width:100%}
   .surface-panel,.reference-library,.conf-surface{padding:14px}
+  .appointment-grid{grid-template-columns:minmax(0,1fr)}
   .conf-body{padding-left:14px}
   .conf-head{flex-direction:column;gap:12px}
   .deadline-row{grid-template-columns:8px 40px minmax(0,1fr)}
@@ -822,3 +823,51 @@ button:focus-visible{box-shadow:none}
   .letter-row summary{grid-template-columns:26px minmax(0,1fr)}
   .letter-row .conf-count{display:none}
 }
+
+/* 16 — Encargo pericial -----------------------------------------------------
+   O ciclo começa na nomeação. Enquanto há decisão pendente o painel se declara;
+   depois de aceito e completo recolhe-se a uma linha, porque encargo resolvido é
+   contexto, não tarefa. */
+.appointment-panel .panel-head p{max-width:56ch}
+.appointment-gaps{margin:0 0 12px;padding:8px 11px;border-radius:var(--mp-r-sm);
+  background:rgba(160,75,0,.07);font-size:12px;line-height:1.5;color:var(--mp-ink)}
+.appointment-body{display:grid;gap:14px}
+/* A decisão do encargo não é uma pílula: são três opções com explicação, e a
+   pílula do `.guided-choice` foi desenhada para rótulo curto — o texto colava no
+   rótulo. Aqui vira lista agrupada, uma opção por linha, como o resto da camada. */
+.appointment-panel .guided-choices{display:grid;gap:0;border-radius:var(--mp-r);
+  overflow:hidden;box-shadow:var(--mp-hairline);background:var(--mp-window)}
+.appointment-panel .guided-choice{width:100%}
+.appointment-panel .guided-choice+.guided-choice span{box-shadow:inset 0 .5px 0 var(--mp-sep)}
+.appointment-panel .guided-choice span{display:grid;gap:2px;width:100%;min-height:0;
+  border-radius:0;padding:10px 13px;background:transparent;box-shadow:none;
+  font:400 13px var(--mp-sans);color:var(--mp-ink);text-align:left}
+.appointment-panel .guided-choice span small{font-size:11px;line-height:1.45;color:var(--mp-label-2)}
+.appointment-panel .guided-choice span:hover{background:var(--mp-fill)}
+.appointment-panel .guided-choice input:checked+span{background:var(--mp-tint-fill);color:var(--mp-ink)}
+.appointment-panel .guided-choice input:checked+span small{color:var(--mp-label-2)}
+.appointment-panel .guided-choice input:checked+span strong,
+.appointment-panel .guided-choice input:checked+span{font-weight:500}
+.appointment-panel .guided-question legend{font:500 11px var(--mp-sans);color:var(--mp-label-2);margin-bottom:7px}
+.appointment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.appointment-panel .field span{font-size:11px;color:var(--mp-label-2)}
+.appointment-panel input[type=date],.appointment-panel select,.appointment-panel input[type=text]{
+  font:400 13px var(--mp-sans);color:var(--mp-ink);background:var(--mp-window);
+  border:0;box-shadow:var(--mp-hairline);border-radius:var(--mp-r-sm);padding:7px 9px}
+.appointment-refs summary{list-style:none;cursor:pointer;font-size:12px;color:var(--mp-tint)}
+.appointment-refs summary::-webkit-details-marker{display:none}
+.appointment-refs ul{list-style:none;margin:9px 0 0;padding:0;display:grid;gap:8px}
+.appointment-refs li{display:grid;gap:2px;font-size:12px;line-height:1.5}
+.appointment-refs li span{color:var(--mp-label-2);font-variant-numeric:tabular-nums}
+.appointment-refs li small,.appointment-refs p{font-size:11px;line-height:1.5;color:var(--mp-label-2)}
+.appointment-refs p{margin:10px 0 0;max-width:60ch}
+/* Recolhido: uma linha com o estado e o regime, alinhada como as demais listas. */
+.appointment-panel.is-settled{padding:0;background:transparent;box-shadow:none;border:0}
+.appointment-panel.is-settled>details>summary{list-style:none;cursor:pointer;
+  display:flex;align-items:baseline;gap:10px;padding:11px 14px;border-radius:var(--mp-r);
+  background:var(--mp-window);box-shadow:var(--mp-hairline);font-size:13px}
+.appointment-panel.is-settled>details>summary::-webkit-details-marker{display:none}
+.appointment-panel.is-settled>details>summary .eyebrow{font-size:11px;color:var(--mp-label-2)}
+.appointment-panel.is-settled>details>summary span:last-child{margin-left:auto;
+  font-size:11px;color:var(--mp-label-2)}
+.appointment-panel.is-settled .appointment-body{padding:14px}

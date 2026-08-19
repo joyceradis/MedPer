@@ -70,3 +70,18 @@ def read_file(storage_key: str) -> bytes:
         return _cipher().decrypt(path.read_bytes())
     except InvalidToken as exc:
         raise HTTPException(500, "Falha de integridade do arquivo") from exc
+
+
+def delete_file(storage_key: str) -> bool:
+    """Remove o arquivo do disco.
+
+    O cascade do banco apaga a linha de `stored_files` mas deixaria o blob
+    cifrado no disco indefinidamente — o que transforma "excluir a perícia" numa
+    promessa que o sistema não cumpre. Devolve True se havia arquivo.
+    """
+    path = storage_root() / storage_key
+    try:
+        path.unlink()
+        return True
+    except FileNotFoundError:
+        return False
