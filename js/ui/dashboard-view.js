@@ -1,7 +1,8 @@
 import { CASE_FILTERS, filterCasesByLifecycle } from '../core/case-lifecycle.js';
-import { buildDashboardModel } from './dashboard-model.js';
+import { buildDashboardModel, buildPracticeIndicators, caseStageProgress } from './dashboard-model.js';
 import { KNOWLEDGE_SOURCES, REFERENCE_CLASSES } from '../knowledge/library.js';
 import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY, conferenceItemId, conferenceProgress } from '../models/checklists.js';
+import { OPERATIONAL_LETTERS } from '../models/letters.js';
 
 const esc=(value='')=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));
 
@@ -18,10 +19,11 @@ const icons={
   bell:svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>'),
   document:svg('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 12h6M9 16h6"/>'),
   exam:svg('<path d="M5 4v6a5 5 0 0 0 10 0V4"/><path d="M8 4v4M12 4v4M15 15v1a4 4 0 0 0 4 4"/><circle cx="19" cy="17" r="2"/>'),
+  chart:svg('<path d="M4 4v16h16"/><path d="M8.5 16v-5M13 16V7.5M17.5 16v-3"/>'),
   report:svg('<path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h4"/>')
 };
 
-const SURFACES=new Set(['overview','cases','deadlines','references','models']);
+const SURFACES=new Set(['overview','cases','deadlines','indicators','references','models']);
 
 export function conferenceCaseFromHash(hash=''){
   const match=String(hash||'').match(/^#\/dashboard\/models\/([^/]+)/);
@@ -39,13 +41,38 @@ function relativeDays(value,now){const due=new Date(value),base=now instanceof D
 function caseActions(c){if(c.status==='Lixeira')return `<button type="button" data-case-action="restore" data-case-id="${esc(c.id)}">Restaurar</button><button type="button" class="is-danger" data-case-action="delete" data-case-id="${esc(c.id)}">Excluir</button>`;if(c.status==='Concluída')return `<button type="button" data-case-action="reopen" data-case-id="${esc(c.id)}">Reabrir</button><button type="button" data-case-action="trash" data-case-id="${esc(c.id)}">Lixeira</button>`;return `<button type="button" data-case-action="complete" data-case-id="${esc(c.id)}">Concluir</button><button type="button" data-case-action="trash" data-case-id="${esc(c.id)}">Lixeira</button>`;}
 function renderCase(c){const ctx=c.context||{};return `<article class="dashboard-case-card"><button class="dashboard-case-open" type="button" data-inspect-case="${esc(c.id)}"><div class="dashboard-case-topline"><span>${esc(ctx.role||ctx.setting||'Perícia')}</span><span>${esc(c.status)}</span></div><h3>${esc(c.title)}</h3><p>${esc(c.reference||'Sem referência')}</p><div class="dashboard-case-meta"><span>${esc(ctx.unit||ctx.tribunal||'Unidade a definir')}</span>${ctx.legalSphere||ctx.branch?`<span>${esc(ctx.legalSphere||ctx.branch)}</span>`:''}${ctx.feeRegime?`<span>${esc(ctx.feeRegime)}</span>`:''}${ctx.matter?`<span>${esc(ctx.matter)}</span>`:''}</div></button><div class="dashboard-case-actions">${caseActions(c)}</div></article>`;}
 function renderDeadline(d,now){const date=formatDate(d.dueAt);return `<article class="deadline-row"><span class="deadline-indicator is-${esc(d.severity)}" aria-hidden="true"></span><div class="deadline-date"><strong>${date.day}</strong><span>${date.month}</span></div><div class="deadline-copy"><strong>${esc(d.type||'Prazo')}</strong><span>${esc(d.caseTitle||'')}</span></div><div class="deadline-remaining"><strong>${esc(relativeDays(d.dueAt,now))}</strong><span>${date.time}</span></div></article>`;}
-function renderProgress(){return `<div class="continue-progress"><div class="continue-progress-head"><span>Exame e método</span><strong>Etapa 5 de 9</strong></div><div class="continue-progress-track" aria-hidden="true">${Array.from({length:9},(_,i)=>`<span class="${i<4?'is-complete':i===4?'is-current':''}"></span>`).join('')}</div><div class="continue-milestones"><div>${icons.document}<span><small>Etapa 1</small><strong>Revisão de documentos</strong></span></div><div>${icons.exam}<span><small>Etapa 2</small><strong>Exame</strong></span></div><div>${icons.report}<span><small>Etapa 3</small><strong>Laudo</strong></span></div></div></div>`;}
 
-function nav(active){const items=[['overview','Visão geral',icons.overview],['cases','Meus casos',icons.cases],['deadlines','Agenda e prazos',icons.calendar],['references','Referências técnicas',icons.book],['models','Modelos e checklists',icons.checklist]];return `<nav class="dashboard-navigation" aria-label="Navegação principal">${items.map(([id,label,icon])=>`<button type="button" data-surface="${id}" class="${active===id?'is-active':''}">${icon}<span>${label}</span></button>`).join('')}<button type="button" data-account>${icons.settings}<span>Configurações</span></button></nav>`;}
+function nav(active){const items=[['overview','Visão geral',icons.overview],['cases','Meus casos',icons.cases],['deadlines','Agenda e prazos',icons.calendar],['indicators','Indicadores',icons.chart],['references','Referências técnicas',icons.book],['models','Modelos e checklists',icons.checklist]];return `<nav class="dashboard-navigation" aria-label="Navegação principal">${items.map(([id,label,icon])=>`<button type="button" data-surface="${id}" class="${active===id?'is-active':''}">${icon}<span>${label}</span></button>`).join('')}<button type="button" data-account>${icons.settings}<span>Configurações</span></button></nav>`;}
 function shell(content,active,displayName){return `<div class="app-shell-dashboard" data-dashboard-surface="${active}"><aside class="dashboard-sidebar"><div class="dashboard-brand"><img class="brand-logomark" src="./icon.svg" alt=""><div><strong><span class="wordmark-med">Med</span><span class="wordmark-per">Per</span></strong><span>Perícia estruturada</span></div></div>${nav(active)}<div class="dashboard-profile"><span class="profile-avatar">JR</span><div><strong>${esc(displayName)}</strong><span>Perita médica</span></div></div></aside><main id="workspace" class="dashboard-workspace">${content}</main></div>`;}
 function pageHeader(title,subtitle,{search=true,newCase=true}={}){return `<header class="dashboard-toolbar"><div><h1>${esc(title)}</h1><p>${esc(subtitle)}</p></div><div class="dashboard-toolbar-actions">${search?`<label class="dashboard-search">${icons.search}<span class="sr-only">Pesquisar</span><input type="search" placeholder="Pesquisar casos, processos, partes..." disabled></label>`:''}${newCase?'<button class="dashboard-new-case" type="button" data-new-case>+ Nova perícia</button>':''}</div></header>`;}
 
-function overview(state,filter,options){const now=options.now||new Date(),model=buildDashboardModel(state.cases||[],now),c=model.continueCase,deadlines=model.deadlines.slice(0,3);const continueCard=c?`<article class="continue-card"><div class="continue-case-main"><div><span class="continue-card-kicker">${esc(c.context?.role||'Perita do juízo')}</span><h3>${esc(c.title||'Queimadura e sequela cicatricial')}</h3><p>Processo ${esc(c.reference||'')}</p><p>${esc(c.context?.unit||c.context?.tribunal||'Unidade a definir')}${c.context?.feeRegime?` · <strong>${esc(c.context.feeRegime)}</strong>`:''}</p></div></div>${renderProgress()}<button type="button" class="dashboard-primary-action" data-open-case="${esc(c.id)}">Abrir perícia ${icons.arrow}</button></article>`:'<div class="dashboard-empty-state"><strong>Nenhuma perícia em andamento</strong><span>Crie uma perícia para iniciar o fluxo estruturado.</span></div>';return `${pageHeader(`Boa noite, ${options.displayName||'Dra. Joyce'}`,'Priorize o trabalho sem perder o contexto médico-pericial.')}<section class="dashboard-shortcuts"><button data-surface="cases">${icons.cases}<span><strong>Meus casos</strong><small>Acompanhe suas perícias</small></span>${icons.arrow}</button><button data-surface="deadlines">${icons.calendar}<span><strong>Agenda e prazos</strong><small>Prazos e compromissos</small></span>${icons.arrow}</button><button data-surface="references">${icons.book}<span><strong>Referências técnicas</strong><small>Biblioteca e normas</small></span>${icons.arrow}</button></section><section class="dashboard-operational-grid"><article class="dashboard-panel"><header><div><h2>Continuar trabalhando</h2><p>Seu último acesso</p></div></header>${continueCard}</article><article class="dashboard-panel"><header><div><h2>Próximos prazos</h2><p>Prioridade temporal</p></div><span>${model.deadlines.length}</span></header>${deadlines.length?deadlines.map(d=>renderDeadline(d,now)).join(''):'<div class="dashboard-empty-state"><strong>Nenhum prazo registrado</strong><span>Os compromissos aparecerão aqui.</span></div>'}</article></section><section class="dashboard-pending"><span class="pending-icon">${icons.bell}</span><div><strong>${model.pendingCount?`Você tem ${model.pendingCount} pendência${model.pendingCount===1?'':'s'}`:'Sem pendências registradas'}</strong><span>${model.pendingCount?'Quesitos, exames ou providências aguardam ação.':'O que exigir ação aparecerá aqui.'}</span></div><button type="button" data-surface="cases">Ver pendências ${icons.arrow}</button></section>`;}
+function caseProgress(c){
+  const p=caseStageProgress(c);
+  return `<div class="work-progress"><div class="work-progress-head"><strong>${p.currentLabel}</strong><span>${p.started} de ${p.total} etapas com registro</span></div><div class="work-progress-track" aria-hidden="true">${p.done.map((d,i)=>`<span class="${d?'is-done':i===p.currentIndex?'is-current':''}"></span>`).join('')}</div></div>`;
+}
+// O dashboard mostra o trabalho, não o inventário do aplicativo. Os três cards de
+// atalho que ficavam no topo repetiam a barra lateral inteira; e dois painéis
+// vazios ocupavam metade da tela para dizer que não havia nada. O caso em aberto
+// é a âncora; o que está vazio se anuncia em uma linha.
+function overview(state,filter,options){
+  const now=options.now||new Date(),model=buildDashboardModel(state.cases||[],now),c=model.continueCase;
+  const deadlines=model.deadlines.slice(0,3);
+  const work=c?`<article class="work-card"><header><span class="work-role">${esc(c.context?.role||'Perita do juízo')}</span><h2>${esc(c.title||'Perícia sem título')}</h2><p class="work-meta">${[c.reference&&`Processo ${c.reference}`,c.context?.unit||c.context?.tribunal,c.context?.matter,c.context?.feeRegime].filter(Boolean).map(esc).join(' · ')}</p></header>${caseProgress(c)}<button type="button" class="work-open" data-open-case="${esc(c.id)}">Abrir perícia ${icons.arrow}</button></article>`
+    :`<article class="work-card work-card-empty"><h2>Nenhuma perícia em andamento</h2><p class="work-meta">Crie uma perícia para iniciar o fluxo estruturado.</p><button type="button" class="work-open" data-new-case>Nova perícia ${icons.arrow}</button></article>`;
+  const alerts=[
+    model.deadlines.length?null:'nenhum prazo registrado',
+    model.pendingCount?null:'nenhuma pendência registrada'
+  ].filter(Boolean);
+  const deadlineBlock=deadlines.length
+    ?`<section class="work-side"><h3>Próximos prazos</h3><div class="deadline-list">${deadlines.map(d=>renderDeadline(d,now)).join('')}</div></section>`:'';
+  const pendingBlock=model.pendingCount
+    ?`<section class="work-side"><h3>Pendências</h3><button type="button" class="work-pending" data-surface="cases"><strong>${model.pendingCount} ${model.pendingCount===1?'pendência aguarda ação':'pendências aguardam ação'}</strong><span>Quesitos, exames ou providências.</span>${icons.arrow}</button></section>`:'';
+  const quiet=alerts.length===2?`<p class="work-quiet">Sem prazos e sem pendências registradas — o que exigir ação aparece aqui.</p>`
+    :alerts.length===1?`<p class="work-quiet">${esc(alerts[0].charAt(0).toUpperCase()+alerts[0].slice(1))}.</p>`:'';
+  const outros=(state.cases||[]).filter(item=>item.status==='Em andamento'&&item.id!==c?.id).slice(0,6);
+  const listaBlock=outros.length?`<section class="work-side"><h3>Outras perícias em andamento</h3><ul class="work-cases">${outros.map(item=>{const p=caseStageProgress(item);return `<li><button type="button" data-open-case="${esc(item.id)}"><span class="work-case-title">${esc(item.title||'Perícia sem título')}</span><span class="work-case-meta">${esc([item.reference,item.context?.matter].filter(Boolean).join(' · '))}</span><span class="work-case-stage">${esc(p.currentLabel)}<small>${p.started}/${p.total}</small></span></button></li>`;}).join('')}</ul></section>`:'';
+  return `${pageHeader(`Boa noite, ${options.displayName||'Dra. Joyce'}`,'Priorize o trabalho sem perder o contexto médico-pericial.')}<div class="work-layout">${work}${deadlineBlock}${pendingBlock}${listaBlock}${quiet}</div>`;
+}
 
 function casesSurface(state,filter,options){const model=buildDashboardModel(state.cases||[],options.now||new Date()),visible=filterCasesByLifecycle(state.cases||[],filter);return `${pageHeader('Meus casos','Organize por estado do trabalho, atuação, esfera e unidade.')}<section class="surface-panel"><header class="dashboard-section-head"><div><h2>Perícias</h2><p>${visible.length} nesta visão</p></div><nav class="case-filters">${CASE_FILTERS.map(i=>`<button class="case-filter ${filter===i.id?'is-active':''}" data-case-filter="${i.id}"><span>${esc(i.label)}</span><small>${model.counts[i.id]}</small></button>`).join('')}</nav></header><div class="dashboard-case-grid">${visible.length?visible.map(renderCase).join(''):'<div class="dashboard-empty-state dashboard-empty-wide"><strong>Nenhum caso nesta visão</strong><span>Altere o filtro ou crie uma nova perícia.</span></div>'}</div></section>`;}
 function deadlinesSurface(state,filter,options){const now=options.now||new Date(),model=buildDashboardModel(state.cases||[],now);return `${pageHeader('Agenda e prazos','Compromissos periciais ordenados por criticidade.',{search:false})}<section class="surface-panel surface-deadlines"><header class="dashboard-section-head"><div><h2>Próximos compromissos</h2><p>${model.deadlines.length} prazo(s) registrado(s)</p></div></header>${model.deadlines.length?model.deadlines.map(d=>renderDeadline(d,now)).join(''):'<div class="dashboard-empty-state"><strong>Nenhum prazo registrado</strong><span>Adicione prazos aos casos para vê-los aqui.</span></div>'}</section>`;}
@@ -55,6 +82,46 @@ function severityLegend(){return `<div class="checklist-severity-legend">${Objec
 function conferenceRow(d,checked,progress,open,interactive=true){const p=progress.byDimension[d.code]||{done:0,total:d.items.length};const complete=p.done===p.total;return `<details class="conf-row${complete?' is-complete':''}"${open?' open':''}><summary><span class="conf-code">${esc(d.code)}</span><span class="conf-title">${esc(d.title)}</span><span class="conf-count">${p.done}/${p.total}</span></summary><div class="conf-body"><p class="conf-why">${esc(d.why)}</p><ul class="conf-items">${d.items.map((text,i)=>{const id=conferenceItemId(d.code,i);const on=Boolean(checked[id]);return `<li><label class="conf-item${on?' is-checked':''}"><input type="checkbox" data-conference-item="${esc(id)}"${on?' checked':''}${interactive?'':' disabled'}><span>${esc(text)}</span></label></li>`;}).join('')}</ul>${d.redFlag?`<p class="conf-flag"><strong>Sinal de alerta</strong>${esc(d.redFlag)}</p>`:''}</div></details>`;}
 
 function conferencePicker(state,activeId){const cases=(state.cases||[]).filter(c=>c.status!=='Lixeira');if(!cases.length)return '<p class="conf-empty">Nenhuma perícia aberta. A conferência fica disponível assim que existir um caso.</p>';return `<div class="conf-picker"><span>Conferindo</span><div class="conf-picker-options">${cases.map(c=>`<button type="button" class="conf-case${activeId===c.id?' is-active':''}" data-conference-case="${esc(c.id)}">${esc(c.title)}</button>`).join('')}${activeId?`<button type="button" class="conf-case conf-case-clear" data-conference-case="">Ver como modelo</button>`:''}</div></div>`;}
+
+// Indicadores — leitura agregada da carteira. A régua do que entra aqui é a
+// mesma do buildPracticeIndicators: contar e distribuir o registrado, nunca
+// interpretar. Sem controle editável: quem muda o número é o caso, não a tela.
+function indicatorRows(items,total){
+  if(!items.length)return '<p class="ind-empty">Nada registrado ainda.</p>';
+  return `<div class="ind-list">${items.map(item=>`<div class="ind-row"><span class="ind-label">${esc(item.label)}</span><span class="ind-bar" aria-hidden="true"><span style="width:${total?Math.round(item.count/total*100):0}%"></span></span><span class="ind-value">${item.count}</span></div>`).join('')}</div>`;
+}
+function indicatorsSurface(state,options={}){
+  const now=options.now||new Date();
+  const ind=buildPracticeIndicators(state.cases||[],now);
+  const header=pageHeader('Indicadores','Leitura agregada da sua carteira, derivada apenas do que está registrado nos casos.',{search:false,newCase:false});
+  if(!ind.counts.active&&!ind.counts.completed)return `${header}<section class="surface-panel"><div class="dashboard-empty-state"><strong>Sem casos para medir</strong><span>Os indicadores aparecem assim que existir uma perícia registrada.</span></div></section>`;
+  const deadlineTotal=ind.deadlines.danger+ind.deadlines.warning+ind.deadlines.neutral;
+  const deadlineRows=deadlineTotal
+    ? `<div class="ind-list">${[['danger','Até 48 horas'],['warning','Até 7 dias'],['neutral','Adiante']].map(([sev,label])=>`<div class="ind-row"><span class="ind-label"><i class="ind-dot is-${sev}" aria-hidden="true"></i>${label}</span><span class="ind-bar" aria-hidden="true"><span class="is-${sev}" style="width:${Math.round(ind.deadlines[sev]/deadlineTotal*100)}%"></span></span><span class="ind-value">${ind.deadlines[sev]}</span></div>`).join('')}</div>`
+    : '<p class="ind-empty">Nenhum prazo registrado.</p>';
+  const activeCases=(state.cases||[]).filter(c=>c.status==='Em andamento');
+  const conferenceRows=activeCases.length
+    ? `<div class="ind-list">${activeCases.map(c=>{const p=conferenceProgress(c.conference||{});return `<div class="ind-row"><span class="ind-label">${esc(c.title)}</span><span class="ind-bar" aria-hidden="true"><span style="width:${p.total?Math.round(p.done/p.total*100):0}%"></span></span><span class="ind-value">${p.done}/${p.total}</span></div>`;}).join('')}</div>`
+    : '<p class="ind-empty">Nenhuma perícia em andamento.</p>';
+  return `${header}<section class="conf-surface" aria-label="Indicadores da prática">
+    <div class="ind-summary"><div><strong>${ind.counts.active}</strong><span>em andamento</span></div><div><strong>${ind.counts.completed}</strong><span>concluída${ind.counts.completed===1?'':'s'}</span></div><div><strong>${ind.pending}</strong><span>pendência${ind.pending===1?'':'s'}</span></div></div>
+    <div class="ind-grid">
+      <article class="ind-card"><h3>Por esfera</h3>${indicatorRows(ind.bySphere,ind.counts.active)}</article>
+      <article class="ind-card"><h3>Por matéria</h3>${indicatorRows(ind.byMatter,ind.counts.active)}</article>
+      <article class="ind-card"><h3>Etapa atual das perícias</h3>${indicatorRows(ind.byStage,ind.counts.active)}</article>
+      <article class="ind-card"><h3>Prazos por urgência</h3>${deadlineRows}</article>
+      <article class="ind-card ind-card-wide"><h3>Conferência pericial por caso</h3>${conferenceRows}</article>
+    </div>
+    <p class="ind-note">Os números contam registros; não avaliam mérito nem suficiência. A auditoria metodológica continua dentro de cada perícia.</p>
+  </section>`;
+}
+
+// Documentos operacionais — referência de produto: Laudomatic trata as cartas
+// do encargo (aceite, escusa, agendamento…) como parte do ofício. O corpo é
+// rascunho copiável com campos «assim»; a perita revisa e responde pelo texto.
+function lettersBlock(){
+  return `<section class="conf-surface letters-surface" aria-label="Documentos operacionais"><header class="conf-head"><div><span class="eyebrow">Expediente do encargo</span><h2>Documentos operacionais</h2></div></header><p class="conf-hint">Modelos de comunicação com o juízo — copie, preencha os campos «assim» e revise antes de protocolar. Nada aqui é conteúdo médico-pericial.</p><div class="conf-list">${OPERATIONAL_LETTERS.map(letter=>`<details class="conf-row letter-row"><summary><span class="conf-code">${icons.document}</span><span class="conf-title">${esc(letter.title)}</span><span class="conf-count">${esc(letter.basis)}</span></summary><div class="conf-body"><p class="conf-why">${esc(letter.when)}</p><div class="letter-body">${esc(letter.body)}</div><button type="button" class="letter-copy" data-copy-letter="${esc(letter.id)}">Copiar texto</button></div></details>`).join('')}</div></section>`;
+}
 
 function modelsSurface(state,options={}){
   const p=CONFERENCE_PROTOCOL;
@@ -66,8 +133,14 @@ function modelsSurface(state,options={}){
   const meter=active
     ? `<div class="conf-meter"><div class="conf-meter-head"><strong>${progress.done} de ${progress.total} conferidos</strong><span>${pct}%</span></div><div class="conf-meter-track" role="progressbar" aria-valuenow="${progress.done}" aria-valuemin="0" aria-valuemax="${progress.total}"><span style="width:${pct}%"></span></div></div>`
     : '<p class="conf-hint">Escolha uma perícia para marcar a conferência. Sem caso selecionado, o protocolo aparece como modelo de leitura.</p>';
-  return `${pageHeader('Modelos e checklists','Instrumentos de apoio. Nada aqui altera protocolo, pontuação ou conclusão.',{search:false,newCase:false})}<section class="conf-surface"><header class="conf-head"><div><span class="eyebrow">Instrumento de conferência</span><h2>${esc(p.title)}</h2></div><details class="conf-about"><summary>Critérios e limites</summary><ul>${p.basis.map(b=>`<li>${esc(b)}</li>`).join('')}</ul><p class="conf-scope">${esc(p.scopeLimit)}</p></details></header>${conferencePicker(state,active?active.id:'')}${meter}${severityLegend()}<div class="conf-list">${p.dimensions.map((d,i)=>conferenceRow(d,checked,progress,!active&&i===0,Boolean(active))).join('')}</div></section>`;
+  // Abre a primeira dimensão que ainda tem item por conferir. A regra anterior
+  // (`!active&&i===0`) fechava as oito justamente ao escolher a perícia — ou seja,
+  // no instante em que passa a haver o que fazer. Em modo de leitura nada está
+  // marcado e isso continua sendo a D1; com um caso escolhido, abre onde a perita
+  // parou. Conferência completa não abre nenhuma: não há próximo passo.
+  const openIndex=p.dimensions.findIndex(d=>(progress.byDimension[d.code]||{done:0}).done<d.items.length);
+  return `${pageHeader('Modelos e checklists','Instrumentos de apoio. Nada aqui altera protocolo, pontuação ou conclusão.',{search:false,newCase:false})}<section class="conf-surface"><header class="conf-head"><div><span class="eyebrow">Instrumento de conferência</span><h2>${esc(p.title)}</h2></div><details class="conf-about"><summary>Critérios e limites</summary><ul>${p.basis.map(b=>`<li>${esc(b)}</li>`).join('')}</ul><p class="conf-scope">${esc(p.scopeLimit)}</p></details></header>${conferencePicker(state,active?active.id:'')}${meter}${severityLegend()}<div class="conf-list">${p.dimensions.map((d,i)=>conferenceRow(d,checked,progress,i===openIndex,Boolean(active))).join('')}</div></section>${lettersBlock()}`;
 }
 
-export function renderDashboardSurface(state,surface='overview',filter='active',options={}){const safe=SURFACES.has(surface)?surface:'overview';const displayName=options.displayName||'Dra. Joyce';const content=safe==='cases'?casesSurface(state,filter,options):safe==='deadlines'?deadlinesSurface(state,filter,options):safe==='references'?referencesSurface():safe==='models'?modelsSurface(state,options):overview(state,filter,{...options,displayName});return shell(content,safe,displayName);}
+export function renderDashboardSurface(state,surface='overview',filter='active',options={}){const safe=SURFACES.has(surface)?surface:'overview';const displayName=options.displayName||'Dra. Joyce';const content=safe==='cases'?casesSurface(state,filter,options):safe==='deadlines'?deadlinesSurface(state,filter,options):safe==='indicators'?indicatorsSurface(state,options):safe==='references'?referencesSurface():safe==='models'?modelsSurface(state,options):overview(state,filter,{...options,displayName});return shell(content,safe,displayName);}
 export function renderDashboardHome(state,filter='active',options={}){const hash=options.hash??(typeof window!=='undefined'?window.location.hash:'');return renderDashboardSurface(state,surfaceFromHash(hash),filter,{...options,conferenceCaseId:options.conferenceCaseId??conferenceCaseFromHash(hash)});}

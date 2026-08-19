@@ -216,7 +216,8 @@ MedPer/
 │   ├── knowledge/
 │   │   └── library.js          referências com autoridade e localizador
 │   ├── models/
-│   │   └── checklists.js       instrumentos de conferência, fora do motor
+│   │   ├── checklists.js       instrumentos de conferência, fora do motor
+│   │   └── letters.js          expediente do encargo (aceite, escusa, prazo…)
 │   └── ui/
 │       ├── workflow.js
 │       ├── app.js

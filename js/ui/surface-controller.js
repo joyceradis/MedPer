@@ -1,4 +1,6 @@
-const SURFACES=new Set(['overview','cases','deadlines','references','models']);
+import { OPERATIONAL_LETTERS } from '../models/letters.js';
+
+const SURFACES=new Set(['overview','cases','deadlines','indicators','references','models']);
 
 function currentSurface(){
   const match=window.location.hash.match(/^#\/dashboard\/([^/]+)/);
@@ -26,6 +28,36 @@ export function installSurfaceController({root,store}){
       event.preventDefault();
       event.stopImmediatePropagation();
       navigate('cases');
+      return;
+    }
+
+    // Copiar um documento operacional. O texto vem do módulo de dados, não do
+    // DOM — o que a perita cola é exatamente o rascunho declarado em letters.js.
+    const copyButton=event.target.closest('[data-copy-letter]');
+    if(copyButton){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const letter=OPERATIONAL_LETTERS.find(item=>item.id===copyButton.dataset.copyLetter);
+      if(!letter)return;
+      const confirm=()=>{
+        const original=copyButton.textContent;
+        copyButton.textContent='Copiado';
+        copyButton.disabled=true;
+        setTimeout(()=>{if(!destroyed){copyButton.textContent=original;copyButton.disabled=false;}},1600);
+      };
+      const fallback=()=>{
+        const area=document.createElement('textarea');
+        area.value=letter.body;
+        area.setAttribute('readonly','');
+        area.style.position='fixed';
+        area.style.opacity='0';
+        document.body.appendChild(area);
+        area.select();
+        try{document.execCommand('copy');confirm();}catch{/* sem clipboard disponível */}
+        area.remove();
+      };
+      if(navigator.clipboard?.writeText)navigator.clipboard.writeText(letter.body).then(confirm).catch(fallback);
+      else fallback();
       return;
     }
 

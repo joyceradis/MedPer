@@ -18,7 +18,11 @@ function findCase(state,id){return state.cases.find(c=>c.id===id)||null;}
 function setPath(obj,path,value){const parts=path.split('.');let node=obj;for(let i=0;i<parts.length-1;i++){node[parts[i]]??={};node=node[parts[i]];}node[parts.at(-1)]=value;}
 function header(){return`<header class="topbar"><div class="topbar-inner"><button class="brand" data-home><span class="brand-copy"><strong>MedPer</strong><span>Perícia estruturada</span></span></button><div class="top-actions"><span class="save-state">Salvo neste dispositivo</span><button class="button button-secondary" data-account>Entrar</button><button class="button button-primary" data-new-case>Nova perícia</button></div></div></header>`;}
 function panel(title,help,body,full=true){return`<section class="panel ${full?'panel-full':''}"><div class="panel-head"><div><h2>${esc(title)}</h2>${help?`<p>${esc(help)}</p>`:''}</div></div>${body}</section>`;}
-function textarea(path,label,value,help=''){return`<label class="field"><span>${esc(label)}</span><textarea data-bind="${esc(path)}" placeholder="${esc(help)}">${esc(value||'')}</textarea>${help?`<small class="field-help">${esc(help)}</small>`:''}</label>`;}
+// O mesmo texto de apoio era escrito duas vezes em cada campo: como placeholder
+// dentro e como ajuda embaixo. Rótulo acima, ajuda abaixo, nada dentro — o campo
+// vazio deixa de parecer preenchido e a orientação continua visível depois que a
+// médica começa a escrever, que é quando ela ainda precisa dela.
+function textarea(path,label,value,help=''){return`<label class="field"><span>${esc(label)}</span><textarea data-bind="${esc(path)}">${esc(value||'')}</textarea>${help?`<small class="field-help">${esc(help)}</small>`:''}</label>`;}
 // Quando o título do painel já nomeia o campo, repetir o rótulo e ainda ecoar o
 // texto de apoio dentro e fora do campo é ruído: a mesma frase aparecia três vezes
 // em pouco mais de um palmo de tela. Aqui o rótulo continua existindo para leitores

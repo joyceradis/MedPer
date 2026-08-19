@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { renderDashboardHome, renderDashboardSurface } from '../js/ui/dashboard-view.js';
-import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY, conferenceItemId, conferenceProgress } from '../js/models/checklists.js';
+import { CONFERENCE_PROTOCOL, CONFERENCE_SEVERITY, conferenceItemId, conferenceItems, conferenceProgress } from '../js/models/checklists.js';
 
 function test(name, fn){
   try{fn();console.log(`✓ ${name}`);}catch(error){console.error(`✗ ${name}`);throw error;}
@@ -19,15 +19,41 @@ test('sidebar navigation targets real dashboard surfaces',()=>{
   assert.match(html,/data-surface="overview"/);
   assert.match(html,/data-surface="cases"/);
   assert.match(html,/data-surface="deadlines"/);
+  assert.match(html,/data-surface="indicators"/);
   assert.match(html,/data-surface="references"/);
   assert.doesNotMatch(html,/data-scroll-target=/);
+});
+
+test('a superfície de indicadores lê a carteira e não oferece nenhum controle de edição',()=>{
+  const html=renderDashboardSurface(state,'indicators','active',{now,hash:'#/dashboard/indicators'});
+  assert.match(html,/data-dashboard-surface="indicators"/);
+  assert.match(html,/<h1>Indicadores<\/h1>/);
+  assert.match(html,/Por esfera/);
+  assert.match(html,/Por matéria/);
+  assert.match(html,/Etapa atual das perícias/);
+  assert.match(html,/Prazos por urgência/);
+  assert.match(html,/Conferência pericial por caso/);
+  assert.match(html,/Cível/);
+  assert.match(html,/Dano estético/);
+  // A honestidade da régua fica declarada na própria tela.
+  assert.match(html,/contam registros; não avaliam mérito/);
+  // Leitura, não formulário: nada editável nesta superfície.
+  assert.doesNotMatch(html,/<input|<textarea|<select/);
+
+  // A rota resolve pelo hash como as demais.
+  assert.match(renderDashboardHome(state,'active',{now,hash:'#/dashboard/indicators'}),/data-dashboard-surface="indicators"/);
+
+  // Sem casos, a superfície diz isso — não desenha grade vazia.
+  const vazio=renderDashboardSurface({cases:[]},'indicators','active',{now});
+  assert.match(vazio,/Sem casos para medir/);
+  assert.doesNotMatch(vazio,/ind-grid/);
 });
 
 test('cases surface is distinct from overview and preserves lifecycle controls',()=>{
   const html=renderDashboardSurface(state,'cases','active',{now});
   assert.match(html,/data-dashboard-surface="cases"/);
   assert.match(html,/<h1>Meus casos<\/h1>/);
-  assert.doesNotMatch(html,/Continuar trabalhando/);
+  assert.doesNotMatch(html,/class="work-card"/);
   assert.match(html,/data-case-filter="active"/);
   assert.match(html,/data-case-action="complete"/);
   assert.match(html,/data-inspect-case="case_1"/);
@@ -38,7 +64,7 @@ test('deadlines surface is distinct and renders operational deadlines',()=>{
   assert.match(html,/data-dashboard-surface="deadlines"/);
   assert.match(html,/<h1>Agenda e prazos<\/h1>/);
   assert.match(html,/Exame presencial/);
-  assert.doesNotMatch(html,/Continuar trabalhando/);
+  assert.doesNotMatch(html,/class="work-card"/);
 });
 
 test('references surface is distinct and keeps knowledge governance explicit',()=>{
@@ -48,13 +74,15 @@ test('references surface is distinct and keeps knowledge governance explicit',()
   assert.match(html,/não altera automaticamente o método/i);
 });
 
-test('overview preserves the approved operational hierarchy',()=>{
+test('a visão geral abre pela perícia em aberto, com progresso real',()=>{
   const html=renderDashboardSurface(state,'overview','active',{now});
-  assert.match(html,/Continuar trabalhando/);
-  assert.match(html,/Próximos prazos/);
+  assert.match(html,/class="work-card"/);
   assert.match(html,/Perita do juízo/);
-  assert.match(html,/Etapa 5 de 9/);
-  assert.match(html,/dashboard-pending/);
+  assert.match(html,/Queimadura e sequela cicatricial/);
+  assert.match(html,/Próximos prazos/);
+  // O andamento vem do caso: este não tem registro em etapa nenhuma.
+  assert.match(html,/0 de 9 etapas com registro/);
+  assert.doesNotMatch(html,/Etapa 5 de 9/,'nenhum andamento fixo');
 });
 
 test('renderDashboardHome resolves the visible surface from the application hash',()=>{
@@ -115,6 +143,62 @@ test('the conference is a tool, not a document: it checks, counts and persists p
   assert.doesNotMatch(asModel, /data-conference-item="D1\.1"[^>]*checked/, 'the model view carries no case state');
   assert.match(asModel, /data-conference-item="D1\.1"[^>]*disabled/, 'the model view must not accept disposable marks');
   assert.match(asModel, /conf-hint/, 'the model view must explain how to start checking');
+});
+
+test('a dimensão aberta é a primeira com trabalho pendente, não a primeira da lista', () => {
+  // Encontrado medindo no navegador: escolher a perícia — a única ação que a
+  // própria tela pede para começar — fechava as oito dimensões de uma vez. A
+  // regra abria a D1 apenas enquanto NÃO houvesse caso, então o instante em que
+  // passava a haver o que fazer era exatamente o instante em que tudo se fechava.
+  const abertas = html => [...html.matchAll(/<details class="conf-row[^"]*"( open)?>[\s\S]*?<span class="conf-code">(D\d)</g)]
+    .filter(m => m[1]).map(m => m[2]);
+
+  const semCaso = renderDashboardSurface(state, 'models', 'active', { now });
+  assert.deepEqual(abertas(semCaso), ['D1'], 'em leitura, a D1 abre como amostra do instrumento');
+
+  // D1 tem 5 itens; marcados os cinco, o próximo passo é a D2.
+  const d1Completa = Object.fromEntries(
+    CONFERENCE_PROTOCOL.dimensions[0].items.map((_, i) => [conferenceItemId('D1', i), true]));
+  const comD1 = { cases: [{ ...state.cases[0], conference: d1Completa }] };
+  assert.deepEqual(
+    abertas(renderDashboardSurface(comD1, 'models', 'active', { now, conferenceCaseId: 'case_1' })),
+    ['D2'], 'com a D1 conferida, abre onde a perita parou');
+
+  // Caso recém-escolhido, nada marcado: abre a D1 — nunca as oito fechadas.
+  const zerado = { cases: [{ ...state.cases[0], conference: {} }] };
+  assert.deepEqual(
+    abertas(renderDashboardSurface(zerado, 'models', 'active', { now, conferenceCaseId: 'case_1' })),
+    ['D1'], 'escolher a perícia não pode fechar tudo');
+
+  // Conferência completa não tem próximo passo: nenhuma dimensão abre sozinha.
+  const tudo = Object.fromEntries(conferenceItems().map(item => [item.id, true]));
+  assert.deepEqual(
+    abertas(renderDashboardSurface({ cases: [{ ...state.cases[0], conference: tudo }] },
+      'models', 'active', { now, conferenceCaseId: 'case_1' })),
+    [], 'conferência completa não abre dimensão');
+});
+
+test('os documentos operacionais são rascunhos administrativos copiáveis, fora do conteúdo pericial', async () => {
+  const { OPERATIONAL_LETTERS } = await import('../js/models/letters.js');
+  const html = renderDashboardSurface(state, 'models', 'active', { now });
+
+  assert.match(html, /Documentos operacionais/);
+  assert.ok(OPERATIONAL_LETTERS.length >= 5, 'aceite, escusa, agendamento, prazo e documentos');
+  for (const letter of OPERATIONAL_LETTERS) {
+    assert.ok(html.includes(letter.title), `modelo "${letter.title}" renderiza`);
+    assert.match(html, new RegExp(`data-copy-letter="${letter.id}"`), `"${letter.title}" tem botão de copiar`);
+    assert.match(letter.body, /«[^»]+»/, 'o corpo declara os campos a preencher — nada vem pronto');
+    assert.match(letter.basis, /^CPC, art/, 'a base declarada é procedimental, do CPC');
+    // Rascunho administrativo: o corpo não afirma conclusão médico-pericial.
+    assert.doesNotMatch(letter.body, /nexo causal|incapacidade|dano estético|diagnóstic/i,
+      'o expediente não carrega conteúdo médico-pericial');
+  }
+  // O texto copiado vem do módulo de dados, não de scraping do DOM.
+  const controller = readFileSync(new URL('../js/ui/surface-controller.js', import.meta.url), 'utf8');
+  assert.match(controller, /OPERATIONAL_LETTERS/, 'o controlador copia a partir do módulo');
+  // E o módulo permanece declarativo, fora do motor e do armazenamento.
+  const source = readFileSync(new URL('../js/models/letters.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /core\/store|localStorage|engine\.js/, 'letters.js é dado, não comportamento');
 });
 
 test('item ids survive a rewording of the item text', () => {
