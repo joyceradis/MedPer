@@ -1,3 +1,4 @@
+import { normalizeAppointment } from '../models/appointment.js';
 const STORAGE_KEY = 'medper.state.v4';
 const LEGACY_KEYS = ['medper.state.v3', 'medper.state.v2', 'mlks.prototype.v1'];
 
@@ -123,6 +124,11 @@ function normalizeCase(caseData = {}, previousCase = null) {
   c.operations.pendingActions = Array.isArray(c.operations.pendingActions)
     ? c.operations.pendingActions
     : [];
+
+  // Encargo pericial: o ciclo real começa na nomeação, não na criação do caso.
+  // Caso legado sem o campo abre com o encargo pendente — nunca presumido aceito,
+  // porque presumir aceite é afirmar sobre o processo algo que não foi declarado.
+  c.appointment = normalizeAppointment(c.appointment);
 
   c.person ||= { initials: '', birthDate: '', role: 'Periciando(a)' };
   c.scope ||= '';
