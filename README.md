@@ -203,6 +203,10 @@ MedPer/
 │   ├── main.js
 │   ├── auth/
 │   │   └── auth-controller.js
+│   ├── api/
+│   │   ├── auth-client.js
+│   │   ├── case-state-client.js
+│   │   └── case-files-client.js   documentos dos autos, cifrados no servidor
 │   ├── config/
 │   │   └── supabase-config.js
 │   ├── core/
@@ -227,6 +231,7 @@ MedPer/
 │       ├── case-inspector.js
 │       ├── inspector-controller.js
 │       ├── method-context-controller.js
+│       ├── case-files-controller.js  anexos dos autos; nomes só em memória
 │       └── dialog-controller.js
 │
 ├── docs/

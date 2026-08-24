@@ -22,7 +22,7 @@ O piloto roda com **perícias reais**, com até 50 peritas. Isso significa dado 
 | Saúde do periciado | `cases.state_payload` | história, exame, achados, sequelas, conclusão |
 | Identificação processual | `cases.reference`, `state_payload` | número do processo, vara, comarca |
 | Documentos dos autos | `stored_files` + disco | prontuário, laudo anterior, CAT, BO |
-| ~~Imagem do periciado~~ | — | **fora do piloto por decisão**: fotografia de lesão e cicatriz não entra na plataforma nesta fase |
+| ~~Imagem do periciado~~ | — | **fora do piloto por decisão**: fotografia de lesão e cicatriz não entra na plataforma nesta fase, e o servidor recusa por conteúdo (§2) |
 | Identificação da perita | `users` | nome profissional, e-mail, organização |
 | Vencimentos | `case_deadlines` | tipo e data — projeção consultável, sem conteúdo clínico e sem número de processo |
 
@@ -45,7 +45,21 @@ Duas consequências que distinguem este produto de um SaaS comum:
   Fernet (`backend/app/payload_crypto.py`). A coluna não contém texto legível.
   Verificado em `backend/tests/test_privacy.py::test_case_content_is_not_readable_in_the_database`.
 - **Anexos cifrados** — `backend/app/storage.py`, Fernet, chave em
-  `MEDPER_FILE_ENCRYPTION_KEY`.
+  `MEDPER_FILE_ENCRYPTION_KEY`. Verificado que o que fica no disco não é o
+  arquivo original: `test_uploads.py::test_a_pdf_from_the_case_file_is_accepted_and_stored_encrypted`.
+- **O que pode ser anexado é decidido pelos BYTES, não pelo tipo declarado.**
+  `UploadFile.content_type` vem do cliente — navegador, `curl`, script — e é
+  escolhido por quem envia. Enquanto a validação olhava esse cabeçalho, bastava
+  declarar `application/pdf` para uma fotografia de lesão entrar. A verificação
+  passa a ler a assinatura do conteúdo, e a lista é POSITIVA: entra PDF ou texto;
+  o que não é reconhecido é recusado por não constar, em vez de aceito por não
+  ter sido lembrado. Lista de formatos PROIBIDOS envelheceria — HEIC, AVIF e o
+  próximo formato entrariam sozinhos. Verificado em
+  `test_uploads.py::test_a_photograph_declared_as_pdf_is_still_refused` e
+  `::test_an_unknown_binary_format_is_refused_rather_than_accepted_by_omission`.
+- **A recusa explica o que fazer**: a mensagem nomeia o formato detectado
+  ("JPEG") e diz que documento digitalizado precisa ser convertido em PDF antes
+  de anexar — a perita não fica diante de um código de erro.
 - **Compatibilidade** — linhas gravadas antes da cifragem continuam legíveis e são
   cifradas na próxima escrita, sem script que precise ler dado sensível para
   reescrevê-lo.
@@ -76,7 +90,12 @@ Duas consequências que distinguem este produto de um SaaS comum:
 ### Eliminação
 
 - `DELETE /cases/{id}` remove o caso, as entidades dependentes **e os arquivos do
-  disco** — não apenas a linha que os indexava.
+  disco** — não apenas a linha que os indexava. Verificado em
+  `test_uploads.py::test_deleting_the_case_removes_the_uploaded_file_from_disk`.
+- **Nome de arquivo não é gravado neste dispositivo.** "prontuario-maria-silva.pdf"
+  reidentifica tanto quanto o conteúdo. A lista de anexos é lida do servidor a
+  cada visita e vive só na memória da aba; não passa pelo store, que é persistido
+  em `localStorage`. Verificado em `tests/case-files-regression.test.mjs`.
 - A **trilha de auditoria sobrevive à exclusão** e registra contagens, nunca conteúdo.
   Verificado em `test_privacy.py::test_deleting_a_case_removes_its_content_and_keeps_the_audit_record`.
 
@@ -120,6 +139,8 @@ Declarado aqui para que ninguém opere o piloto supondo que exista:
 | Sem cálculo automático de prazo processual | a perita informa a data; o sistema lembra, não deduz do CPC |
 | Sem cifragem em trânsito verificada por teste | depende da implantação, não do código |
 | Sem registro de acesso de leitura | a auditoria cobre escrita e exclusão, não consulta |
+| Sem varredura antivírus nos anexos | um PDF malicioso vindo dos autos é armazenado como qualquer outro; a recusa por conteúdo verifica formato, não intenção |
+| Sem limite de anexos por perícia | só o limite de tamanho por arquivo (`MEDPER_MAX_UPLOAD_BYTES`) |
 
 ---
 
@@ -136,6 +157,8 @@ Vinculantes enquanto o piloto durar:
    `.env.example`. Custódia separada do backup.
 3. **Nada de dado real em captura de tela, relato de erro ou mensagem de suporte.**
    Quando for preciso ilustrar um problema, o caso é reconstruído sintético.
+   O nome do arquivo anexado conta como dado real: `prontuario-maria-silva.pdf`
+   identifica a pessoa antes de alguém abrir o arquivo.
 4. **Exclusão a pedido é executada pela rota**, não por edição direta no banco — só
    a rota apaga os arquivos do disco e registra a trilha.
 5. **Restauração de backup testada antes do primeiro caso real**, não depois.

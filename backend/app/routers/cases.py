@@ -92,12 +92,13 @@ def delete_case(case_id: str, db: Session = Depends(db_session), user: User = De
     """
     case = owned_case(db, user, case_id)
 
-    arquivos = db.scalars(select(StoredFile).where(StoredFile.case_id == case_id)).all()
-    apagados = 0
-    for arquivo in arquivos:
-        if delete_file(arquivo.storage_key):
-            apagados += 1
-        db.delete(arquivo)
+    # Só as chaves de armazenamento: o disco precisa ser varrido antes de a linha
+    # sumir, senão o blob cifrado fica órfão e "excluir a perícia" vira promessa
+    # não cumprida. A LINHA é apagada logo abaixo, pela varredura derivada — se
+    # também fosse apagada aqui pelo ORM, o DELETE em massa não encontraria nada
+    # para remover e o SQLAlchemy avisaria que esperava 1 linha e casou 0.
+    chaves = db.scalars(select(StoredFile.storage_key).where(StoredFile.case_id == case_id)).all()
+    apagados = sum(1 for chave in chaves if delete_file(chave))
 
     # As tabelas dependentes são DERIVADAS do metadata, não listadas à mão.
     # A lista escrita à mão já falhou uma vez nesta mesma função: `case_deadlines`
@@ -123,11 +124,11 @@ def delete_case(case_id: str, db: Session = Depends(db_session), user: User = De
 
     record(db, user, "delete", "case", case_id, {
         **contagens,
-        "files": len(arquivos),
+        "files": len(chaves),
         "files_removed_from_disk": apagados,
     })
     db.commit()
-    return {"deleted": case_id, **contagens, "files": len(arquivos)}
+    return {"deleted": case_id, **contagens, "files": len(chaves)}
 
 
 @router.post("/{case_id}/evidence", status_code=201)

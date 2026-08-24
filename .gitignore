@@ -48,3 +48,9 @@ __pycache__/
 .venv/
 venv/
 *.db
+
+# Anexos dos autos, cifrados. É onde o conteúdo de perícia real cai quando o
+# backend roda a partir do repositório — nunca pode ser versionado, nem no
+# formato cifrado: a chave é o único segredo, e um blob no histórico do git é
+# permanente mesmo depois de apagado do disco.
+backend/storage/

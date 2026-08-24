@@ -871,3 +871,26 @@ button:focus-visible{box-shadow:none}
 .appointment-panel.is-settled>details>summary span:last-child{margin-left:auto;
   font-size:11px;color:var(--mp-label-2)}
 .appointment-panel.is-settled .appointment-body{padding:14px}
+
+/* Documentos dos autos — lista de anexos do servidor.
+   O tamanho usa numeral tabular porque a coluna alinha entre linhas; o rótulo do
+   tipo vem do que o servidor DETECTOU nos bytes, não do que o navegador
+   declarou, então "PDF" aqui é afirmação verificada. */
+.case-files{display:grid;gap:12px}
+.case-files-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+/* `label` não herda o `display` de `.button`, que é escrito para `button`. */
+.case-files-actions>.button{display:inline-flex;align-items:center;cursor:pointer}
+.case-files-actions>.button.is-disabled{opacity:.55;pointer-events:none}
+/* A regra de formato pertence ao lado do controle — é sobre o que dá para
+   escolher. Limitada a 44ch, virava um bloco de três linhas irregulares ao lado
+   de um botão de uma linha; ocupando a largura restante, cabe em uma. */
+.case-files-actions .field-help{margin:0;flex:1;min-width:20ch}
+.case-files-list{list-style:none;margin:0;padding:0;border-radius:var(--mp-r-sm);
+  background:var(--mp-window);box-shadow:var(--mp-hairline);overflow:hidden}
+.case-file{display:flex;align-items:center;gap:14px;padding:9px 12px}
+.case-file+.case-file{box-shadow:inset 0 .5px 0 var(--mp-sep)}
+.case-file>div{display:grid;gap:2px;min-width:0}
+.case-file strong{font:500 13px/1.35 var(--mp-sans);color:var(--mp-ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.case-file span{font-size:11px;color:var(--mp-label-2);font-variant-numeric:tabular-nums}
+.case-file .button{margin-left:auto;flex:none}
