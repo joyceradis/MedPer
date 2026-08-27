@@ -1,4 +1,5 @@
 import { normalizeAppointment } from '../models/appointment.js';
+import { normalizeTemporaryDamages } from '../methodology/temporary-damages.js';
 const STORAGE_KEY = 'medper.state.v4';
 const LEGACY_KEYS = ['medper.state.v3', 'medper.state.v2', 'mlks.prototype.v1'];
 
@@ -163,6 +164,10 @@ function normalizeCase(caseData = {}, previousCase = null) {
   c.methodology.decision ||= {
     claim: '', favorable: '', contrary: '', alternatives: '', limits: '', certainty: '', admissibleConclusion: ''
   };
+  // Marcos temporais do dano temporário. Normalizado sempre — inclusive em caso
+  // legado, que abre com os marcos vazios em vez de quebrar a tela ao ler uma
+  // propriedade de `undefined`.
+  c.methodology.temporary = normalizeTemporaryDamages(c.methodology.temporary);
   synchronizePericialObject(c, previousCase);
   return c;
 }

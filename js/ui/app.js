@@ -7,6 +7,8 @@ import { getKnowledgeSource, getRelevantDivergences, getRelevantKnowledge, REFER
 import { normalizeWorkflowTab, stageForAuditField, WORKFLOW_STAGES } from './workflow.js';
 import { renderDashboardHome } from './dashboard-view.js';
 import { APPOINTMENT_REFERENCES, APPOINTMENT_STATUS, FEE_REGIMES, appointmentGaps, normalizeAppointment } from '../models/appointment.js';
+import { TEMPORARY_CAUTIONS, TEMPORARY_MILESTONES, summarizeTemporaryDamages } from '../methodology/temporary-damages.js';
+import { buildPericialIntegration } from '../methodology/pericial-integration.js';
 
 const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
 const uid=p=>`${p}_${crypto.randomUUID?.()||Date.now()}`;
@@ -146,7 +148,37 @@ function renderSummary(c){
 // sempre, em todo caso criado pela interface.
 function caseFilesMount(c){return`<div class="case-files" data-case-files data-case-id="${esc(c.sync?.remoteCaseId||'')}"><p class="notice">Anexar documento dos autos exige conexão com o servidor MedPer. Neste dispositivo, o caso continua salvo localmente.</p></div>`;}
 function renderDocuments(c){return`<div class="content-grid">${panel('Documentos dos autos','Prontuário, laudo anterior, CAT, boletim. Ficam cifrados no servidor e são apagados junto com a perícia.',caseFilesMount(c))}${panel('Fontes','Cadastre documentos e elementos examinados.',`<button class="button button-primary" data-add="evidence">Adicionar fonte</button><div class="item-list" style="margin-top:14px">${c.evidence.map(e=>`<div class="list-item"><h3>${esc(e.title)}</h3><p>${esc(e.description||'')}</p><div class="item-meta"><span>${esc(e.pages||'Sem páginas')}</span></div></div>`).join('')||'<p class="notice">Nenhuma fonte cadastrada.</p>'}</div>`)}${panel('Fatos médico-periciais','Cada fato deve indicar a fonte da qual foi extraído.',`<button class="button button-primary" data-add="fact">Adicionar fato</button><div class="item-list" style="margin-top:14px">${c.facts.map(f=>`<div class="list-item"><h3>${esc(f.text)}</h3><p>${esc(f.nature||'')}</p><div class="item-meta"><span>${esc(f.page||'Sem página')}</span></div></div>`).join('')||'<p class="notice">Nenhum fato extraído.</p>'}</div>`)}</div>`;}
-function renderTimeline(c){return panel('Cronologia','Organize eventos clínicos, documentais e processuais.',`<button class="button button-primary" data-add="event">Adicionar evento</button><div class="timeline" style="margin-top:14px">${c.events.map(e=>`<div class="timeline-item"><div class="timeline-date">${esc(e.date||'Data incerta')}<span class="timeline-kind">${esc(e.kind||'Evento')}</span></div><div><strong>${esc(e.title)}</strong><p>${esc(e.description||'')}</p></div></div>`).join('')||'<p class="notice">Nenhum evento registrado.</p>'}</div>`);}
+// Danos temporários — a etapa que a matriz interna manda reconstruir SEMPRE que
+// houve período lesional ou de tratamento, mesmo quando não restou sequela.
+//
+// A contagem é inclusiva e vem de `calculateTemporaryDays`, que já existia
+// testada e nunca tinha chegado a uma tela. Nada aqui corrige data: quando o
+// registro é internamente contraditório, a tela diz qual é a contradição e
+// devolve a decisão à perita.
+//
+// A coluna "Observação pericial" da matriz não se repete por marco: o campo
+// `temporaryEvidence` ("Fontes e limitações dos danos temporários"), em Exame e
+// método, já cobre a narrativa da reconstrução inteira.
+function temporaryPanel(c){
+  const sintese=summarizeTemporaryDamages(c.methodology?.temporary);
+  const linha=marco=>{
+    const registro=sintese.record[marco.id];
+    const dias=sintese.days[marco.id];
+    const fim=marco.span
+      ?`<input type="date" data-bind="methodology.temporary.${marco.id}.end" value="${esc(registro.end)}" aria-label="Data final — ${esc(marco.label)}">`
+      :'<span class="temporal-none" aria-hidden="true">—</span>';
+    const contagem=marco.span
+      ?`<span class="temporal-days">${dias===null?'':esc(plural(dias,'dia','dias'))}</span>`
+      :'<span class="temporal-none" aria-hidden="true">—</span>';
+    return`<div class="temporal-row"><div class="temporal-label"><strong>${esc(marco.label)}</strong>${marco.limit||marco.help?`<small>${esc(marco.limit||marco.help)}</small>`:''}</div><input type="date" data-bind="methodology.temporary.${marco.id}.start" value="${esc(registro.start)}" aria-label="Data inicial — ${esc(marco.label)}">${fim}${contagem}<input type="text" data-bind="methodology.temporary.${marco.id}.source" value="${esc(registro.source)}" placeholder="fonte" aria-label="Fonte — ${esc(marco.label)}"></div>`;
+  };
+  const alertas=sintese.issues.length
+    ?`<div class="notice notice-danger">${sintese.issues.map(item=>`<p>${esc(item)}</p>`).join('')}</div>`
+    :'';
+  return panel('Danos temporários','Reconstrução cronológica. Devida sempre que houve período lesional ou de tratamento, mesmo sem sequela.',
+    `<div class="temporal-grid"><div class="temporal-head"><span>Marco</span><span>Início</span><span>Fim</span><span>Dias</span><span>Fonte</span></div>${TEMPORARY_MILESTONES.map(linha).join('')}</div>${alertas}<ul class="temporal-cautions">${TEMPORARY_CAUTIONS.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`);
+}
+function renderTimeline(c){return`<div class="content-grid">${temporaryPanel(c)}${panel('Cronologia','Organize eventos clínicos, documentais e processuais.',`<button class="button button-primary" data-add="event">Adicionar evento</button><div class="timeline" style="margin-top:14px">${c.events.map(e=>`<div class="timeline-item"><div class="timeline-date">${esc(e.date||'Data incerta')}<span class="timeline-kind">${esc(e.kind||'Evento')}</span></div><div><strong>${esc(e.title)}</strong><p>${esc(e.description||'')}</p></div></div>`).join('')||'<p class="notice">Nenhum evento registrado.</p>'}</div>`)}</div>`;}
 function renderAipeReference(){
   return`<section class="aipe-workspace"><header><div><span class="eyebrow">AIPE</span><h3>Tabelas de referência</h3><p>Consulta aberta para apoiar a valoração. A categoria e a pontuação permanecem uma decisão médico-pericial fundamentada.</p></div></header><div class="aipe-table-wrap"><table class="aipe-table"><thead><tr><th>Critério</th><th>0</th><th>1</th><th>2</th></tr></thead><tbody>${AIPE_CRITERIA.map(row=>`<tr><th>${esc(row.label)}</th>${row.options.map(option=>`<td>${esc(option)}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="aipe-table-wrap"><table class="aipe-table aipe-category-table"><thead><tr><th>Categoria</th><th>Faixa</th><th>Graduação dentro da faixa</th></tr></thead><tbody>${AIPE_CATEGORIES.map(category=>`<tr><th>${esc(category.label)}</th><td><strong>${category.range[0]===category.range[1]?category.range[0]:`${category.range[0]}–${category.range[1]}`}</strong></td><td>${(AIPE_IMPACT_BANDS[category.id]||[]).map(([level,points])=>`<span class="aipe-band"><span>${esc(level)}</span><strong>${esc(points)}</strong></span>`).join('')||'<span class="field-help">Sem graduação adicional</span>'}</td></tr>`).join('')}</tbody></table></div><div class="aipe-contexts"><span class="field-help">Contextos complementares previstos</span>${AIPE_CONTEXTS.map(context=>`<span>${esc(context.label)}</span>`).join('')}</div><p class="aipe-source">Referência documental: Fernandes et al., Saúde Debate. 2016;40(108):118–130 — AIPE/Brasil, quadros 1–4, pp. 122–125. Eventuais divergências da publicação são mantidas explícitas na base técnica.</p></section>`;
 }
@@ -163,9 +195,47 @@ function renderMethod(c){
 }
 function renderHypotheses(c){const d=c.methodology.decision;return`<div class="content-grid">${panel('Hipóteses a testar','Explicite a proposição principal e as explicações concorrentes antes da conclusão.',`<div class="form-grid">${textarea('methodology.decision.claim','Proposição técnico-pericial',d.claim,'Qual hipótese está sendo testada?')}${textarea('methodology.decision.alternatives','Hipóteses alternativas',d.alternatives,'Quais outras explicações razoáveis precisam ser confrontadas?')}</div>`)}${panel('Necessidades de diligência','Registre o que ainda falta para responder ao objeto.',textarea('documentGaps','Lacunas e diligências necessárias',c.documentGaps,'Documentos, imagens, exame presencial, avaliação especializada ou esclarecimentos necessários.'))}${stageAudit(c,'hypotheses')}</div>`;}
 function renderReasoning(c){const d=c.methodology.decision;return panel('Fundamentação técnico-científica','Confronte os dados favoráveis e contrários, hipóteses alternativas e limitações.',`<div class="form-grid">${textarea('methodology.decision.favorable','Elementos favoráveis',d.favorable,'Dados que sustentam a proposição.')}${textarea('methodology.decision.contrary','Elementos contrários',d.contrary,'Dados que enfraquecem a proposição.')}${textarea('methodology.decision.alternatives','Hipóteses alternativas',d.alternatives,'Compare explicações concorrentes.')}${textarea('methodology.decision.limits','Limitações relevantes',d.limits,'Restrições documentais, temporais, técnicas ou de examinabilidade.')}</div>`);}
-function renderConclusion(c){const a=auditCase(c),d=c.methodology.decision;return`<div class="content-grid">${panel('Conclusão admissível','A linguagem deve ser proporcional à suficiência real dos elementos.',`<div class="form-grid">${textarea('methodology.decision.certainty','Grau de sustentação',d.certainty,'Suficiente, limitado, inconclusivo ou incompatível.')}${textarea('methodology.decision.admissibleConclusion','Conclusão',d.admissibleConclusion,'Responda ao objeto sem extrapolar os dados.')}</div>`)}${panel('Controle de suficiência','Bloqueios impedem conclusão definitiva; ressalvas limitam seu alcance.',`<div class="audit-list">${a.issues.map(i=>`<div class="audit-item ${i.severity}"><strong>${i.severity==='block'?'Bloqueio':'Ressalva'}:</strong> ${esc(i.text)}</div>`).join('')||'<p class="notice">Método apto para conclusão.</p>'}</div>`)}</div>`;}
+// Integração pericial — os eixos lado a lado, e nunca somados.
+//
+// Este painel é somente-leitura de propósito: ele não coleta nada, apenas
+// reorganiza por eixo o que a perita já declarou. A regra que ele existe para
+// cumprir é negativa — não há total, não há escore global, e um teste falha se
+// alguém acrescentar um.
+function integrationPanel(c){
+  const integracao=buildPericialIntegration(c);
+  const rotulo={recorded:'',pending:'Não registrado',absent:'Sem tela no MedPer'};
+  const eixo=item=>`<div class="axis-row is-${esc(item.status)}"><div class="axis-label"><strong>${esc(item.label)}</strong>${item.note?`<small>${esc(item.note)}</small>`:''}</div><div class="axis-value">${item.value?`<strong>${esc(item.value)}</strong>${item.unit?`<span>${esc(item.unit)}</span>`:''}`:`<span class="axis-empty">${esc(rotulo[item.status])}</span>`}</div></div>`;
+  const grupo=g=>{
+    const doGrupo=integracao.axes.filter(item=>item.group===g.id);
+    return doGrupo.length?`<section class="axis-group"><h3>${esc(g.label)}</h3>${doGrupo.map(eixo).join('')}</section>`:'';
+  };
+  const alertas=integracao.temporaryIssues.length
+    ?`<div class="notice notice-danger">${integracao.temporaryIssues.map(item=>`<p>${esc(item)}</p>`).join('')}</div>`
+    :'';
+  return panel('Integração pericial','Cada resultado pertence ao seu próprio eixo, com o próprio denominador.',
+    `${alertas}<div class="axis-stack">${integracao.groups.map(grupo).join('')}</div><div class="axis-blocks"><strong>Bloqueios metodológicos</strong><ul>${integracao.blocks.map(item=>`<li>${esc(item)}</li>`).join('')}</ul><p>${esc(integracao.globalScoreRule)}</p></div>`);
+}
+function renderConclusion(c){const a=auditCase(c),d=c.methodology.decision;return`<div class="content-grid">${integrationPanel(c)}${panel('Conclusão admissível','A linguagem deve ser proporcional à suficiência real dos elementos.',`<div class="form-grid">${textarea('methodology.decision.certainty','Grau de sustentação',d.certainty,'Suficiente, limitado, inconclusivo ou incompatível.')}${textarea('methodology.decision.admissibleConclusion','Conclusão',d.admissibleConclusion,'Responda ao objeto sem extrapolar os dados.')}</div>`)}${panel('Controle de suficiência','Bloqueios impedem conclusão definitiva; ressalvas limitam seu alcance.',`<div class="audit-list">${a.issues.map(i=>`<div class="audit-item ${i.severity}"><span><strong>${i.severity==='block'?'Bloqueio':'Ressalva'}:</strong> ${esc(i.text)}</span></div>`).join('')||'<p class="notice">Método apto para conclusão.</p>'}</div>`)}</div>`;}
 function renderQuestions(c){return panel('Quesitos','Responda diretamente e fundamente.',`<button class="button button-primary" data-add="question">Adicionar quesito</button><div class="question-list" style="margin-top:14px">${c.questions.map((q,i)=>`<div class="list-item"><h3>${esc(q.text)}</h3>${textarea(`questions.${i}.answer`,'Resposta',q.answer,'Resposta direta e fundamentada.')}</div>`).join('')||'<p class="notice">Nenhum quesito cadastrado.</p>'}</div>`);}
-function renderReport(c){const a=auditCase(c),g=c.methodology.general,d=c.methodology.decision;return panel('Documento final','Prévia derivada do estado estruturado.',`<div class="report-preview">${a.blocks?`<div class="notice notice-danger"><strong>Documento preliminar:</strong> há ${a.blocks} bloqueio(s) metodológico(s).</div>`:''}<h2>${esc(c.context?.role==='Perita do juízo'?'LAUDO MÉDICO-PERICIAL':'PARECER MÉDICO-PERICIAL')}</h2><h3>OBJETO</h3><p>${esc(c.scope||g.object||'Não registrado.')}</p><h3>METODOLOGIA</h3><p>${esc(g.methodChoice||'Não registrada.')}</p><h3>MATERIAL ANALISADO</h3><p>${esc(g.availableMaterial||'Não registrado.')}</p><h3>ANÁLISE TÉCNICO-CIENTÍFICA</h3><p>${esc(d.favorable||'Não registrada.')}</p><h3>HIPÓTESES ALTERNATIVAS</h3><p>${esc(d.alternatives||'Não registradas.')}</p><h3>LIMITAÇÕES</h3><p>${esc(d.limits||'Não registradas.')}</p><h3>GRAU DE SUSTENTAÇÃO</h3><p>${esc(d.certainty||'Não registrado.')}</p><h3>CONCLUSÃO</h3><p>${esc(d.admissibleConclusion||'Não formulada.')}</p><h3>QUESITOS</h3>${c.questions.map(q=>`<p><strong>${esc(q.text)}</strong><br>${esc(q.answer||'Sem resposta.')}</p>`).join('')||'<p>Não apresentados.</p>'}</div>`);}
+// O documento final lia SÓ `methodology.general` e `methodology.decision`. Todo
+// o trabalho do protocolo específico — danos temporários, eixos permanentes,
+// AIPE, POSAS, repercussões — ficava invisível no laudo: a perita preenchia oito
+// etapas e o documento não mostrava nenhuma delas. Era o pior lugar possível
+// para essa omissão, porque o laudo é a única peça que sai do sistema.
+//
+// Os eixos entram DECLARADOS E SEPARADOS, com o denominador de cada um, e o
+// documento afirma expressamente que não são somados — a garantia metodológica
+// precisa estar na peça que vai ao juízo, não apenas na tela de quem a redigiu.
+function reportAxes(c){
+  const integracao=buildPericialIntegration(c);
+  const secao=(titulo,ids)=>{
+    const linhas=integracao.axes.filter(item=>ids.includes(item.group)&&item.status==='recorded');
+    if(!linhas.length)return`<h3>${esc(titulo)}</h3><p>Não registrado.</p>`;
+    return`<h3>${esc(titulo)}</h3><ul class="report-axes">${linhas.map(item=>`<li><span>${esc(item.label)}</span><strong>${esc(item.value)}${item.unit?` ${esc(item.unit)}`:''}</strong></li>`).join('')}</ul>`;
+  };
+  return`${secao('DANOS TEMPORÁRIOS E CONSOLIDAÇÃO',['temporal'])}${secao('EIXOS PERMANENTES E REPERCUSSÕES',['permanent','repercussion'])}<p class="report-rule">${esc(integracao.globalScoreRule)}</p>`;
+}
+function renderReport(c){const a=auditCase(c),g=c.methodology.general,d=c.methodology.decision;return panel('Documento final','Prévia derivada do estado estruturado.',`<div class="report-preview">${a.blocks?`<div class="notice notice-danger"><strong>Documento preliminar:</strong> há ${a.blocks} bloqueio(s) metodológico(s).</div>`:''}<h2>${esc(c.context?.role==='Perita do juízo'?'LAUDO MÉDICO-PERICIAL':'PARECER MÉDICO-PERICIAL')}</h2><h3>OBJETO</h3><p>${esc(c.scope||g.object||'Não registrado.')}</p><h3>METODOLOGIA</h3><p>${esc(g.methodChoice||'Não registrada.')}</p><h3>MATERIAL ANALISADO</h3><p>${esc(g.availableMaterial||'Não registrado.')}</p><h3>ANÁLISE TÉCNICO-CIENTÍFICA</h3><p>${esc(d.favorable||'Não registrada.')}</p><h3>HIPÓTESES ALTERNATIVAS</h3><p>${esc(d.alternatives||'Não registradas.')}</p>${reportAxes(c)}<h3>LIMITAÇÕES</h3><p>${esc(d.limits||'Não registradas.')}</p><h3>GRAU DE SUSTENTAÇÃO</h3><p>${esc(d.certainty||'Não registrado.')}</p><h3>CONCLUSÃO</h3><p>${esc(d.admissibleConclusion||'Não formulada.')}</p><h3>QUESITOS</h3>${c.questions.map(q=>`<p><strong>${esc(q.text)}</strong><br>${esc(q.answer||'Sem resposta.')}</p>`).join('')||'<p>Não apresentados.</p>'}</div>`);}
 
 function demoCase(){return normalizeCase({id:uid('case'),title:'Caso demonstrativo · dano estético',reference:'DEMO-001',status:'Em preparação',context:{sphere:'Judicial',branch:'Cível',role:'Perita do juízo',matter:'Dano estético',mode:'Presencial e documental'},scope:'Apurar a existência de dano estético e sua extensão.',evidence:[{id:uid('ev'),title:'Prontuário inicial',pages:'43–51',description:'Atendimento inicial.'}],facts:[{id:uid('fact'),text:'Queimadura facial documentada.',nature:'Documentado',page:'47'}],events:[{id:uid('event'),date:'2019-03-14',kind:'Clínico',title:'Atendimento inicial'}]});}
 

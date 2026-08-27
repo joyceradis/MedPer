@@ -216,7 +216,10 @@ MedPer/
 │   │   ├── context-resolver.js
 │   │   ├── protocols.js
 │   │   ├── engine.js
-│   │   └── aipe.js
+│   │   ├── aipe.js            quadros 1–4 do AIPE/Brasil, fonte única
+│   │   ├── internal-damage-source.js  matriz interna v1.5 — aritmética
+│   │   ├── temporary-damages.js       marcos, contagem inclusiva, contradições
+│   │   └── pericial-integration.js    eixos lado a lado, sem escore global
 │   ├── knowledge/
 │   │   └── library.js          referências com autoridade e localizador
 │   ├── models/
