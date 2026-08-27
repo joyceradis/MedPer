@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import { buildPericialIntegration, INTEGRATION_BLOCKS, AXIS_STATUS } from '../js/methodology/pericial-integration.js';
 import { AIPE_CRITERIA, AIPE_CONTEXTS, AIPE_CONTEXT_OPTIONS, AIPE_PRIOR_EFFECT } from '../js/methodology/aipe.js';
 import { protocols } from '../js/methodology/protocols.js';
+import { auditCase } from '../js/methodology/engine.js';
 
 function test(name, fn) {
   try { fn(); console.log(`✓ ${name}`); }
@@ -167,6 +168,44 @@ test('o Quadro 4 cobre os cinco focos e o efeito sobre a avaliação anterior', 
   // A revisão é declarada pela perita; o Quadro 4 não a automatiza.
   assert.deepEqual(AIPE_PRIOR_EFFECT.options,
     ['Mantém', 'Justifica revisão para maior intensidade', 'Justifica revisão para menor intensidade']);
+});
+
+// ------------------------------------- a conferência que morreu na planilha
+
+const casoEstetico = extra => ({
+  context: { sphere: 'Judicial', branch: 'Cível', role: 'Perita do juízo', matter: 'Dano estético' },
+  methodology: { general: {}, decision: {}, guided: { aipeCategoryChoice: 'Bastante importante (25–30)', ...extra.guided },
+    specific: { ...extra.specific } }
+});
+const textos = caso => auditCase(caso).issues.map(i => i.text);
+
+test('pontuação fora da faixa da categoria vira ressalva, como a matriz previa', () => {
+  // A planilha faz esta conferência na célula D33 da aba "AIPE — Brasil", mas a
+  // fórmula usa REGEXEXTRACT: ao sair do Google Sheets virou
+  // __xludf.DUMMYFUNCTION e devolve "PREENCHER" para sempre. Em qualquer cópia
+  // .xlsx a salvaguarda está morta.
+  const fora = textos(casoEstetico({ specific: { aipeScore: '42' } }));
+  assert.ok(fora.some(t => /fora da faixa da categoria declarada/.test(t)), fora.join(' | '));
+  assert.ok(fora.some(t => /Bastante importante: 25–30/.test(t)), 'a ressalva mostra a faixa esperada');
+});
+
+test('pontuação dentro da faixa não gera ruído', () => {
+  assert.ok(!textos(casoEstetico({ specific: { aipeScore: '28' } }))
+    .some(t => /fora da faixa/.test(t)));
+});
+
+test('a conferência é ressalva e não bloqueio — quem reconcilia é a perita', () => {
+  const auditoria = auditCase(casoEstetico({ specific: { aipeScore: '42' } }));
+  const achado = auditoria.issues.find(i => /fora da faixa/.test(i.text));
+  assert.equal(achado.severity, 'warning', 'a palavra da matriz é REVER, não PARAR');
+  assert.equal(achado.field, 'aipeScore');
+});
+
+test('registro incompleto ou ilegível não inventa ressalva', () => {
+  for (const entrada of [{}, { specific: { aipeScore: 'x' } }, { guided: { aipeCategoryChoice: '' }, specific: { aipeScore: '42' } }]) {
+    assert.ok(!textos(casoEstetico(entrada)).some(t => /fora da faixa/.test(t)),
+      'sem os dois registros, não há discordância a apontar');
+  }
 });
 
 // ----------------------------------------------- o documento final

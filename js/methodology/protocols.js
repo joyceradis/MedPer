@@ -1,9 +1,8 @@
-import {AIPE_CATEGORIES,AIPE_CONTEXTS,AIPE_CONTEXT_OPTIONS,AIPE_CRITERIA,AIPE_IMPACT_BANDS,AIPE_PRIOR_EFFECT} from './aipe.js';
+import {AIPE_CATEGORIES,AIPE_CONTEXTS,AIPE_CONTEXT_OPTIONS,AIPE_CRITERIA,AIPE_IMPACT_BANDS,AIPE_PRIOR_EFFECT,aipeCategoryOption} from './aipe.js';
 import {bodilyDamageProtocol,getApplicableBodilyDamageProtocol} from './bodily-damage-protocol.js';
 const q=(id,label,options)=>({id,label,options});
 const n=(id,label,help)=>({id,label,help,type:'narrative'});
-const aipeRange=category=>category.range[0]===category.range[1]?`${category.range[0]}`:`${category.range[0]}–${category.range[1]}`;
-const AIPE_CATEGORY_OPTIONS=AIPE_CATEGORIES.map(category=>`${category.label} (${aipeRange(category)})`);
+const AIPE_CATEGORY_OPTIONS=AIPE_CATEGORIES.map(aipeCategoryOption);
 const AIPE_LEVEL_OPTIONS=[...new Set(Object.values(AIPE_IMPACT_BANDS).flatMap(bands=>bands.map(([level])=>level)))].concat('Não definido');
 export const generalMethod=[
 {id:'delimitation',title:'Delimitação',fields:[n('object','Objeto pericial','Registre exatamente o que deve ser esclarecido.'),n('controversies','Pontos controvertidos','Questões médicas efetivamente discutidas.'),n('methodChoice','Escolha metodológica','Justifique avaliação presencial, documental, indireta ou combinada.'),n('scopeLimits','Limites da atuação','Questões fora do objeto ou dependentes de outro especialista.')]},

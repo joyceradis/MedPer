@@ -37,6 +37,13 @@ export const AIPE_CATEGORIES = [
   { id:'extreme', label:'Importantíssimo', range:[31,50] }
 ];
 
+// O rótulo da categoria com a faixa, montado num lugar só: o formulário oferece
+// estas opções e a auditoria confere a pontuação contra elas. Duas cópias do
+// mesmo formato divergiriam no dia em que uma faixa mudasse.
+export const aipeCategoryRange = category =>
+  category.range[0] === category.range[1] ? `${category.range[0]}` : `${category.range[0]}–${category.range[1]}`;
+export const aipeCategoryOption = category => `${category.label} (${aipeCategoryRange(category)})`;
+
 export const AIPE_IMPACT_BANDS = {
   light:[['Muito pouco','1'],['Um pouco','2'],['Moderado','3–4'],['Severo','5'],['Muito intenso','6']],
   moderate:[['Muito pouco','7'],['Um pouco','8'],['Moderado','9–10'],['Severo','11'],['Muito intenso','12']],

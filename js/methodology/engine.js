@@ -1,4 +1,5 @@
 import { generalMethod, getApplicableProtocols, getProtocol } from './protocols.js';
+import { AIPE_CATEGORIES, aipeCategoryOption, aipeCategoryRange } from './aipe.js';
 import { getApplicableInstrumentIds, getContextualProtocolProfile, getMethodologyContext } from './context-resolver.js';
 
 const has=(o,k)=>{const v=o?.[k];return typeof v==='string'?Boolean(v.trim()):Boolean(v)};
@@ -8,6 +9,28 @@ const has=(o,k)=>{const v=o?.[k];return typeof v==='string'?Boolean(v.trim()):Bo
 // usa esse identificador para saber em qual tela a resposta é registrada, sem
 // precisar reinterpretar o significado metodológico da pendência.
 const issue=(severity,field,text)=>({severity,field,text});
+
+// Conferência de coerência entre a pontuação AIPE registrada e a categoria
+// declarada. A matriz interna tenta fazê-la na própria planilha (célula D33 da
+// aba "AIPE — Brasil"), mas a fórmula usa REGEXEXTRACT, que não existe no Excel:
+// ao sair do Google Sheets ela virou `__xludf.DUMMYFUNCTION` e passou a devolver
+// "PREENCHER" para sempre. Na prática a única salvaguarda automática contra
+// registrar pontuação fora da faixa está morta em qualquer cópia .xlsx.
+//
+// É RESSALVA, não bloqueio. O Quadro 4 pode justificar revisão da categoria, e a
+// palavra da própria matriz é "REVER": o sistema aponta a discordância entre os
+// dois registros e a reconciliação é decisão da perita. Nada é corrigido.
+function aipeCoherence(categoryChoice, rawScore){
+  const escolha=String(categoryChoice||'').trim();
+  const bruto=String(rawScore??'').trim();
+  if(!escolha||!bruto)return null;
+  const score=Number(bruto.replace(',','.'));
+  if(!Number.isFinite(score))return null;
+  const category=AIPE_CATEGORIES.find(item=>aipeCategoryOption(item)===escolha);
+  if(!category)return null;
+  if(score>=category.range[0]&&score<=category.range[1])return null;
+  return `Pontuação AIPE ${bruto} fora da faixa da categoria declarada (${category.label}: ${aipeCategoryRange(category)}). Reveja a pontuação ou a categoria.`;
+}
 
 export function auditCase(c){
   const issues=[];
@@ -38,6 +61,8 @@ export function auditCase(c){
     if(!has(s,'topography')||!has(s,'dimensions'))issues.push(issue('block','topography','Descrição morfológica incompleta: topografia e dimensões são necessárias.'));
     if(u.priorAppearanceStatus==='Não há informação')issues.push(issue('warning','priorAppearanceStatus','Ausência de estado estético anterior limita a comparação.'));
     if(instrumentIds.has('aipe')&&has(s,'aipeScore')&&!has(s,'aipeRationale'))issues.push(issue('warning','aipeRationale','AIPE registrada sem fundamentação descritiva.'));
+    const incoerencia=aipeCoherence(u.aipeCategoryChoice,s.aipeScore);
+    if(incoerencia)issues.push(issue('warning','aipeScore',incoerencia));
     if(!instrumentIds.has('aipe')&&has(s,'aipeScore'))issues.push(issue('warning','aipeScore','Há registro AIPE, mas o instrumento não está ativo para o contexto atual; confirme sua pertinência metodológica ou remova o registro da análise ativa.'));
   }
   if(protocolIds.has('capacity')){
