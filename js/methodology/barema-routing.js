@@ -7,9 +7,11 @@
 // O MedPer separa duas dimensões que a palavra "finalidade" confundia:
 //   context.purposeId  — O QUE se avalia (dano pessoal, previdenciária, …)
 //   regime de valoração — QUAL TABELA governa a quantificação funcional
-// Este módulo trata apenas da segunda. Nada aqui afirma equivalência entre as
-// duas listas; se elas se correspondem, e como, é decisão médico-pericial que
-// permanece em aberto na issue #56.
+// Este módulo trata apenas da segunda. A correspondência entre as duas listas
+// foi decidida pela Founder em 30/08/2026 (issue #56): as listas permanecem
+// distintas, com mapa validado entre elas — ver PURPOSE_REGIME_CORRESPONDENCE
+// em `instrument-guide.js`. A sugestão derivada do mapa nunca seleciona regime
+// automaticamente; a declaração continua sendo da perita.
 //
 // Este módulo não contém pontuação, fórmula de pontos nem conteúdo de escala
 // de nenhum barema. Cada trilho é só uma referência (id + rótulo + status do

@@ -203,6 +203,10 @@ MedPer/
 │   ├── main.js
 │   ├── auth/
 │   │   └── auth-controller.js
+│   ├── api/
+│   │   ├── auth-client.js
+│   │   ├── case-state-client.js
+│   │   └── case-files-client.js   documentos dos autos, cifrados no servidor
 │   ├── config/
 │   │   └── supabase-config.js
 │   ├── core/
@@ -212,7 +216,10 @@ MedPer/
 │   │   ├── context-resolver.js
 │   │   ├── protocols.js
 │   │   ├── engine.js
-│   │   └── aipe.js
+│   │   ├── aipe.js            quadros 1–4 do AIPE/Brasil, fonte única
+│   │   ├── internal-damage-source.js  matriz interna v1.5 — aritmética
+│   │   ├── temporary-damages.js       marcos, contagem inclusiva, contradições
+│   │   └── pericial-integration.js    eixos lado a lado, sem escore global
 │   ├── knowledge/
 │   │   └── library.js          referências com autoridade e localizador
 │   ├── models/
@@ -227,6 +234,7 @@ MedPer/
 │       ├── case-inspector.js
 │       ├── inspector-controller.js
 │       ├── method-context-controller.js
+│       ├── case-files-controller.js  anexos dos autos; nomes só em memória
 │       └── dialog-controller.js
 │
 ├── docs/

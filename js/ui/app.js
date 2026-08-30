@@ -6,8 +6,16 @@ import { AIPE_CATEGORIES, AIPE_CONTEXTS, AIPE_CRITERIA, AIPE_IMPACT_BANDS } from
 import { getKnowledgeSource, getRelevantDivergences, getRelevantKnowledge, REFERENCE_CLASSES } from '../knowledge/library.js';
 import { normalizeWorkflowTab, stageForAuditField, WORKFLOW_STAGES } from './workflow.js';
 import { renderDashboardHome } from './dashboard-view.js';
+import { APPOINTMENT_REFERENCES, APPOINTMENT_STATUS, FEE_REGIMES, appointmentGaps, normalizeAppointment } from '../models/appointment.js';
+import { TEMPORARY_CAUTIONS, TEMPORARY_MILESTONES, summarizeTemporaryDamages } from '../methodology/temporary-damages.js';
+import { buildPericialIntegration } from '../methodology/pericial-integration.js';
+import { INSTRUMENT_GUIDE, suggestedRegimeForPurpose } from '../methodology/instrument-guide.js';
+import { FUNCTIONAL_CAUTIONS, FUNCTIONAL_ROWS, INVERSE_CAUTION, summarizeFunctionalCalc } from '../methodology/functional-calc.js';
+import { VALUATION_REGIME_OPTIONS, normalizeRegimeId, resolveFunctionalBaremaTrack } from '../methodology/barema-routing.js';
+import { evaluatePersonalDamageCase } from '../methodology/personal-damage.js';
+import { getMethodologyContext } from '../methodology/context-resolver.js';
 
-const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
+const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 const uid=p=>`${p}_${crypto.randomUUID?.()||Date.now()}`;
 const tabs=WORKFLOW_STAGES.map(({id,label})=>[id,label]);
 const branches={Judicial:['Cível','Trabalhista','Previdenciário','Criminal','Família','Fazenda Pública','Justiça Federal','Outro'],Administrativa:['Junta médica','Servidor público','Processo disciplinar','Concurso ou ingresso','Avaliação funcional','Outro'],Previdenciária:['INSS / RGPS','Regime próprio','Benefício assistencial','Revisão de benefício','Outro'],'Trabalhista e ocupacional':['Reclamação trabalhista','Acidente de trabalho','Doença ocupacional','Capacidade laborativa','Outro'],Securitária:['Seguro de pessoas','Acidente pessoal','Invalidez','Cobertura contratual','Outro'],'Ético-profissional':['Processo ético-profissional','Análise de conduta','Responsabilidade médica','Outro'],'Extrajudicial / particular':['Parecer pré-processual','Assistência técnica','Avaliação de dano corporal','Consultoria','Outro']};
@@ -41,7 +49,11 @@ const viewState={auditAheadOpen:false};
 // respondida. Nada é reescrito automaticamente; a reclassificação é decisão dela.
 function choices(path,label,value,options){const legacy=value&&!options.includes(value);const list=legacy?[...options,value]:options;return`<fieldset class="guided-question"><legend>${esc(label)}</legend><div class="guided-choices">${list.map(o=>`<label class="guided-choice${legacy&&o===value?' is-legacy':''}"><input type="radio" name="${esc(path)}" data-bind="${esc(path)}" value="${esc(o)}" ${value===o?'checked':''}><span>${esc(o)}${legacy&&o===value?'<small>registro anterior — fora da escala atual</small>':''}</span></label>`).join('')}</div></fieldset>`;}
 
-function renderHome(state,filter='active'){return renderDashboardHome(state,filter);}
+// O nome exibido vem da sessão. Sem sessão remota (modo local) não há nome, e a
+// interface não deve inventar um — muito menos o de outra pessoa.
+function renderHome(state,filter='active',conta={}){
+  return renderDashboardHome(state,filter,{displayName:conta.name||'',accountEmail:conta.email||''});
+}
 
 function sidebar(c,tab){return`<aside class="case-sidebar"><button class="back-link" data-home>← Todos os casos</button><div class="case-identity"><span class="eyebrow">${esc(c.context?.sphere||'Perícia')}</span><h2>${esc(c.title)}</h2><p>${esc(c.reference||'Sem referência')}</p></div><nav class="case-nav">${tabs.map(([id,label])=>`<button data-tab="${id}" class="${tab===id?'is-active':''}"><span>${label}</span></button>`).join('')}</nav></aside>`;}
 function caseHeader(c,tab){return`<header class="case-head"><div><span class="eyebrow">${esc(c.context?.role||'Atuação médico-pericial')}</span><h1 class="case-title">${esc(tabs.find(x=>x[0]===tab)?.[1]||'Caso')}</h1><div class="meta-line"><span>${esc(c.context?.branch||'')}</span><span>${esc(c.context?.matter||'')}</span><span>${esc(c.context?.mode||'')}</span></div></div><button class="button button-secondary button-small" data-export>Exportar JSON</button></header>`;}
@@ -91,35 +103,216 @@ function stageAudit(c,stageId,extraCounts=''){
   const other=elsewhere.length?`<details class="audit-ahead"${viewState.auditAheadOpen?' open':''}><summary>${plural(elsewhere.length,'pendência registrada','pendências registradas')} em outras etapas</summary><div class="audit-list">${auditItems(elsewhere)}</div></details>`:'';
   return panel('Situação metodológica','Bloqueios impedem conclusão definitiva; ressalvas limitam seu alcance.',`${totals}${current}${other}`);
 }
+
+// O encargo pericial vem antes do objeto: o juízo nomeia, a perita toma ciência e
+// decide aceitar ou escusar-se. O produto começava depois disso, com o caso já
+// aceito, e por isso não tinha onde registrar a decisão nem o regime de honorários.
+//
+// O painel é proeminente enquanto há decisão pendente e recolhe-se depois — quando
+// o encargo está aceito e completo, vira uma linha que se abre se ela quiser.
+// Nenhum prazo é calculado aqui: a referência legal aparece ao lado do campo e a
+// contagem é dela.
+function appointmentPanel(c){
+  const a=normalizeAppointment(c.appointment);
+  const faltas=appointmentGaps(c);
+  const estado=APPOINTMENT_STATUS[a.status];
+  const opcoes=Object.values(APPOINTMENT_STATUS).map(op=>`<label class="guided-choice"><input type="radio" name="appointment.status" data-bind="appointment.status" value="${esc(op.id)}"${a.status===op.id?' checked':''}><span>${esc(op.label)}<small>${esc(op.hint)}</small></span></label>`).join('');
+  const regimes=FEE_REGIMES.map(r=>`<option value="${esc(r.id)}"${a.feeRegimeId===r.id?' selected':''}>${esc(r.label)}</option>`).join('');
+  const refs=APPOINTMENT_REFERENCES.map(r=>`<li><strong>${esc(r.label)}</strong> <span>${esc(r.basis)}</span><small>${esc(r.note)}</small></li>`).join('');
+
+  const corpo=`<fieldset class="guided-question"><legend>Situação do encargo</legend><div class="guided-choices">${opcoes}</div></fieldset>
+    <div class="appointment-grid">
+      <label class="field"><span>Ciência da nomeação</span><input type="date" data-bind="appointment.noticedAt" value="${esc(a.noticedAt)}"></label>
+      <label class="field"><span>Data da decisão</span><input type="date" data-bind="appointment.decidedAt" value="${esc(a.decidedAt)}"></label>
+      <label class="field"><span>Regime de honorários</span><select data-bind="appointment.feeRegimeId"><option value="">A declarar</option>${regimes}</select></label>
+      <label class="field"><span>Honorários propostos</span><input type="text" data-bind="appointment.proposedFee" value="${esc(a.proposedFee)}" placeholder="valor e forma, como consta da petição"></label>
+    </div>
+    ${a.status==='declined'?`<label class="field"><span>Motivo da escusa</span><textarea data-bind="appointment.declineReason" placeholder="Fundamento da escusa, como apresentado ao juízo.">${esc(a.declineReason)}</textarea></label>`:''}
+    <details class="appointment-refs"><summary>Referências de prazo</summary><ul>${refs}</ul><p>O sistema não conta esses prazos: a contagem depende da forma da intimação e do rito do seu caso. Registre a data em Agenda e prazos para ser lembrada.</p></details>`;
+
+  const resolvido=a.status==='accepted'&&!faltas.length;
+  if(resolvido)return`<section class="panel panel-full appointment-panel is-settled"><details><summary><span class="eyebrow">Encargo</span><strong>${esc(estado.label)}</strong>${a.feeRegimeId?`<span>${esc((FEE_REGIMES.find(r=>r.id===a.feeRegimeId)||{}).label||'')}</span>`:''}</summary><div class="appointment-body">${corpo}</div></details></section>`;
+
+  const aviso=faltas.length?`<p class="appointment-gaps">Falta declarar: ${esc(faltas.join(' · '))}</p>`:'';
+  return`<section class="panel panel-full appointment-panel"><div class="panel-head"><div><h2>Encargo pericial</h2><p>O ciclo começa na nomeação. Registre a ciência e a decisão antes do trabalho.</p></div></div>${aviso}<div class="appointment-body">${corpo}</div></section>`;
+}
+// Regime de valoração — QUAL tabela governa a quantificação funcional.
+//
+// Pergunta opcional que nunca trava a etapa (decisão registrada na issue #56):
+// classificar de antemão quais casos exigem barema é decisão médico-pericial, e
+// a pergunta aberta custa menos que uma lista que envelhece. O id é persistido,
+// nunca o rótulo; valor legado fora da escala aparece como registro anterior em
+// vez de ser convertido ou apagado.
+//
+// A sugestão vem do mapa validado pela Founder (30/08/2026) entre finalidade e
+// regime — e é só sugestão: nada aqui seleciona pela perita.
+function valuationRegimePanel(c){
+  const bruto=String(c.valuationRegime||'').trim();
+  const regimeId=normalizeRegimeId(bruto);
+  const legado=Boolean(bruto)&&!regimeId;
+  const opcoes=VALUATION_REGIME_OPTIONS.map(op=>`<option value="${esc(op.id)}"${regimeId===op.id?' selected':''}>${esc(op.label)}</option>`).join('');
+  const opcaoLegada=legado?`<option value="${esc(bruto)}" selected>${esc(bruto)} — registro anterior, fora da escala atual</option>`:'';
+
+  const sugestao=(!bruto&&suggestedRegimeForPurpose(getMethodologyContext(c).purposeId))||null;
+  const rotuloSugerido=sugestao?VALUATION_REGIME_OPTIONS.find(op=>op.id===sugestao.regimeId)?.label||sugestao.regimeId:'';
+  const linhaSugestao=sugestao?`<p class="regime-suggestion"><strong>Sugestão pela finalidade do caso:</strong> ${esc(rotuloSugerido)}. <span>${esc(sugestao.rationale)}</span></p>`:'';
+
+  const trilho=regimeId?resolveFunctionalBaremaTrack({regimeId}):null;
+  const linhaTrilho=trilho?`<div class="regime-track"><p>${esc(trilho.rationale)}</p>${trilho.principal?`<small><strong>${esc(trilho.principal.label)}</strong> — ${esc(trilho.principal.note)}</small>`:''}</div>`:'';
+
+  return panel('Regime de valoração','Qual tabela governa a quantificação funcional. Opcional: nunca trava a etapa, e a etiologia do trauma nunca a seleciona.',
+    `<label class="field"><span>Regime declarado</span><select data-bind="valuationRegime"><option value=""${!bruto?' selected':''}>A declarar</option>${opcaoLegada}${opcoes}</select></label>${linhaSugestao}${linhaTrilho}`);
+}
 function renderSummary(c){
   const counts=` · ${plural(c.evidence.length,'fonte','fontes')} · ${plural(c.facts.length,'fato','fatos')}`;
-  return`<div class="content-grid">${panel('Objeto pericial','A pergunta técnica que o laudo precisa responder. Todo o restante do caso é medido por ela.',bareField('scope','Objeto pericial',c.scope,'Transcreva ou sintetize o objeto nos limites da nomeação ou contratação.'))}${panel('Enquadramento','Contexto que define o método e o documento final.',frameStrip(c))}${stageAudit(c,'delimitation',counts)}</div>`;
+  return`<div class="content-grid">${appointmentPanel(c)}${panel('Objeto pericial','A pergunta técnica que o laudo precisa responder. Todo o restante do caso é medido por ela.',bareField('scope','Objeto pericial',c.scope,'Transcreva ou sintetize o objeto nos limites da nomeação ou contratação.'))}${panel('Enquadramento','Contexto que define o método e o documento final.',frameStrip(c))}${valuationRegimePanel(c)}${stageAudit(c,'delimitation',counts)}</div>`;
 }
-function renderDocuments(c){return`<div class="content-grid">${panel('Fontes','Cadastre documentos e elementos examinados.',`<button class="button button-primary" data-add="evidence">Adicionar fonte</button><div class="item-list" style="margin-top:14px">${c.evidence.map(e=>`<div class="list-item"><h3>${esc(e.title)}</h3><p>${esc(e.description||'')}</p><div class="item-meta"><span>${esc(e.pages||'Sem páginas')}</span></div></div>`).join('')||'<p class="notice">Nenhuma fonte cadastrada.</p>'}</div>`)}${panel('Fatos médico-periciais','Cada fato deve indicar a fonte da qual foi extraído.',`<button class="button button-primary" data-add="fact">Adicionar fato</button><div class="item-list" style="margin-top:14px">${c.facts.map(f=>`<div class="list-item"><h3>${esc(f.text)}</h3><p>${esc(f.nature||'')}</p><div class="item-meta"><span>${esc(f.page||'Sem página')}</span></div></div>`).join('')||'<p class="notice">Nenhum fato extraído.</p>'}</div>`)}</div>`;}
-function renderTimeline(c){return panel('Cronologia','Organize eventos clínicos, documentais e processuais.',`<button class="button button-primary" data-add="event">Adicionar evento</button><div class="timeline" style="margin-top:14px">${c.events.map(e=>`<div class="timeline-item"><div class="timeline-date">${esc(e.date||'Data incerta')}<span class="timeline-kind">${esc(e.kind||'Evento')}</span></div><div><strong>${esc(e.title)}</strong><p>${esc(e.description||'')}</p></div></div>`).join('')||'<p class="notice">Nenhum evento registrado.</p>'}</div>`);}
+// Documentos dos autos ficam no servidor, cifrados, e não no store: nome de
+// arquivo reidentifica o periciado e o store é persistido em armazenamento local. O que
+// esta função rende é só o ponto de montagem — quem preenche é
+// `js/ui/case-files-controller.js`, quando há conexão. Sem conexão, o texto de
+// dentro permanece e diz a verdade, em vez de oferecer um botão que não envia.
+//
+// O id publicado é o REMOTO (`sync.remoteCaseId`), nunca `c.id`. O caso nasce
+// local com um id gerado aqui e só ganha o id do servidor quando sincroniza —
+// são valores diferentes. Publicar o local mandaria toda requisição de anexo
+// para uma perícia que o servidor não conhece, e a etapa responderia 404 para
+// sempre, em todo caso criado pela interface.
+function caseFilesMount(c){return`<div class="case-files" data-case-files data-case-id="${esc(c.sync?.remoteCaseId||'')}"><p class="notice">Anexar documento dos autos exige conexão com o servidor MedPer. Neste dispositivo, o caso continua salvo localmente.</p></div>`;}
+function renderDocuments(c){return`<div class="content-grid">${panel('Documentos dos autos','Prontuário, laudo anterior, CAT, boletim. Ficam cifrados no servidor e são apagados junto com a perícia.',caseFilesMount(c))}${panel('Fontes','Cadastre documentos e elementos examinados.',`<button class="button button-primary" data-add="evidence">Adicionar fonte</button><div class="item-list" style="margin-top:14px">${c.evidence.map(e=>`<div class="list-item"><h3>${esc(e.title)}</h3><p>${esc(e.description||'')}</p><div class="item-meta"><span>${esc(e.pages||'Sem páginas')}</span></div></div>`).join('')||'<p class="notice">Nenhuma fonte cadastrada.</p>'}</div>`)}${panel('Fatos médico-periciais','Cada fato deve indicar a fonte da qual foi extraído.',`<button class="button button-primary" data-add="fact">Adicionar fato</button><div class="item-list" style="margin-top:14px">${c.facts.map(f=>`<div class="list-item"><h3>${esc(f.text)}</h3><p>${esc(f.nature||'')}</p><div class="item-meta"><span>${esc(f.page||'Sem página')}</span></div></div>`).join('')||'<p class="notice">Nenhum fato extraído.</p>'}</div>`)}</div>`;}
+// Danos temporários — a etapa que a matriz interna manda reconstruir SEMPRE que
+// houve período lesional ou de tratamento, mesmo quando não restou sequela.
+//
+// A contagem é inclusiva e vem de `calculateTemporaryDays`, que já existia
+// testada e nunca tinha chegado a uma tela. Nada aqui corrige data: quando o
+// registro é internamente contraditório, a tela diz qual é a contradição e
+// devolve a decisão à perita.
+//
+// A coluna "Observação pericial" da matriz não se repete por marco: o campo
+// `temporaryEvidence` ("Fontes e limitações dos danos temporários"), em Exame e
+// método, já cobre a narrativa da reconstrução inteira.
+function temporaryPanel(c){
+  const sintese=summarizeTemporaryDamages(c.methodology?.temporary);
+  const linha=marco=>{
+    const registro=sintese.record[marco.id];
+    const dias=sintese.days[marco.id];
+    const fim=marco.span
+      ?`<input type="date" data-bind="methodology.temporary.${marco.id}.end" value="${esc(registro.end)}" aria-label="Data final — ${esc(marco.label)}">`
+      :'<span class="temporal-none" aria-hidden="true">—</span>';
+    const contagem=marco.span
+      ?`<span class="temporal-days">${dias===null?'':esc(plural(dias,'dia','dias'))}</span>`
+      :'<span class="temporal-none" aria-hidden="true">—</span>';
+    return`<div class="temporal-row"><div class="temporal-label"><strong>${esc(marco.label)}</strong>${marco.limit||marco.help?`<small>${esc(marco.limit||marco.help)}</small>`:''}</div><input type="date" data-bind="methodology.temporary.${marco.id}.start" value="${esc(registro.start)}" aria-label="Data inicial — ${esc(marco.label)}">${fim}${contagem}<input type="text" data-bind="methodology.temporary.${marco.id}.source" value="${esc(registro.source)}" placeholder="fonte" aria-label="Fonte — ${esc(marco.label)}"></div>`;
+  };
+  const alertas=sintese.issues.length
+    ?`<div class="notice notice-danger">${sintese.issues.map(item=>`<p>${esc(item)}</p>`).join('')}</div>`
+    :'';
+  return panel('Danos temporários','Reconstrução cronológica. Devida sempre que houve período lesional ou de tratamento, mesmo sem sequela.',
+    `<div class="temporal-grid"><div class="temporal-head"><span>Marco</span><span>Início</span><span>Fim</span><span>Dias</span><span>Fonte</span></div>${TEMPORARY_MILESTONES.map(linha).join('')}</div>${alertas}<ul class="temporal-cautions">${TEMPORARY_CAUTIONS.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`);
+}
+function renderTimeline(c){return`<div class="content-grid">${temporaryPanel(c)}${panel('Cronologia','Organize eventos clínicos, documentais e processuais.',`<button class="button button-primary" data-add="event">Adicionar evento</button><div class="timeline" style="margin-top:14px">${c.events.map(e=>`<div class="timeline-item"><div class="timeline-date">${esc(e.date||'Data incerta')}<span class="timeline-kind">${esc(e.kind||'Evento')}</span></div><div><strong>${esc(e.title)}</strong><p>${esc(e.description||'')}</p></div></div>`).join('')||'<p class="notice">Nenhum evento registrado.</p>'}</div>`)}</div>`;}
 function renderAipeReference(){
   return`<section class="aipe-workspace"><header><div><span class="eyebrow">AIPE</span><h3>Tabelas de referência</h3><p>Consulta aberta para apoiar a valoração. A categoria e a pontuação permanecem uma decisão médico-pericial fundamentada.</p></div></header><div class="aipe-table-wrap"><table class="aipe-table"><thead><tr><th>Critério</th><th>0</th><th>1</th><th>2</th></tr></thead><tbody>${AIPE_CRITERIA.map(row=>`<tr><th>${esc(row.label)}</th>${row.options.map(option=>`<td>${esc(option)}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="aipe-table-wrap"><table class="aipe-table aipe-category-table"><thead><tr><th>Categoria</th><th>Faixa</th><th>Graduação dentro da faixa</th></tr></thead><tbody>${AIPE_CATEGORIES.map(category=>`<tr><th>${esc(category.label)}</th><td><strong>${category.range[0]===category.range[1]?category.range[0]:`${category.range[0]}–${category.range[1]}`}</strong></td><td>${(AIPE_IMPACT_BANDS[category.id]||[]).map(([level,points])=>`<span class="aipe-band"><span>${esc(level)}</span><strong>${esc(points)}</strong></span>`).join('')||'<span class="field-help">Sem graduação adicional</span>'}</td></tr>`).join('')}</tbody></table></div><div class="aipe-contexts"><span class="field-help">Contextos complementares previstos</span>${AIPE_CONTEXTS.map(context=>`<span>${esc(context.label)}</span>`).join('')}</div><p class="aipe-source">Referência documental: Fernandes et al., Saúde Debate. 2016;40(108):118–130 — AIPE/Brasil, quadros 1–4, pp. 122–125. Eventuais divergências da publicação são mantidas explícitas na base técnica.</p></section>`;
+}
+// Guia de instrumentos — referência de consulta na etapa de método.
+//
+// Diretriz da Founder (30/08/2026, issue #56): "ninguém grava qual tabela usar
+// e para qual área ela serve" — então fica gravado aqui, ao lado de onde a
+// escolha acontece. Cada entrada diz o que o instrumento mede, quando é
+// adequado e o que NÃO faz, com a fonte. Somente leitura: auxilia a escolha,
+// não a executa.
+function instrumentGuidePanel(){
+  const entradas=Object.values(INSTRUMENT_GUIDE).map(item=>`<details class="guide-entry"><summary><strong>${esc(item.label)}</strong><span>${esc(item.construct)}</span></summary><div class="guide-entry-body"><p><strong>Quando é adequado:</strong> ${esc(item.whenAdequate)}</p><ul>${item.boundaries.map(limite=>`<li>${esc(limite)}</li>`).join('')}</ul><small>${esc(item.basis)}</small></div></details>`).join('');
+  return panel('Qual instrumento para quê','Cada tabela serve a um constructo. A escolha é sua; a justificativa de cada uma fica registrada aqui.',`<div class="guide-stack">${entradas}</div>`);
 }
 function protocolSelector(c,applicable){
   const primaryId=getProtocol(c.context?.matter).id,applicableIds=new Set(applicable.map(p=>p.id)),suggestedIds=new Set(getSuggestedProtocolIds(c));
   return`<div class="protocol-selector">${Object.values(protocols).map(protocol=>{const selected=applicableIds.has(protocol.id),primary=protocol.id===primaryId,suggested=suggestedIds.has(protocol.id);return`<button type="button" class="protocol-chip ${selected?'is-active':''}" data-protocol-toggle="${esc(protocol.id)}" ${primary?'disabled':''}><span>${esc(protocol.title)}</span><small>${primary?'Principal':suggested?'Sugerido':selected?'Adicionado':'Adicionar'}</small></button>`;}).join('')}</div>`;
 }
+// Calculadora de Balthazard — etapa 2/6 da matriz interna (versão 1.5).
+//
+// A aritmética já existia testada em `internal-damage-source.js`; esta é a
+// tela. Ela COMBINA percentuais que a perita fixou pelo referencial — nunca os
+// cria — e o resultado não é transportado para nenhum campo de valoração: o
+// laudo recebe o que a perita decidir escrever nele. A soma simples aparece ao
+// lado, como na matriz, para mostrar por que a capacidade restante existe.
+//
+// Só abre com permanentes valoráveis: antes da consolidação, a própria tela
+// diz o porquê em vez de oferecer um cálculo que os gates ainda bloqueiam.
+function balthazardPanel(c){
+  const gate=evaluatePersonalDamageCase(c);
+  if(!gate.canValuePermanent){
+    return panel('Calculadora de Balthazard','Capacidade restante e forma inversa — somente quando o referencial aplicável autorizar a combinação.',
+      `<p class="notice">Permanentes ainda não são valoráveis neste caso: ${esc(gate.nextStep||'complete objeto, dano, nexo e consolidação nos gates.')}</p>`);
+  }
+  const sintese=summarizeFunctionalCalc(c.methodology?.functionalCalc);
+  const linha=(id,indice)=>{
+    const registro=sintese.record.rows[id];
+    const calculada=sintese.rows.find(row=>row.id===id);
+    return`<div class="balt-row"><span class="balt-index">${indice+1}</span><input type="text" data-bind="methodology.functionalCalc.rows.${id}.description" value="${esc(registro.description)}" placeholder="sequela" aria-label="Descrição — sequela ${indice+1}"><input type="text" class="balt-pct" data-bind="methodology.functionalCalc.rows.${id}.percent" value="${esc(registro.percent)}" placeholder="%" aria-label="Percentual — sequela ${indice+1}"><span class="balt-impact">${calculada?esc(`${calculada.impactPercent}%`):''}</span><input type="text" data-bind="methodology.functionalCalc.rows.${id}.source" value="${esc(registro.source)}" placeholder="fonte / item / página" aria-label="Fonte — sequela ${indice+1}"></div>`;
+  };
+  const alertas=sintese.issues.length?`<div class="notice notice-danger">${sintese.issues.map(item=>`<p>${esc(item)}</p>`).join('')}</div>`:'';
+  const resultado=sintese.combinedDeficitPercent!==null
+    ?`<div class="balt-result"><div><span>Déficit consolidado (Balthazard)</span><strong>${esc(String(sintese.combinedDeficitPercent))}%</strong></div><div><span>Capacidade restante</span><strong>${esc(String(sintese.remainingCapacityPercent))}%</strong></div><div class="balt-simple"><span>Soma simples, para comparação</span><strong>${esc(String(sintese.simpleSumPercent))}%</strong></div></div>`
+    :'';
+  const inversa=`<div class="balt-inverse"><h3>Forma inversa — estado anterior quantificável</h3><div class="balt-inverse-grid"><label class="field"><span>Déficit funcional global atual (F)</span><input type="text" data-bind="methodology.functionalCalc.prior.current" value="${esc(sintese.record.prior.current)}" placeholder="%"></label><label class="field"><span>Estado anterior quantificável (Ea)</span><input type="text" data-bind="methodology.functionalCalc.prior.prior" value="${esc(sintese.record.prior.prior)}" placeholder="%"></label><div class="balt-inverse-out"><span>Incremento atribuível ao evento (D)</span><strong>${sintese.inverseIncrementPercent!==null?esc(`${sintese.inverseIncrementPercent}%`):'—'}</strong></div></div><p class="field-help">${esc(INVERSE_CAUTION)}</p></div>`;
+  return panel('Calculadora de Balthazard','Combinação pela capacidade restante. Percentuais são os que você fixou pelo referencial — a calculadora combina, nunca cria.',
+    `<div class="balt-grid"><div class="balt-head"><span>Seq.</span><span>Descrição</span><span>%</span><span>Impacto real</span><span>Fonte</span></div>${FUNCTIONAL_ROWS.map(linha).join('')}</div>${alertas}${resultado}${inversa}<ul class="temporal-cautions">${FUNCTIONAL_CAUTIONS.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`);
+}
 function renderMethod(c){
   const applicable=getApplicableProtocols(c),done=completion(c);
   const general=generalMethod.map((phase,i)=>panel(phase.title,'Método geral obrigatório.',`<div class="form-grid">${phase.fields.map(f=>textarea(`methodology.general.${f.id}`,f.label,c.methodology.general[f.id],f.help)).join('')}</div><p class="notice">${done.general[i]?'Etapa concluída':'Etapa em andamento'}</p>`)).join('');
   const selector=panel('Métodos aplicáveis','O MedPer sugere pelo contexto e pelo objeto. Você mantém o controle sobre os módulos adicionais.',protocolSelector(c,applicable));
-  const specific=applicable.map(p=>panel(`Protocolo · ${p.title}`,p.id==='aesthetic'?'AIPE disponível neste caso.':'Somente as etapas pertinentes a este objeto ficam abertas.',`${p.id==='aesthetic'?renderAipeReference():''}<div class="guided-methodology">${p.steps.map((s,i)=>`<details class="guided-step" ${i===0?'open':''}><summary><span>${esc(s.title)}</span><small>${done.specificByProtocol?.[p.id]?.[i]?'Concluído':'Em andamento'}</small></summary><div class="guided-step-body">${s.fields.map(f=>f.type==='narrative'?textarea(`methodology.specific.${f.id}`,f.label,c.methodology.specific[f.id],f.help):choices(`methodology.guided.${f.id}`,f.label,c.methodology.guided[f.id],f.options)).join('')}</div></details>`).join('')}</div>`)).join('');
-  return`<div class="methodology-stack">${stageAudit(c,'method')}${general}${selector}${specific}</div>`;
+  const specific=applicable.map(p=>panel(`Protocolo · ${p.title}`,p.id==='aesthetic'?'AIPE disponível neste caso.':'Somente as etapas pertinentes a este objeto ficam abertas.',`${p.id==='aesthetic'?renderAipeReference():''}${p.id==='bodily_damage'?balthazardPanel(c):''}<div class="guided-methodology">${p.steps.map((s,i)=>`<details class="guided-step" ${i===0?'open':''}><summary><span>${esc(s.title)}</span><small>${done.specificByProtocol?.[p.id]?.[i]?'Concluído':'Em andamento'}</small></summary><div class="guided-step-body">${s.fields.map(f=>f.type==='narrative'?textarea(`methodology.specific.${f.id}`,f.label,c.methodology.specific[f.id],f.help):choices(`methodology.guided.${f.id}`,f.label,c.methodology.guided[f.id],f.options)).join('')}</div></details>`).join('')}</div>`)).join('');
+  return`<div class="methodology-stack">${stageAudit(c,'method')}${general}${selector}${instrumentGuidePanel()}${specific}</div>`;
 }
 function renderHypotheses(c){const d=c.methodology.decision;return`<div class="content-grid">${panel('Hipóteses a testar','Explicite a proposição principal e as explicações concorrentes antes da conclusão.',`<div class="form-grid">${textarea('methodology.decision.claim','Proposição técnico-pericial',d.claim,'Qual hipótese está sendo testada?')}${textarea('methodology.decision.alternatives','Hipóteses alternativas',d.alternatives,'Quais outras explicações razoáveis precisam ser confrontadas?')}</div>`)}${panel('Necessidades de diligência','Registre o que ainda falta para responder ao objeto.',textarea('documentGaps','Lacunas e diligências necessárias',c.documentGaps,'Documentos, imagens, exame presencial, avaliação especializada ou esclarecimentos necessários.'))}${stageAudit(c,'hypotheses')}</div>`;}
 function renderReasoning(c){const d=c.methodology.decision;return panel('Fundamentação técnico-científica','Confronte os dados favoráveis e contrários, hipóteses alternativas e limitações.',`<div class="form-grid">${textarea('methodology.decision.favorable','Elementos favoráveis',d.favorable,'Dados que sustentam a proposição.')}${textarea('methodology.decision.contrary','Elementos contrários',d.contrary,'Dados que enfraquecem a proposição.')}${textarea('methodology.decision.alternatives','Hipóteses alternativas',d.alternatives,'Compare explicações concorrentes.')}${textarea('methodology.decision.limits','Limitações relevantes',d.limits,'Restrições documentais, temporais, técnicas ou de examinabilidade.')}</div>`);}
-function renderConclusion(c){const a=auditCase(c),d=c.methodology.decision;return`<div class="content-grid">${panel('Conclusão admissível','A linguagem deve ser proporcional à suficiência real dos elementos.',`<div class="form-grid">${textarea('methodology.decision.certainty','Grau de sustentação',d.certainty,'Suficiente, limitado, inconclusivo ou incompatível.')}${textarea('methodology.decision.admissibleConclusion','Conclusão',d.admissibleConclusion,'Responda ao objeto sem extrapolar os dados.')}</div>`)}${panel('Controle de suficiência','Bloqueios impedem conclusão definitiva; ressalvas limitam seu alcance.',`<div class="audit-list">${a.issues.map(i=>`<div class="audit-item ${i.severity}"><strong>${i.severity==='block'?'Bloqueio':'Ressalva'}:</strong> ${esc(i.text)}</div>`).join('')||'<p class="notice">Método apto para conclusão.</p>'}</div>`)}</div>`;}
+// Integração pericial — os eixos lado a lado, e nunca somados.
+//
+// Este painel é somente-leitura de propósito: ele não coleta nada, apenas
+// reorganiza por eixo o que a perita já declarou. A regra que ele existe para
+// cumprir é negativa — não há total, não há escore global, e um teste falha se
+// alguém acrescentar um.
+function integrationPanel(c){
+  const integracao=buildPericialIntegration(c);
+  const rotulo={recorded:'',pending:'Não registrado',absent:'Sem tela no MedPer'};
+  const eixo=item=>`<div class="axis-row is-${esc(item.status)}"><div class="axis-label"><strong>${esc(item.label)}</strong>${item.note?`<small>${esc(item.note)}</small>`:''}</div><div class="axis-value">${item.value?`<strong>${esc(item.value)}</strong>${item.unit?`<span>${esc(item.unit)}</span>`:''}`:`<span class="axis-empty">${esc(rotulo[item.status])}</span>`}</div></div>`;
+  const grupo=g=>{
+    const doGrupo=integracao.axes.filter(item=>item.group===g.id);
+    return doGrupo.length?`<section class="axis-group"><h3>${esc(g.label)}</h3>${doGrupo.map(eixo).join('')}</section>`:'';
+  };
+  const alertas=integracao.temporaryIssues.length
+    ?`<div class="notice notice-danger">${integracao.temporaryIssues.map(item=>`<p>${esc(item)}</p>`).join('')}</div>`
+    :'';
+  return panel('Integração pericial','Cada resultado pertence ao seu próprio eixo, com o próprio denominador.',
+    `${alertas}<div class="axis-stack">${integracao.groups.map(grupo).join('')}</div><div class="axis-blocks"><strong>Bloqueios metodológicos</strong><ul>${integracao.blocks.map(item=>`<li>${esc(item)}</li>`).join('')}</ul><p>${esc(integracao.globalScoreRule)}</p></div>`);
+}
+function renderConclusion(c){const a=auditCase(c),d=c.methodology.decision;return`<div class="content-grid">${integrationPanel(c)}${panel('Conclusão admissível','A linguagem deve ser proporcional à suficiência real dos elementos.',`<div class="form-grid">${textarea('methodology.decision.certainty','Grau de sustentação',d.certainty,'Suficiente, limitado, inconclusivo ou incompatível.')}${textarea('methodology.decision.admissibleConclusion','Conclusão',d.admissibleConclusion,'Responda ao objeto sem extrapolar os dados.')}</div>`)}${panel('Controle de suficiência','Bloqueios impedem conclusão definitiva; ressalvas limitam seu alcance.',`<div class="audit-list">${a.issues.map(i=>`<div class="audit-item ${i.severity}"><span><strong>${i.severity==='block'?'Bloqueio':'Ressalva'}:</strong> ${esc(i.text)}</span></div>`).join('')||'<p class="notice">Método apto para conclusão.</p>'}</div>`)}</div>`;}
 function renderQuestions(c){return panel('Quesitos','Responda diretamente e fundamente.',`<button class="button button-primary" data-add="question">Adicionar quesito</button><div class="question-list" style="margin-top:14px">${c.questions.map((q,i)=>`<div class="list-item"><h3>${esc(q.text)}</h3>${textarea(`questions.${i}.answer`,'Resposta',q.answer,'Resposta direta e fundamentada.')}</div>`).join('')||'<p class="notice">Nenhum quesito cadastrado.</p>'}</div>`);}
-function renderReport(c){const a=auditCase(c),g=c.methodology.general,d=c.methodology.decision;return panel('Documento final','Prévia derivada do estado estruturado.',`<div class="report-preview">${a.blocks?`<div class="notice notice-danger"><strong>Documento preliminar:</strong> há ${a.blocks} bloqueio(s) metodológico(s).</div>`:''}<h2>${esc(c.context?.role==='Perita do juízo'?'LAUDO MÉDICO-PERICIAL':'PARECER MÉDICO-PERICIAL')}</h2><h3>OBJETO</h3><p>${esc(c.scope||g.object||'Não registrado.')}</p><h3>METODOLOGIA</h3><p>${esc(g.methodChoice||'Não registrada.')}</p><h3>MATERIAL ANALISADO</h3><p>${esc(g.availableMaterial||'Não registrado.')}</p><h3>ANÁLISE TÉCNICO-CIENTÍFICA</h3><p>${esc(d.favorable||'Não registrada.')}</p><h3>HIPÓTESES ALTERNATIVAS</h3><p>${esc(d.alternatives||'Não registradas.')}</p><h3>LIMITAÇÕES</h3><p>${esc(d.limits||'Não registradas.')}</p><h3>GRAU DE SUSTENTAÇÃO</h3><p>${esc(d.certainty||'Não registrado.')}</p><h3>CONCLUSÃO</h3><p>${esc(d.admissibleConclusion||'Não formulada.')}</p><h3>QUESITOS</h3>${c.questions.map(q=>`<p><strong>${esc(q.text)}</strong><br>${esc(q.answer||'Sem resposta.')}</p>`).join('')||'<p>Não apresentados.</p>'}</div>`);}
+// O documento final lia SÓ `methodology.general` e `methodology.decision`. Todo
+// o trabalho do protocolo específico — danos temporários, eixos permanentes,
+// AIPE, POSAS, repercussões — ficava invisível no laudo: a perita preenchia oito
+// etapas e o documento não mostrava nenhuma delas. Era o pior lugar possível
+// para essa omissão, porque o laudo é a única peça que sai do sistema.
+//
+// Os eixos entram DECLARADOS E SEPARADOS, com o denominador de cada um, e o
+// documento afirma expressamente que não são somados — a garantia metodológica
+// precisa estar na peça que vai ao juízo, não apenas na tela de quem a redigiu.
+function reportAxes(c){
+  const integracao=buildPericialIntegration(c);
+  const secao=(titulo,ids)=>{
+    const linhas=integracao.axes.filter(item=>ids.includes(item.group)&&item.status==='recorded');
+    if(!linhas.length)return`<h3>${esc(titulo)}</h3><p>Não registrado.</p>`;
+    return`<h3>${esc(titulo)}</h3><ul class="report-axes">${linhas.map(item=>`<li><span>${esc(item.label)}</span><strong>${esc(item.value)}${item.unit?` ${esc(item.unit)}`:''}</strong></li>`).join('')}</ul>`;
+  };
+  return`${secao('DANOS TEMPORÁRIOS E CONSOLIDAÇÃO',['temporal'])}${secao('EIXOS PERMANENTES E REPERCUSSÕES',['permanent','repercussion'])}<p class="report-rule">${esc(integracao.globalScoreRule)}</p>`;
+}
+function renderReport(c){const a=auditCase(c),g=c.methodology.general,d=c.methodology.decision;return panel('Documento final','Prévia derivada do estado estruturado.',`<div class="report-preview">${a.blocks?`<div class="notice notice-danger"><strong>Documento preliminar:</strong> há ${a.blocks} bloqueio(s) metodológico(s).</div>`:''}<h2>${esc(c.context?.role==='Perita do juízo'?'LAUDO MÉDICO-PERICIAL':'PARECER MÉDICO-PERICIAL')}</h2><h3>OBJETO</h3><p>${esc(c.scope||g.object||'Não registrado.')}</p><h3>METODOLOGIA</h3><p>${esc(g.methodChoice||'Não registrada.')}</p><h3>MATERIAL ANALISADO</h3><p>${esc(g.availableMaterial||'Não registrado.')}</p><h3>ANÁLISE TÉCNICO-CIENTÍFICA</h3><p>${esc(d.favorable||'Não registrada.')}</p><h3>HIPÓTESES ALTERNATIVAS</h3><p>${esc(d.alternatives||'Não registradas.')}</p>${reportAxes(c)}<h3>LIMITAÇÕES</h3><p>${esc(d.limits||'Não registradas.')}</p><h3>GRAU DE SUSTENTAÇÃO</h3><p>${esc(d.certainty||'Não registrado.')}</p><h3>CONCLUSÃO</h3><p>${esc(d.admissibleConclusion||'Não formulada.')}</p><h3>QUESITOS</h3>${c.questions.map(q=>`<p><strong>${esc(q.text)}</strong><br>${esc(q.answer||'Sem resposta.')}</p>`).join('')||'<p>Não apresentados.</p>'}</div>`);}
 
 function demoCase(){return normalizeCase({id:uid('case'),title:'Caso demonstrativo · dano estético',reference:'DEMO-001',status:'Em preparação',context:{sphere:'Judicial',branch:'Cível',role:'Perita do juízo',matter:'Dano estético',mode:'Presencial e documental'},scope:'Apurar a existência de dano estético e sua extensão.',evidence:[{id:uid('ev'),title:'Prontuário inicial',pages:'43–51',description:'Atendimento inicial.'}],facts:[{id:uid('fact'),text:'Queimadura facial documentada.',nature:'Documentado',page:'47'}],events:[{id:uid('event'),date:'2019-03-14',kind:'Clínico',title:'Atendimento inicial'}]});}
 
-export function createApp({store,root,toast}){
+export function createApp({store,root,toast,auth=null}){
   let wizard=null;
   let caseFilter='active';
   // Redesenhar troca todo o DOM sob os pés de quem está digitando. Escrever num
@@ -147,7 +340,7 @@ export function createApp({store,root,toast}){
     el.focus({preventScroll:true});
     if(mark.start!=null&&typeof el.setSelectionRange==='function'){try{el.setSelectionRange(mark.start,mark.end);}catch{}}
   };
-  const render=()=>{const mark=captureFocus();const state=store.getState(),r=route(),c=r.caseId?findCase(state,r.caseId):null;root.innerHTML=c?renderCase(c,r.tab):renderHome(state,caseFilter);restoreFocus(mark);};
+  const render=()=>{const mark=captureFocus();const state=store.getState(),r=route(),c=r.caseId?findCase(state,r.caseId):null;root.innerHTML=c?renderCase(c,r.tab):renderHome(state,caseFilter,auth?.getState?.()?.session?.user||{});restoreFocus(mark);};
   const commitBoundValue=(target,{notify=true}={})=>{
     const path=target?.dataset?.bind;
     if(!path)return;
@@ -228,8 +421,8 @@ export function createApp({store,root,toast}){
     });
   }
 
-  function openWizard(){wizard={sphere:'Judicial',branch:'Cível',role:'Perita do juízo',matter:'Dano estético',mode:'Presencial e documental',title:'',reference:''};showWizard();}
-  function showWizard(){const wrap=document.createElement('dialog');wrap.className='modal';wrap.innerHTML=`<form method="dialog"><header class="modal-header"><div><span class="eyebrow">Nova perícia</span><h2>Defina o contexto</h2><p>O contexto jurídico-pericial orientará os métodos disponíveis.</p></div></header><div class="form-grid"><label class="field"><span>Esfera</span><select name="sphere">${Object.keys(branches).map(x=>`<option ${x===wizard.sphere?'selected':''}>${x}</option>`).join('')}</select></label><label class="field"><span>Ramo</span><select name="branch">${branches[wizard.sphere].map(x=>`<option ${x===wizard.branch?'selected':''}>${x}</option>`).join('')}</select></label><label class="field"><span>Papel da médica</span><select name="role">${['Perita do juízo','Assistente técnica da parte autora','Assistente técnica da parte ré','Parecerista independente','Perita administrativa','Médica revisora'].map(x=>`<option ${x===wizard.role?'selected':''}>${x}</option>`).join('')}</select></label><label class="field"><span>Matéria</span><select name="matter">${matters.map(x=>`<option ${x===wizard.matter?'selected':''}>${x}</option>`).join('')}</select></label><label class="field"><span>Modalidade</span><select name="mode">${['Presencial e documental','Documental','Presencial','Indireta','Revisão de laudo anterior'].map(x=>`<option ${x===wizard.mode?'selected':''}>${x}</option>`).join('')}</select></label><label class="field"><span>Título</span><input name="title" required></label><label class="field"><span>Processo ou referência</span><input name="reference"></label></div><footer class="modal-footer modal-footer-end"><button class="button button-secondary" value="cancel">Cancelar</button><button class="button button-primary" value="confirm">Criar caso</button></footer></form>`;document.body.appendChild(wrap);wrap.addEventListener('change',e=>{wizard[e.target.name]=e.target.value;if(e.target.name==='sphere'){wizard.branch=branches[wizard.sphere][0];wrap.close();wrap.remove();showWizard();}});wrap.addEventListener('close',()=>{if(wrap.returnValue==='confirm'){const fd=new FormData(wrap.querySelector('form'));for(const [k,v] of fd)wizard[k]=v;if(!wizard.title.trim()){notify('Informe o título do caso.');wrap.remove();showWizard();return;}const c=normalizeCase({id:uid('case'),title:wizard.title,reference:wizard.reference,context:{sphere:wizard.sphere,branch:wizard.branch,role:wizard.role,matter:wizard.matter,mode:wizard.mode}});store.update(s=>{s.cases.unshift(c);s.currentCaseId=c.id;});location.hash=`#/case/${c.id}/delimitation`;}wrap.remove();});wrap.showModal();}
+  function openWizard(){wizard={sphere:'Judicial',branch:'Cível',role:'Perita do juízo',matter:'Dano estético',mode:'Presencial e documental',title:'',reference:'',noticedAt:''};showWizard();}
+  function showWizard(){const wrap=document.createElement('dialog');wrap.className='modal';wrap.innerHTML=`<form method="dialog"><header class="modal-header"><div><span class="eyebrow">Nova perícia</span><h2>Defina o contexto</h2><p>O contexto jurídico-pericial orientará os métodos disponíveis.</p></div></header><div class="form-grid"><label class="field"><span>Esfera</span><select name="sphere">${Object.keys(branches).map(x=>`<option ${x===wizard.sphere?'selected':''}>${x}</option>`).join('')}</select></label><label class="field"><span>Ramo</span><select name="branch">${branches[wizard.sphere].map(x=>`<option ${x===wizard.branch?'selected':''}>${x}</option>`).join('')}</select></label><label class="field"><span>Papel da médica</span><select name="role">${['Perita do juízo','Assistente técnica da parte autora','Assistente técnica da parte ré','Parecerista independente','Perita administrativa','Médica revisora'].map(x=>`<option ${x===wizard.role?'selected':''}>${x}</option>`).join('')}</select></label><label class="field"><span>Matéria</span><select name="matter">${matters.map(x=>`<option ${x===wizard.matter?'selected':''}>${x}</option>`).join('')}</select></label><label class="field"><span>Modalidade</span><select name="mode">${['Presencial e documental','Documental','Presencial','Indireta','Revisão de laudo anterior'].map(x=>`<option ${x===wizard.mode?'selected':''}>${x}</option>`).join('')}</select></label><label class="field"><span>Título</span><input name="title" required></label><label class="field"><span>Processo ou referência</span><input name="reference"></label><label class="field"><span>Ciência da nomeação</span><input type="date" name="noticedAt" value="${esc(wizard.noticedAt||'')}"></label></div><footer class="modal-footer modal-footer-end"><button class="button button-secondary" value="cancel">Cancelar</button><button class="button button-primary" value="confirm">Criar caso</button></footer></form>`;document.body.appendChild(wrap);wrap.addEventListener('change',e=>{wizard[e.target.name]=e.target.value;if(e.target.name==='sphere'){wizard.branch=branches[wizard.sphere][0];wrap.close();wrap.remove();showWizard();}});wrap.addEventListener('close',()=>{if(wrap.returnValue==='confirm'){const fd=new FormData(wrap.querySelector('form'));for(const [k,v] of fd)wizard[k]=v;if(!wizard.title.trim()){notify('Informe o título do caso.');wrap.remove();showWizard();return;}const c=normalizeCase({id:uid('case'),title:wizard.title,reference:wizard.reference,appointment:{status:'pending',noticedAt:wizard.noticedAt||''},context:{sphere:wizard.sphere,branch:wizard.branch,role:wizard.role,matter:wizard.matter,mode:wizard.mode}});store.update(s=>{s.cases.unshift(c);s.currentCaseId=c.id;});location.hash=`#/case/${c.id}/delimitation`;}wrap.remove();});wrap.showModal();}
   function addEntity(kind){const r=route();const prompts={evidence:['Título da fonte','Páginas ou identificação'],fact:['Fato médico-pericial','Página ou trecho'],event:['Título do evento','Data (AAAA-MM-DD)'],question:['Texto do quesito','']};const [label,second]=prompts[kind];const d=document.createElement('dialog');d.className='modal modal-small';d.innerHTML=`<form method="dialog"><header class="modal-header"><div><h2>${esc(label)}</h2></div></header><div class="form-stack"><label class="field"><span>${esc(label)}</span><textarea name="primary" required></textarea></label>${second?`<label class="field"><span>${esc(second)}</span><input name="secondary"></label>`:''}</div><footer class="modal-footer modal-footer-end"><button class="button button-secondary" value="cancel">Cancelar</button><button class="button button-primary" value="confirm">Salvar</button></footer></form>`;document.body.appendChild(d);d.addEventListener('close',()=>{if(d.returnValue==='confirm'){const fd=new FormData(d.querySelector('form')),primary=String(fd.get('primary')||'').trim(),secondary=String(fd.get('secondary')||'').trim();if(primary)store.update(s=>{const c=findCase(s,r.caseId);if(kind==='evidence')c.evidence.push({id:uid('ev'),title:primary,pages:secondary,description:''});if(kind==='fact')c.facts.push({id:uid('fact'),text:primary,page:secondary,nature:'Documentado'});if(kind==='event')c.events.push({id:uid('event'),title:primary,date:secondary,kind:'Evento'});if(kind==='question')c.questions.push({id:uid('q'),text:primary,answer:''});});}d.remove();});d.showModal();}
   render();
 }

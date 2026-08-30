@@ -493,6 +493,12 @@ button:focus-visible{box-shadow:none}
 .audit-item.block:before{background:var(--mp-red)}
 .audit-item.warning:before{background:var(--mp-orange)}
 .audit-item strong{font-weight:500;color:var(--mp-label-2)}
+/* O conteúdo do item precisa ser UM item de grid. A grade tem duas colunas — o
+   ponto de 9px e o texto — e um nó de texto solto ao lado do rótulo <strong>
+   vira um terceiro item anônimo, que o grid empurra para a linha de baixo, na
+   coluna de 9px: a ressalva saía uma palavra por linha. Aparecia só onde há
+   rótulo, isto é, no Controle de suficiência. */
+.audit-item>span{grid-column:2;min-width:0}
 .audit-ahead{margin-top:10px;padding-top:10px;border-top:.5px solid var(--mp-sep)}
 .audit-ahead summary{list-style:none;cursor:pointer;font-size:12px;font-weight:400;
   text-transform:none;letter-spacing:0;color:var(--mp-tint)}
@@ -807,6 +813,7 @@ button:focus-visible{box-shadow:none}
   .dashboard-toolbar-actions{flex-direction:column;align-items:stretch}
   .dashboard-search,.dashboard-new-case{width:100%}
   .surface-panel,.reference-library,.conf-surface{padding:14px}
+  .appointment-grid{grid-template-columns:minmax(0,1fr)}
   .conf-body{padding-left:14px}
   .conf-head{flex-direction:column;gap:12px}
   .deadline-row{grid-template-columns:8px 40px minmax(0,1fr)}
@@ -821,4 +828,203 @@ button:focus-visible{box-shadow:none}
   .guided-progress{width:100%;text-align:left}
   .letter-row summary{grid-template-columns:26px minmax(0,1fr)}
   .letter-row .conf-count{display:none}
+}
+
+/* 16 — Encargo pericial -----------------------------------------------------
+   O ciclo começa na nomeação. Enquanto há decisão pendente o painel se declara;
+   depois de aceito e completo recolhe-se a uma linha, porque encargo resolvido é
+   contexto, não tarefa. */
+.appointment-panel .panel-head p{max-width:56ch}
+.appointment-gaps{margin:0 0 12px;padding:8px 11px;border-radius:var(--mp-r-sm);
+  background:rgba(160,75,0,.07);font-size:12px;line-height:1.5;color:var(--mp-ink)}
+.appointment-body{display:grid;gap:14px}
+/* A decisão do encargo não é uma pílula: são três opções com explicação, e a
+   pílula do `.guided-choice` foi desenhada para rótulo curto — o texto colava no
+   rótulo. Aqui vira lista agrupada, uma opção por linha, como o resto da camada. */
+.appointment-panel .guided-choices{display:grid;gap:0;border-radius:var(--mp-r);
+  overflow:hidden;box-shadow:var(--mp-hairline);background:var(--mp-window)}
+.appointment-panel .guided-choice{width:100%}
+.appointment-panel .guided-choice+.guided-choice span{box-shadow:inset 0 .5px 0 var(--mp-sep)}
+.appointment-panel .guided-choice span{display:grid;gap:2px;width:100%;min-height:0;
+  border-radius:0;padding:10px 13px;background:transparent;box-shadow:none;
+  font:400 13px var(--mp-sans);color:var(--mp-ink);text-align:left}
+.appointment-panel .guided-choice span small{font-size:11px;line-height:1.45;color:var(--mp-label-2)}
+.appointment-panel .guided-choice span:hover{background:var(--mp-fill)}
+.appointment-panel .guided-choice input:checked+span{background:var(--mp-tint-fill);color:var(--mp-ink)}
+.appointment-panel .guided-choice input:checked+span small{color:var(--mp-label-2)}
+.appointment-panel .guided-choice input:checked+span strong,
+.appointment-panel .guided-choice input:checked+span{font-weight:500}
+.appointment-panel .guided-question legend{font:500 11px var(--mp-sans);color:var(--mp-label-2);margin-bottom:7px}
+.appointment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.appointment-panel .field span{font-size:11px;color:var(--mp-label-2)}
+.appointment-panel input[type=date],.appointment-panel select,.appointment-panel input[type=text]{
+  font:400 13px var(--mp-sans);color:var(--mp-ink);background:var(--mp-window);
+  border:0;box-shadow:var(--mp-hairline);border-radius:var(--mp-r-sm);padding:7px 9px}
+.appointment-refs summary{list-style:none;cursor:pointer;font-size:12px;color:var(--mp-tint)}
+.appointment-refs summary::-webkit-details-marker{display:none}
+.appointment-refs ul{list-style:none;margin:9px 0 0;padding:0;display:grid;gap:8px}
+.appointment-refs li{display:grid;gap:2px;font-size:12px;line-height:1.5}
+.appointment-refs li span{color:var(--mp-label-2);font-variant-numeric:tabular-nums}
+.appointment-refs li small,.appointment-refs p{font-size:11px;line-height:1.5;color:var(--mp-label-2)}
+.appointment-refs p{margin:10px 0 0;max-width:60ch}
+/* Recolhido: uma linha com o estado e o regime, alinhada como as demais listas. */
+.appointment-panel.is-settled{padding:0;background:transparent;box-shadow:none;border:0}
+.appointment-panel.is-settled>details>summary{list-style:none;cursor:pointer;
+  display:flex;align-items:baseline;gap:10px;padding:11px 14px;border-radius:var(--mp-r);
+  background:var(--mp-window);box-shadow:var(--mp-hairline);font-size:13px}
+.appointment-panel.is-settled>details>summary::-webkit-details-marker{display:none}
+.appointment-panel.is-settled>details>summary .eyebrow{font-size:11px;color:var(--mp-label-2)}
+.appointment-panel.is-settled>details>summary span:last-child{margin-left:auto;
+  font-size:11px;color:var(--mp-label-2)}
+.appointment-panel.is-settled .appointment-body{padding:14px}
+
+/* Documentos dos autos — lista de anexos do servidor.
+   O tamanho usa numeral tabular porque a coluna alinha entre linhas; o rótulo do
+   tipo vem do que o servidor DETECTOU nos bytes, não do que o navegador
+   declarou, então "PDF" aqui é afirmação verificada. */
+.case-files{display:grid;gap:12px}
+.case-files-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+/* `label` não herda o `display` de `.button`, que é escrito para `button`. */
+.case-files-actions>.button{display:inline-flex;align-items:center;cursor:pointer}
+.case-files-actions>.button.is-disabled{opacity:.55;pointer-events:none}
+/* A regra de formato pertence ao lado do controle — é sobre o que dá para
+   escolher. Limitada a 44ch, virava um bloco de três linhas irregulares ao lado
+   de um botão de uma linha; ocupando a largura restante, cabe em uma. */
+.case-files-actions .field-help{margin:0;flex:1;min-width:20ch}
+.case-files-list{list-style:none;margin:0;padding:0;border-radius:var(--mp-r-sm);
+  background:var(--mp-window);box-shadow:var(--mp-hairline);overflow:hidden}
+.case-file{display:flex;align-items:center;gap:14px;padding:9px 12px}
+.case-file+.case-file{box-shadow:inset 0 .5px 0 var(--mp-sep)}
+.case-file>div{display:grid;gap:2px;min-width:0}
+.case-file strong{font:500 13px/1.35 var(--mp-sans);color:var(--mp-ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.case-file span{font-size:11px;color:var(--mp-label-2);font-variant-numeric:tabular-nums}
+.case-file .button{margin-left:auto;flex:none}
+
+/* Danos temporários — grade de marcos.
+   Numeral tabular nas datas e nos dias porque as colunas alinham entre linhas. */
+.temporal-grid{display:grid;gap:0;border-radius:var(--mp-r-sm);overflow:hidden;
+  background:var(--mp-window);box-shadow:var(--mp-hairline)}
+.temporal-head,.temporal-row{display:grid;grid-template-columns:minmax(0,1.7fr) 140px 140px 84px minmax(0,1fr);
+  gap:10px;align-items:center;padding:8px 12px}
+.temporal-head{font:500 11px var(--mp-sans);color:var(--mp-label-2);
+  background:var(--mp-fill);text-transform:none;letter-spacing:0}
+.temporal-row+.temporal-row,.temporal-head+.temporal-row{box-shadow:inset 0 .5px 0 var(--mp-sep)}
+.temporal-label{display:grid;gap:2px;min-width:0}
+.temporal-label strong{font:500 13px/1.3 var(--mp-sans);color:var(--mp-ink)}
+.temporal-label small{font-size:11px;line-height:1.4;color:var(--mp-label-2)}
+.temporal-grid input{font:400 12px var(--mp-sans);color:var(--mp-ink);background:var(--mp-window);
+  border:0;box-shadow:var(--mp-hairline);border-radius:var(--mp-r-sm);padding:6px 8px;min-height:30px;
+  font-variant-numeric:tabular-nums}
+.temporal-days{font:500 12px var(--mp-sans);color:var(--mp-ink);font-variant-numeric:tabular-nums}
+.temporal-none{color:var(--mp-label-3);font-size:12px}
+.temporal-cautions{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:4px}
+.temporal-cautions li{font-size:11px;line-height:1.45;color:var(--mp-label-2);padding-left:12px;position:relative}
+.temporal-cautions li:before{content:"";position:absolute;left:0;top:7px;width:4px;height:4px;
+  border-radius:50%;background:var(--mp-label-3)}
+
+/* Integração pericial — eixos lado a lado, cada um com o próprio denominador.
+   Deliberadamente sem linha de total: o denominador de cada eixo é diferente e
+   somá-los não produziria grandeza nenhuma. */
+.axis-stack{display:grid;gap:14px}
+.axis-group h3{margin:0 0 6px;font:500 12px var(--mp-sans);color:var(--mp-label-2)}
+.axis-group{display:grid;gap:0}
+.axis-row{display:flex;align-items:baseline;gap:14px;padding:8px 12px;background:var(--mp-window)}
+.axis-group .axis-row:first-of-type{border-radius:var(--mp-r-sm) var(--mp-r-sm) 0 0}
+.axis-group .axis-row:last-child{border-radius:0 0 var(--mp-r-sm) var(--mp-r-sm)}
+.axis-row{box-shadow:var(--mp-hairline)}
+.axis-label{display:grid;gap:2px;min-width:0;flex:1}
+.axis-label strong{font:500 13px/1.3 var(--mp-sans);color:var(--mp-ink)}
+.axis-label small{font-size:11px;line-height:1.4;color:var(--mp-label-2)}
+.axis-value{flex:none;text-align:right;font-variant-numeric:tabular-nums}
+.axis-value strong{font:600 15px var(--mp-sans);color:var(--mp-ink);letter-spacing:-.01em}
+.axis-value span{font-size:11px;color:var(--mp-label-2);margin-left:3px}
+.axis-empty{font-size:11px;color:var(--mp-label-3)}
+.axis-row.is-absent .axis-label strong{color:var(--mp-label-2)}
+.axis-blocks{margin-top:14px;padding:12px;border-radius:var(--mp-r-sm);background:var(--mp-fill)}
+.axis-blocks strong{display:block;font:500 11px var(--mp-sans);color:var(--mp-label-2);margin-bottom:6px}
+.axis-blocks ul{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.axis-blocks li{font-size:12px;line-height:1.45;color:var(--mp-ink)}
+.axis-blocks p{margin:8px 0 0;font-size:11px;line-height:1.5;color:var(--mp-label-2)}
+
+/* Eixos dentro do documento final — leitura de laudo, não de painel. */
+.report-axes{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:4px}
+.report-axes li{display:flex;gap:12px;align-items:baseline;font-family:var(--mp-serif)}
+.report-axes li span{flex:1}
+.report-axes li strong{font-weight:600;font-variant-numeric:tabular-nums}
+.report-rule{margin:0 0 14px;font-size:12px;font-style:italic;color:var(--mp-label-2)}
+
+@media (width<=860px){
+  .temporal-head{display:none}
+  .temporal-row{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+  .temporal-label{grid-column:1/-1}
+  .temporal-row>input[type=text]{grid-column:1/-1}
+}
+
+/* Guia de instrumentos — "qual tabela para qual área". Fechado por padrão:
+   é referência de consulta, não tarefa da etapa. */
+.guide-stack{display:grid;gap:0;border-radius:var(--mp-r-sm);overflow:hidden;
+  background:var(--mp-window);box-shadow:var(--mp-hairline)}
+.guide-entry+.guide-entry{box-shadow:inset 0 .5px 0 var(--mp-sep)}
+.guide-entry summary{list-style:none;cursor:pointer;display:grid;gap:2px;padding:10px 12px}
+.guide-entry summary::-webkit-details-marker{display:none}
+.guide-entry summary strong{font:500 13px/1.3 var(--mp-sans);color:var(--mp-ink)}
+.guide-entry summary span{font-size:11px;line-height:1.45;color:var(--mp-label-2)}
+.guide-entry[open] summary{background:var(--mp-fill)}
+.guide-entry-body{padding:10px 12px 12px;display:grid;gap:6px}
+.guide-entry-body p{margin:0;font-size:12px;line-height:1.5;color:var(--mp-ink)}
+.guide-entry-body ul{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.guide-entry-body li{font-size:11px;line-height:1.45;color:var(--mp-label-2);
+  padding-left:12px;position:relative}
+.guide-entry-body li:before{content:"";position:absolute;left:0;top:6px;width:4px;height:4px;
+  border-radius:50%;background:var(--mp-label-3)}
+.guide-entry-body small{font-size:10px;color:var(--mp-label-3)}
+.method-instrument-limits{display:block;margin-top:3px;font-size:10px;line-height:1.45;color:var(--mp-label-3)}
+
+/* Regime de valoração — Delimitação. */
+.regime-suggestion{margin:10px 0 0;font-size:12px;line-height:1.5;color:var(--mp-ink)}
+.regime-suggestion span{color:var(--mp-label-2)}
+.regime-track{margin-top:10px;padding:10px 12px;border-radius:var(--mp-r-sm);background:var(--mp-fill)}
+.regime-track p{margin:0;font-size:12px;line-height:1.5;color:var(--mp-ink)}
+.regime-track small{display:block;margin-top:6px;font-size:11px;line-height:1.5;color:var(--mp-label-2)}
+
+/* Calculadora de Balthazard. Numerais tabulares: as colunas de percentual
+   alinham entre linhas, e o impacto real é comparado verticalmente. */
+.balt-grid{display:grid;gap:0;border-radius:var(--mp-r-sm);overflow:hidden;
+  background:var(--mp-window);box-shadow:var(--mp-hairline)}
+.balt-head,.balt-row{display:grid;grid-template-columns:34px minmax(0,1.5fr) 84px 92px minmax(0,1fr);
+  gap:10px;align-items:center;padding:7px 12px}
+.balt-head{font:500 11px var(--mp-sans);color:var(--mp-label-2);background:var(--mp-fill)}
+.balt-row+.balt-row,.balt-head+.balt-row{box-shadow:inset 0 .5px 0 var(--mp-sep)}
+.balt-index{font:500 12px var(--mp-sans);color:var(--mp-label-3);font-variant-numeric:tabular-nums}
+.balt-grid input{font:400 12px var(--mp-sans);color:var(--mp-ink);background:var(--mp-window);
+  border:0;box-shadow:var(--mp-hairline);border-radius:var(--mp-r-sm);padding:6px 8px;min-height:30px}
+.balt-pct{font-variant-numeric:tabular-nums;text-align:right}
+.balt-impact{font:500 12px var(--mp-sans);color:var(--mp-label-2);font-variant-numeric:tabular-nums;text-align:right}
+.balt-result{display:flex;gap:0;margin-top:12px;border-radius:var(--mp-r-sm);overflow:hidden;
+  background:var(--mp-window);box-shadow:var(--mp-hairline)}
+.balt-result>div{flex:1;display:grid;gap:2px;padding:10px 12px;position:relative}
+.balt-result>div+div:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:.5px;background:var(--mp-sep)}
+.balt-result span{font-size:11px;color:var(--mp-label-2)}
+.balt-result strong{font:600 18px var(--mp-sans);letter-spacing:-.015em;color:var(--mp-ink);font-variant-numeric:tabular-nums}
+/* A soma simples existe para comparação, e a tipografia diz isso: mesma
+   estrutura, peso menor — não é um segundo resultado. */
+.balt-simple strong{font-weight:400;color:var(--mp-label-2)}
+.balt-inverse{margin-top:14px;padding:12px;border-radius:var(--mp-r-sm);background:var(--mp-fill)}
+.balt-inverse h3{margin:0 0 10px;font:500 12px var(--mp-sans);color:var(--mp-label-2)}
+.balt-inverse-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:end}
+.balt-inverse .field span{font-size:11px;color:var(--mp-label-2)}
+.balt-inverse input{font:400 13px var(--mp-sans);background:var(--mp-window);border:0;
+  box-shadow:var(--mp-hairline);border-radius:var(--mp-r-sm);padding:7px 9px;min-height:32px;
+  font-variant-numeric:tabular-nums;text-align:right}
+.balt-inverse-out{display:grid;gap:2px;padding-bottom:4px}
+.balt-inverse-out span{font-size:11px;color:var(--mp-label-2)}
+.balt-inverse-out strong{font:600 18px var(--mp-sans);color:var(--mp-ink);font-variant-numeric:tabular-nums}
+@media (width<=860px){
+  .balt-head{display:none}
+  .balt-row{grid-template-columns:24px 1fr 70px 70px;gap:8px;padding:10px 12px}
+  .balt-row>input:last-child{grid-column:2/-1}
+  .balt-inverse-grid{grid-template-columns:1fr}
+  .balt-result{flex-direction:column}
+  .balt-result>div+div:before{left:8px;right:8px;top:0;bottom:auto;width:auto;height:.5px}
 }
