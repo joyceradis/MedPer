@@ -1,5 +1,6 @@
 import { normalizeAppointment } from '../models/appointment.js';
 import { normalizeTemporaryDamages } from '../methodology/temporary-damages.js';
+import { normalizeFunctionalCalc } from '../methodology/functional-calc.js';
 const STORAGE_KEY = 'medper.state.v4';
 const LEGACY_KEYS = ['medper.state.v3', 'medper.state.v2', 'mlks.prototype.v1'];
 
@@ -168,6 +169,13 @@ function normalizeCase(caseData = {}, previousCase = null) {
   // legado, que abre com os marcos vazios em vez de quebrar a tela ao ler uma
   // propriedade de `undefined`.
   c.methodology.temporary = normalizeTemporaryDamages(c.methodology.temporary);
+  // Calculadora funcional (Balthazard). Mesma razão da linha acima: caso legado
+  // abre com o registro vazio em vez de quebrar a tela.
+  c.methodology.functionalCalc = normalizeFunctionalCalc(c.methodology.functionalCalc);
+  // Regime de valoração: guardado como a perita escreveu, SEM coerção. A lição
+  // da issue #56 vale aqui: valor fora da escala atual não é convertido nem
+  // apagado — a tela o exibe como registro anterior e a reclassificação é dela.
+  c.valuationRegime = typeof c.valuationRegime === 'string' ? c.valuationRegime.trim() : '';
   synchronizePericialObject(c, previousCase);
   return c;
 }

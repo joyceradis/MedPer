@@ -980,3 +980,51 @@ button:focus-visible{box-shadow:none}
   border-radius:50%;background:var(--mp-label-3)}
 .guide-entry-body small{font-size:10px;color:var(--mp-label-3)}
 .method-instrument-limits{display:block;margin-top:3px;font-size:10px;line-height:1.45;color:var(--mp-label-3)}
+
+/* Regime de valoração — Delimitação. */
+.regime-suggestion{margin:10px 0 0;font-size:12px;line-height:1.5;color:var(--mp-ink)}
+.regime-suggestion span{color:var(--mp-label-2)}
+.regime-track{margin-top:10px;padding:10px 12px;border-radius:var(--mp-r-sm);background:var(--mp-fill)}
+.regime-track p{margin:0;font-size:12px;line-height:1.5;color:var(--mp-ink)}
+.regime-track small{display:block;margin-top:6px;font-size:11px;line-height:1.5;color:var(--mp-label-2)}
+
+/* Calculadora de Balthazard. Numerais tabulares: as colunas de percentual
+   alinham entre linhas, e o impacto real é comparado verticalmente. */
+.balt-grid{display:grid;gap:0;border-radius:var(--mp-r-sm);overflow:hidden;
+  background:var(--mp-window);box-shadow:var(--mp-hairline)}
+.balt-head,.balt-row{display:grid;grid-template-columns:34px minmax(0,1.5fr) 84px 92px minmax(0,1fr);
+  gap:10px;align-items:center;padding:7px 12px}
+.balt-head{font:500 11px var(--mp-sans);color:var(--mp-label-2);background:var(--mp-fill)}
+.balt-row+.balt-row,.balt-head+.balt-row{box-shadow:inset 0 .5px 0 var(--mp-sep)}
+.balt-index{font:500 12px var(--mp-sans);color:var(--mp-label-3);font-variant-numeric:tabular-nums}
+.balt-grid input{font:400 12px var(--mp-sans);color:var(--mp-ink);background:var(--mp-window);
+  border:0;box-shadow:var(--mp-hairline);border-radius:var(--mp-r-sm);padding:6px 8px;min-height:30px}
+.balt-pct{font-variant-numeric:tabular-nums;text-align:right}
+.balt-impact{font:500 12px var(--mp-sans);color:var(--mp-label-2);font-variant-numeric:tabular-nums;text-align:right}
+.balt-result{display:flex;gap:0;margin-top:12px;border-radius:var(--mp-r-sm);overflow:hidden;
+  background:var(--mp-window);box-shadow:var(--mp-hairline)}
+.balt-result>div{flex:1;display:grid;gap:2px;padding:10px 12px;position:relative}
+.balt-result>div+div:before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:.5px;background:var(--mp-sep)}
+.balt-result span{font-size:11px;color:var(--mp-label-2)}
+.balt-result strong{font:600 18px var(--mp-sans);letter-spacing:-.015em;color:var(--mp-ink);font-variant-numeric:tabular-nums}
+/* A soma simples existe para comparação, e a tipografia diz isso: mesma
+   estrutura, peso menor — não é um segundo resultado. */
+.balt-simple strong{font-weight:400;color:var(--mp-label-2)}
+.balt-inverse{margin-top:14px;padding:12px;border-radius:var(--mp-r-sm);background:var(--mp-fill)}
+.balt-inverse h3{margin:0 0 10px;font:500 12px var(--mp-sans);color:var(--mp-label-2)}
+.balt-inverse-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:end}
+.balt-inverse .field span{font-size:11px;color:var(--mp-label-2)}
+.balt-inverse input{font:400 13px var(--mp-sans);background:var(--mp-window);border:0;
+  box-shadow:var(--mp-hairline);border-radius:var(--mp-r-sm);padding:7px 9px;min-height:32px;
+  font-variant-numeric:tabular-nums;text-align:right}
+.balt-inverse-out{display:grid;gap:2px;padding-bottom:4px}
+.balt-inverse-out span{font-size:11px;color:var(--mp-label-2)}
+.balt-inverse-out strong{font:600 18px var(--mp-sans);color:var(--mp-ink);font-variant-numeric:tabular-nums}
+@media (width<=860px){
+  .balt-head{display:none}
+  .balt-row{grid-template-columns:24px 1fr 70px 70px;gap:8px;padding:10px 12px}
+  .balt-row>input:last-child{grid-column:2/-1}
+  .balt-inverse-grid{grid-template-columns:1fr}
+  .balt-result{flex-direction:column}
+  .balt-result>div+div:before{left:8px;right:8px;top:0;bottom:auto;width:auto;height:.5px}
+}

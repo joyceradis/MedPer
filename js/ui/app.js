@@ -9,7 +9,11 @@ import { renderDashboardHome } from './dashboard-view.js';
 import { APPOINTMENT_REFERENCES, APPOINTMENT_STATUS, FEE_REGIMES, appointmentGaps, normalizeAppointment } from '../models/appointment.js';
 import { TEMPORARY_CAUTIONS, TEMPORARY_MILESTONES, summarizeTemporaryDamages } from '../methodology/temporary-damages.js';
 import { buildPericialIntegration } from '../methodology/pericial-integration.js';
-import { INSTRUMENT_GUIDE } from '../methodology/instrument-guide.js';
+import { INSTRUMENT_GUIDE, suggestedRegimeForPurpose } from '../methodology/instrument-guide.js';
+import { FUNCTIONAL_CAUTIONS, FUNCTIONAL_ROWS, INVERSE_CAUTION, summarizeFunctionalCalc } from '../methodology/functional-calc.js';
+import { VALUATION_REGIME_OPTIONS, normalizeRegimeId, resolveFunctionalBaremaTrack } from '../methodology/barema-routing.js';
+import { evaluatePersonalDamageCase } from '../methodology/personal-damage.js';
+import { getMethodologyContext } from '../methodology/context-resolver.js';
 
 const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
 const uid=p=>`${p}_${crypto.randomUUID?.()||Date.now()}`;
@@ -132,9 +136,36 @@ function appointmentPanel(c){
   const aviso=faltas.length?`<p class="appointment-gaps">Falta declarar: ${esc(faltas.join(' · '))}</p>`:'';
   return`<section class="panel panel-full appointment-panel"><div class="panel-head"><div><h2>Encargo pericial</h2><p>O ciclo começa na nomeação. Registre a ciência e a decisão antes do trabalho.</p></div></div>${aviso}<div class="appointment-body">${corpo}</div></section>`;
 }
+// Regime de valoração — QUAL tabela governa a quantificação funcional.
+//
+// Pergunta opcional que nunca trava a etapa (decisão registrada na issue #56):
+// classificar de antemão quais casos exigem barema é decisão médico-pericial, e
+// a pergunta aberta custa menos que uma lista que envelhece. O id é persistido,
+// nunca o rótulo; valor legado fora da escala aparece como registro anterior em
+// vez de ser convertido ou apagado.
+//
+// A sugestão vem do mapa validado pela Founder (30/08/2026) entre finalidade e
+// regime — e é só sugestão: nada aqui seleciona pela perita.
+function valuationRegimePanel(c){
+  const bruto=String(c.valuationRegime||'').trim();
+  const regimeId=normalizeRegimeId(bruto);
+  const legado=Boolean(bruto)&&!regimeId;
+  const opcoes=VALUATION_REGIME_OPTIONS.map(op=>`<option value="${esc(op.id)}"${regimeId===op.id?' selected':''}>${esc(op.label)}</option>`).join('');
+  const opcaoLegada=legado?`<option value="${esc(bruto)}" selected>${esc(bruto)} — registro anterior, fora da escala atual</option>`:'';
+
+  const sugestao=(!bruto&&suggestedRegimeForPurpose(getMethodologyContext(c).purposeId))||null;
+  const rotuloSugerido=sugestao?VALUATION_REGIME_OPTIONS.find(op=>op.id===sugestao.regimeId)?.label||sugestao.regimeId:'';
+  const linhaSugestao=sugestao?`<p class="regime-suggestion"><strong>Sugestão pela finalidade do caso:</strong> ${esc(rotuloSugerido)}. <span>${esc(sugestao.rationale)}</span></p>`:'';
+
+  const trilho=regimeId?resolveFunctionalBaremaTrack({regimeId}):null;
+  const linhaTrilho=trilho?`<div class="regime-track"><p>${esc(trilho.rationale)}</p>${trilho.principal?`<small><strong>${esc(trilho.principal.label)}</strong> — ${esc(trilho.principal.note)}</small>`:''}</div>`:'';
+
+  return panel('Regime de valoração','Qual tabela governa a quantificação funcional. Opcional: nunca trava a etapa, e a etiologia do trauma nunca a seleciona.',
+    `<label class="field"><span>Regime declarado</span><select data-bind="valuationRegime"><option value=""${!bruto?' selected':''}>A declarar</option>${opcaoLegada}${opcoes}</select></label>${linhaSugestao}${linhaTrilho}`);
+}
 function renderSummary(c){
   const counts=` · ${plural(c.evidence.length,'fonte','fontes')} · ${plural(c.facts.length,'fato','fatos')}`;
-  return`<div class="content-grid">${appointmentPanel(c)}${panel('Objeto pericial','A pergunta técnica que o laudo precisa responder. Todo o restante do caso é medido por ela.',bareField('scope','Objeto pericial',c.scope,'Transcreva ou sintetize o objeto nos limites da nomeação ou contratação.'))}${panel('Enquadramento','Contexto que define o método e o documento final.',frameStrip(c))}${stageAudit(c,'delimitation',counts)}</div>`;
+  return`<div class="content-grid">${appointmentPanel(c)}${panel('Objeto pericial','A pergunta técnica que o laudo precisa responder. Todo o restante do caso é medido por ela.',bareField('scope','Objeto pericial',c.scope,'Transcreva ou sintetize o objeto nos limites da nomeação ou contratação.'))}${panel('Enquadramento','Contexto que define o método e o documento final.',frameStrip(c))}${valuationRegimePanel(c)}${stageAudit(c,'delimitation',counts)}</div>`;
 }
 // Documentos dos autos ficam no servidor, cifrados, e não no store: nome de
 // arquivo reidentifica o periciado e o store é persistido em localStorage. O que
@@ -198,11 +229,41 @@ function protocolSelector(c,applicable){
   const primaryId=getProtocol(c.context?.matter).id,applicableIds=new Set(applicable.map(p=>p.id)),suggestedIds=new Set(getSuggestedProtocolIds(c));
   return`<div class="protocol-selector">${Object.values(protocols).map(protocol=>{const selected=applicableIds.has(protocol.id),primary=protocol.id===primaryId,suggested=suggestedIds.has(protocol.id);return`<button type="button" class="protocol-chip ${selected?'is-active':''}" data-protocol-toggle="${esc(protocol.id)}" ${primary?'disabled':''}><span>${esc(protocol.title)}</span><small>${primary?'Principal':suggested?'Sugerido':selected?'Adicionado':'Adicionar'}</small></button>`;}).join('')}</div>`;
 }
+// Calculadora de Balthazard — etapa 2/6 da matriz interna (versão 1.5).
+//
+// A aritmética já existia testada em `internal-damage-source.js`; esta é a
+// tela. Ela COMBINA percentuais que a perita fixou pelo referencial — nunca os
+// cria — e o resultado não é transportado para nenhum campo de valoração: o
+// laudo recebe o que a perita decidir escrever nele. A soma simples aparece ao
+// lado, como na matriz, para mostrar por que a capacidade restante existe.
+//
+// Só abre com permanentes valoráveis: antes da consolidação, a própria tela
+// diz o porquê em vez de oferecer um cálculo que os gates ainda bloqueiam.
+function balthazardPanel(c){
+  const gate=evaluatePersonalDamageCase(c);
+  if(!gate.canValuePermanent){
+    return panel('Calculadora de Balthazard','Capacidade restante e forma inversa — somente quando o referencial aplicável autorizar a combinação.',
+      `<p class="notice">Permanentes ainda não são valoráveis neste caso: ${esc(gate.nextStep||'complete objeto, dano, nexo e consolidação nos gates.')}</p>`);
+  }
+  const sintese=summarizeFunctionalCalc(c.methodology?.functionalCalc);
+  const linha=(id,indice)=>{
+    const registro=sintese.record.rows[id];
+    const calculada=sintese.rows.find(row=>row.id===id);
+    return`<div class="balt-row"><span class="balt-index">${indice+1}</span><input type="text" data-bind="methodology.functionalCalc.rows.${id}.description" value="${esc(registro.description)}" placeholder="sequela" aria-label="Descrição — sequela ${indice+1}"><input type="text" class="balt-pct" data-bind="methodology.functionalCalc.rows.${id}.percent" value="${esc(registro.percent)}" placeholder="%" aria-label="Percentual — sequela ${indice+1}"><span class="balt-impact">${calculada?esc(`${calculada.impactPercent}%`):''}</span><input type="text" data-bind="methodology.functionalCalc.rows.${id}.source" value="${esc(registro.source)}" placeholder="fonte / item / página" aria-label="Fonte — sequela ${indice+1}"></div>`;
+  };
+  const alertas=sintese.issues.length?`<div class="notice notice-danger">${sintese.issues.map(item=>`<p>${esc(item)}</p>`).join('')}</div>`:'';
+  const resultado=sintese.combinedDeficitPercent!==null
+    ?`<div class="balt-result"><div><span>Déficit consolidado (Balthazard)</span><strong>${esc(String(sintese.combinedDeficitPercent))}%</strong></div><div><span>Capacidade restante</span><strong>${esc(String(sintese.remainingCapacityPercent))}%</strong></div><div class="balt-simple"><span>Soma simples, para comparação</span><strong>${esc(String(sintese.simpleSumPercent))}%</strong></div></div>`
+    :'';
+  const inversa=`<div class="balt-inverse"><h3>Forma inversa — estado anterior quantificável</h3><div class="balt-inverse-grid"><label class="field"><span>Déficit funcional global atual (F)</span><input type="text" data-bind="methodology.functionalCalc.prior.current" value="${esc(sintese.record.prior.current)}" placeholder="%"></label><label class="field"><span>Estado anterior quantificável (Ea)</span><input type="text" data-bind="methodology.functionalCalc.prior.prior" value="${esc(sintese.record.prior.prior)}" placeholder="%"></label><div class="balt-inverse-out"><span>Incremento atribuível ao evento (D)</span><strong>${sintese.inverseIncrementPercent!==null?esc(`${sintese.inverseIncrementPercent}%`):'—'}</strong></div></div><p class="field-help">${esc(INVERSE_CAUTION)}</p></div>`;
+  return panel('Calculadora de Balthazard','Combinação pela capacidade restante. Percentuais são os que você fixou pelo referencial — a calculadora combina, nunca cria.',
+    `<div class="balt-grid"><div class="balt-head"><span>Seq.</span><span>Descrição</span><span>%</span><span>Impacto real</span><span>Fonte</span></div>${FUNCTIONAL_ROWS.map(linha).join('')}</div>${alertas}${resultado}${inversa}<ul class="temporal-cautions">${FUNCTIONAL_CAUTIONS.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`);
+}
 function renderMethod(c){
   const applicable=getApplicableProtocols(c),done=completion(c);
   const general=generalMethod.map((phase,i)=>panel(phase.title,'Método geral obrigatório.',`<div class="form-grid">${phase.fields.map(f=>textarea(`methodology.general.${f.id}`,f.label,c.methodology.general[f.id],f.help)).join('')}</div><p class="notice">${done.general[i]?'Etapa concluída':'Etapa em andamento'}</p>`)).join('');
   const selector=panel('Métodos aplicáveis','O MedPer sugere pelo contexto e pelo objeto. Você mantém o controle sobre os módulos adicionais.',protocolSelector(c,applicable));
-  const specific=applicable.map(p=>panel(`Protocolo · ${p.title}`,p.id==='aesthetic'?'AIPE disponível neste caso.':'Somente as etapas pertinentes a este objeto ficam abertas.',`${p.id==='aesthetic'?renderAipeReference():''}<div class="guided-methodology">${p.steps.map((s,i)=>`<details class="guided-step" ${i===0?'open':''}><summary><span>${esc(s.title)}</span><small>${done.specificByProtocol?.[p.id]?.[i]?'Concluído':'Em andamento'}</small></summary><div class="guided-step-body">${s.fields.map(f=>f.type==='narrative'?textarea(`methodology.specific.${f.id}`,f.label,c.methodology.specific[f.id],f.help):choices(`methodology.guided.${f.id}`,f.label,c.methodology.guided[f.id],f.options)).join('')}</div></details>`).join('')}</div>`)).join('');
+  const specific=applicable.map(p=>panel(`Protocolo · ${p.title}`,p.id==='aesthetic'?'AIPE disponível neste caso.':'Somente as etapas pertinentes a este objeto ficam abertas.',`${p.id==='aesthetic'?renderAipeReference():''}${p.id==='bodily_damage'?balthazardPanel(c):''}<div class="guided-methodology">${p.steps.map((s,i)=>`<details class="guided-step" ${i===0?'open':''}><summary><span>${esc(s.title)}</span><small>${done.specificByProtocol?.[p.id]?.[i]?'Concluído':'Em andamento'}</small></summary><div class="guided-step-body">${s.fields.map(f=>f.type==='narrative'?textarea(`methodology.specific.${f.id}`,f.label,c.methodology.specific[f.id],f.help):choices(`methodology.guided.${f.id}`,f.label,c.methodology.guided[f.id],f.options)).join('')}</div></details>`).join('')}</div>`)).join('');
   return`<div class="methodology-stack">${stageAudit(c,'method')}${general}${selector}${instrumentGuidePanel()}${specific}</div>`;
 }
 function renderHypotheses(c){const d=c.methodology.decision;return`<div class="content-grid">${panel('Hipóteses a testar','Explicite a proposição principal e as explicações concorrentes antes da conclusão.',`<div class="form-grid">${textarea('methodology.decision.claim','Proposição técnico-pericial',d.claim,'Qual hipótese está sendo testada?')}${textarea('methodology.decision.alternatives','Hipóteses alternativas',d.alternatives,'Quais outras explicações razoáveis precisam ser confrontadas?')}</div>`)}${panel('Necessidades de diligência','Registre o que ainda falta para responder ao objeto.',textarea('documentGaps','Lacunas e diligências necessárias',c.documentGaps,'Documentos, imagens, exame presencial, avaliação especializada ou esclarecimentos necessários.'))}${stageAudit(c,'hypotheses')}</div>`;}
