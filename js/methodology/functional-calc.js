@@ -34,7 +34,7 @@ const texto = value => String(value ?? '').trim();
 // "12,5%", "12.5", " 12 % " → 12.5. Devolve null para vazio ou ilegível — a
 // distinção entre "não preenchido" e "zero" importa: zero é uma declaração.
 export function parsePercent(value) {
-  const bruto = texto(value).replace('%', '').replace(',', '.').trim();
+  const bruto = texto(value).replaceAll('%', '').replace(',', '.').trim();
   if (!bruto) return null;
   const numero = Number(bruto);
   return Number.isFinite(numero) ? numero : null;
