@@ -5,6 +5,7 @@ import {
 } from '../methodology/context-resolver.js';
 import { evaluatePersonalDamageCase } from '../methodology/personal-damage.js';
 import { buildPosasAssessmentFromGuided } from '../methodology/posas.js';
+import { instrumentGuidance } from '../methodology/instrument-guide.js';
 
 const LABELS={
   personal_damage_assessment:'Avaliação de dano pessoal',
@@ -36,14 +37,22 @@ function instrumentRow(caseData,profile,instrumentId){
   const isActive=active.has(instrumentId);
   const isDismissed=dismissed.has(instrumentId);
   const isSuggested=suggested.has(instrumentId);
-  const label=instrumentId==='aipe'?'AIPE':instrumentId;
+  // A justificativa vem do guia de instrumentos, não de um texto genérico.
+  // Diretriz da Founder (30/08/2026): ninguém grava qual tabela serve para qual
+  // área — o sistema diz o que o instrumento mede, quando é adequado e o que
+  // ele NÃO faz, para AUXILIAR a escolha. A escolha continua sendo da perita.
+  const guide=instrumentGuidance(instrumentId);
+  const label=guide?.label||(instrumentId==='aipe'?'AIPE':instrumentId);
   const status=isActive?'Ativo':isDismissed?'Não selecionado':isSuggested?'Sugerido':'Disponível';
-  const rationale=instrumentId==='aipe'
-    ? (isSuggested?'Instrumento possível neste perfil; a adoção depende de confirmação médica.':'Não é sugerido automaticamente neste perfil. Pode ser incluído apenas mediante decisão metodológica explícita.')
+  const rationale=guide
+    ? `${guide.construct} ${guide.whenAdequate}`
     : 'Instrumento auxiliar disponível para seleção médica.';
+  const limites=guide?.boundaries?.length
+    ? `<small class="method-instrument-limits">${guide.boundaries.map(esc).join(' · ')}</small>`
+    : '';
 
   return `<div class="method-instrument-row">
-    <div><strong>${esc(label)}</strong><span>${esc(rationale)}</span></div>
+    <div><strong>${esc(label)}</strong><span>${esc(rationale)}</span>${limites}</div>
     <span class="method-instrument-status">${esc(status)}</span>
     <div class="method-instrument-actions">
       ${!isActive?`<button type="button" data-instrument-accept="${esc(instrumentId)}">${isDismissed?'Reconsiderar':'Usar neste caso'}</button>`:''}
