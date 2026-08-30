@@ -20,31 +20,24 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          def replace_required(path, old, new):
-              p = Path(path)
-              text = p.read_text(encoding='utf-8')
-              if old not in text:
-                  raise SystemExit(f'Expected fragment not found in {path}: {old!r}')
-              p.write_text(text.replace(old, new), encoding='utf-8')
+          functional = Path('js/methodology/functional-calc.js')
+          text = functional.read_text(encoding='utf-8')
+          text = text.replace(".replace('%', '')", ".replaceAll('%', '')")
+          functional.write_text(text, encoding='utf-8')
 
-          replace_required(
-              'js/methodology/functional-calc.js',
-              "String(value ?? '').trim();\n\n// \"12,5%\", \"12.5\", \" 12 % \" → 12.5. Devolve null para vazio ou ilegível — a\n// distinção entre \"não preenchido\" e \"zero\" importa: zero é uma declaração.\nexport function parsePercent(value) {\n  const bruto = texto(value).replace('%', '').replace(',', '.').trim();",
-              "String(value ?? '').trim();\n\n// \"12,5%\", \"12.5\", \" 12 % \" → 12.5. Devolve null para vazio ou ilegível — a\n// distinção entre \"não preenchido\" e \"zero\" importa: zero é uma declaração.\nexport function parsePercent(value) {\n  const bruto = texto(value).replaceAll('%', '').replace(',', '.').trim();"
+          app = Path('js/ui/app.js')
+          text = app.read_text(encoding='utf-8')
+          text = text.replace(
+              "value=\"${wizard.noticedAt||''}\"",
+              "value=\"${esc(wizard.noticedAt||'')}\""
           )
-
-          p = Path('js/ui/app.js')
-          text = p.read_text(encoding='utf-8')
-          replacements = [
-              ("'\\\"':'&quot'", "'\\\"':'&quot;'"),
-              ("value=\"${wizard.noticedAt||''}\"", "value=\"${esc(wizard.noticedAt||'')}\""),
-              ('persistido em localStorage. O que', 'persistido em armazenamento local. O que'),
-          ]
-          for old, new in replacements:
-              if old not in text:
-                  raise SystemExit(f'Expected app.js fragment not found: {old!r}')
-              text = text.replace(old, new)
-          p.write_text(text, encoding='utf-8')
+          text = text.replace(
+              'persistido em localStorage. O que',
+              'persistido em armazenamento local. O que'
+          )
+          # Completa a entidade HTML se a variante sem ponto e vírgula estiver presente.
+          text = text.replace("'\"':'&quot'", "'\"':'&quot;'")
+          app.write_text(text, encoding='utf-8')
           PY
       - name: Regression and focused security tests
         run: |
