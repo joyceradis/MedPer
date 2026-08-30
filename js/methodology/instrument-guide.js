@@ -79,7 +79,8 @@ export const INSTRUMENT_GUIDE = Object.freeze({
 });
 
 export function instrumentGuidance(instrumentId) {
-  return INSTRUMENT_GUIDE[instrumentId] || null;
+  if (typeof instrumentId !== 'string' || !Object.hasOwn(INSTRUMENT_GUIDE, instrumentId)) return null;
+  return INSTRUMENT_GUIDE[instrumentId];
 }
 
 // Correspondência entre finalidade canônica (O QUE se avalia) e regime de
@@ -104,7 +105,9 @@ export const PURPOSE_REGIME_CORRESPONDENCE = Object.freeze({
 // 4). O retorno carrega a justificativa exatamente para a tela AUXILIAR — a
 // declaração do regime continua sendo ato da perita.
 export function suggestedRegimeForPurpose(purposeId) {
-  const regimeId = PURPOSE_REGIME_CORRESPONDENCE[purposeId];
+  const regimeId = (typeof purposeId === 'string' && Object.hasOwn(PURPOSE_REGIME_CORRESPONDENCE, purposeId))
+    ? PURPOSE_REGIME_CORRESPONDENCE[purposeId]
+    : null;
   if (!regimeId) return null;
   return Object.freeze({
     regimeId,

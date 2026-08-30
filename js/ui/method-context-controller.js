@@ -42,7 +42,7 @@ function instrumentRow(caseData,profile,instrumentId){
   // área — o sistema diz o que o instrumento mede, quando é adequado e o que
   // ele NÃO faz, para AUXILIAR a escolha. A escolha continua sendo da perita.
   const guide=instrumentGuidance(instrumentId);
-  const label=guide?.label||(instrumentId==='aipe'?'AIPE':instrumentId);
+  const label=guide?.label||instrumentId;
   const status=isActive?'Ativo':isDismissed?'Não selecionado':isSuggested?'Sugerido':'Disponível';
   const rationale=guide
     ? `${guide.construct} ${guide.whenAdequate}`
