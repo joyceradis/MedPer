@@ -24,47 +24,40 @@ jobs:
       - name: Run canonical syntax and regression audit
         run: npm run audit
 
-      - name: Validate application shell and Phase 2 composition
+      - name: Validate MedPer V2 application composition
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import re
 
           app = Path('app.html').read_text(encoding='utf-8')
           sw = Path('sw.js').read_text(encoding='utf-8')
-          main = Path('js/main.js').read_text(encoding='utf-8')
-          dashboard = Path('js/ui/dashboard-view.js').read_text(encoding='utf-8')
-          surfaces = Path('js/ui/surface-controller.js').read_text(encoding='utf-8')
-          phase2 = Path('css/phase2.css').read_text(encoding='utf-8')
-          anchor = Path('docs/PRODUCT_ANCHOR.md').read_text(encoding='utf-8')
-          sitemap = Path('docs/SITE_MAP.md').read_text(encoding='utf-8')
+          v2 = Path('js/v2/app.js').read_text(encoding='utf-8')
+          model = Path('js/v2/case-record.js').read_text(encoding='utf-8')
+          repository = Path('js/v2/repository.js').read_text(encoding='utf-8')
+          router = Path('js/v2/method-router.js').read_text(encoding='utf-8')
+          document = Path('js/v2/document.js').read_text(encoding='utf-8')
 
           if '#071d37' not in app:
               raise SystemExit('Application theme-color drifted from canonical navy.')
-          required_assets = ['./css/phase2.css','./js/ui/surface-controller.js','./js/ui/dashboard-view.js','./js/methodology/aipe.js','./icon.svg']
+          required_assets = ['./css/v2.css','./js/v2/app.js','./js/v2/case-record.js','./js/v2/repository.js','./js/v2/method-router.js','./js/v2/document.js','./js/methodology/aipe.js','./js/methodology/posas.js','./icon.svg']
           missing = [x for x in required_assets if x not in sw]
           if missing:
-              raise SystemExit(f'Assets absent from service worker shell: {missing}')
-          if 'installSurfaceController' not in main or 'installInspectorController' not in main:
-              raise SystemExit('Composition root is missing surface or inspector controller.')
-          for surface in ['overview','cases','deadlines','references','models']:
-              if f"'{surface}'" not in dashboard and f'"{surface}"' not in dashboard:
-                  raise SystemExit(f'Dashboard surface missing: {surface}')
-          if 'data-scroll-target' in dashboard:
-              raise SystemExit('Legacy scroll-only dashboard navigation remains active.')
-          if '#/dashboard/' not in surfaces:
-              raise SystemExit('Dashboard surface routing is not hash-addressable.')
-          if 'AIPE' not in Path('js/ui/app.js').read_text(encoding='utf-8'):
-              raise SystemExit('AIPE workspace reference disappeared from pericial workspace.')
-          if 'Dashboard gere. Inspector reconhece. Workspace trabalha' not in sitemap:
-              raise SystemExit('Canonical surface map is missing its architectural rule.')
-          if 'CONTEXTO JURÍDICO-PERICIAL' not in anchor:
-              raise SystemExit('Product anchor lost contextual methodology architecture.')
-          if 'app-shell-dashboard' not in phase2 or '.shell .main.case-layout' not in phase2:
-              raise SystemExit('Phase 2 visual layer does not cover dashboard and workspace.')
-          print('Phase 2 application composition validated.')
+              raise SystemExit(f'V2 assets absent from service worker shell: {missing}')
+          required_steps=['Resumo','Objeto e contexto','Autos e fontes','Cronologia','História e antecedentes','Exame pericial','Método e instrumentos','Análise médico-pericial','Quesitos','Conclusão','Documento final']
+          missing=[x for x in required_steps if x not in v2]
+          if missing:
+              raise SystemExit(f'V2 workspace steps missing: {missing}')
+          for token in ['schemaVersion','evidenceClaims','questions','conclusion']:
+              if token not in model: raise SystemExit(f'Canonical CaseRecord missing: {token}')
+          for token in ['indexedDB','localStorage','export','import']:
+              if token not in repository: raise SystemExit(f'Local repository capability missing: {token}')
+          if 'aipe' not in router or 'posas' not in router:
+              raise SystemExit('Contextual aesthetic methodology routing missing.')
+          if '@page' not in document or 'A4' not in document:
+              raise SystemExit('A4 document composition missing.')
+          print('MedPer V2 composition validated.')
           PY
 
       - name: Validate public/application separation and offline shell
@@ -81,15 +74,15 @@ jobs:
           sw=Path('sw.js').read_text(encoding='utf-8')
           def local(ref): return ref.split('?',1)[0].split('#',1)[0]
           scripts=[local(x) for x in re.findall(r'<script[^>]+src="([^"]+)"',app_html)]
-          if scripts != ['./js/main.js']:
-              raise SystemExit(f'Unexpected application entrypoints: {scripts}')
+          if scripts != ['./js/v2/app.js']:
+              raise SystemExit(f'Unexpected V2 application entrypoints: {scripts}')
           if re.findall(r'<script[^>]+src="([^"]+)"',public_html):
               raise SystemExit('Public site loads application scripts.')
           if './app.html' not in public_html:
               raise SystemExit('Public site has no application link.')
           if '"start_url": "./app.html"' not in manifest:
               raise SystemExit('PWA start_url must remain app.html.')
-          if "isAppNavigation?'./app.html':'./index.html'" not in sw:
-              raise SystemExit('Offline fallbacks are not separated.')
-          print('Public/application separation validated.')
+          if "'./app.html'" not in sw or "'./index.html'" not in sw:
+              raise SystemExit('Offline application/public fallbacks are missing.')
+          print('Public/application separation and V2 offline shell validated.')
           PY
