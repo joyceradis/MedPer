@@ -4,28 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#071d37">
-  <meta name="description" content="Aplicação MedPer para organização e elaboração médico-pericial.">
+  <meta name="description" content="MedPer V2 — estação de trabalho médico-pericial local-first.">
   <meta name="robots" content="noindex,nofollow">
-  <title>MedPer · Aplicação</title>
-  <link rel="manifest" href="./manifest.webmanifest?v=20260910.1">
-  <link rel="icon" href="./icon.svg?v=20260910.1" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/design-system.css?v=20260910.1">
-  <link rel="stylesheet" href="./css/styles.css?v=20260910.1">
-  <link rel="stylesheet" href="./css/dashboard.css?v=20260910.1">
-  <link rel="stylesheet" href="./css/inspector.css?v=20260910.1">
-  <link rel="stylesheet" href="./css/methodology.css?v=20260910.1">
-  <link rel="stylesheet" href="./css/guided-methodology.css?v=20260910.1">
-  <link rel="stylesheet" href="./css/context-methodology.css?v=20260910.1">
-  <link rel="stylesheet" href="./css/knowledge.css?v=20260910.1">
-  <link rel="stylesheet" href="./css/auth.css?v=20260910.1">
-  <link rel="stylesheet" href="./css/phase2.css?v=20260910.1">
-  <link rel="stylesheet" href="./css/onboarding.css?v=20260910.1">
+  <title>MedPer V2 · Estação médico-pericial</title>
+  <link rel="manifest" href="./manifest.webmanifest?v=2.0.0">
+  <link rel="icon" href="./icon.svg?v=2.0.0" type="image/svg+xml">
+  <link rel="stylesheet" href="./css/v2.css?v=2.0.0">
 </head>
 <body>
-  <a class="skip-link" href="#workspace">Ir para o conteúdo</a>
   <div id="app"></div>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <noscript>O MedPer precisa de JavaScript habilitado para funcionar.</noscript>
-  <script type="module" src="./js/main.js?v=20260910.1"></script>
+  <script type="module" src="./js/v2/app.js?v=2.0.0"></script>
+  <script>
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+  </script>
 </body>
 </html>
