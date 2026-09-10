@@ -9,6 +9,7 @@ on:
       - 'css/auth.css'
       - 'supabase/**'
       - 'js/main.js'
+      - 'js/v2/**'
       - 'app.html'
       - 'sw.js'
       - '.github/workflows/auth-audit.yml'
@@ -19,6 +20,7 @@ on:
       - 'css/auth.css'
       - 'supabase/**'
       - 'js/main.js'
+      - 'js/v2/**'
       - 'app.html'
       - 'sw.js'
       - '.github/workflows/auth-audit.yml'
@@ -32,13 +34,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - name: Check authentication module syntax
+      - name: Check authentication and V2 module syntax
         run: |
           set -euo pipefail
           node --check js/auth/auth-controller.js
           node --check js/config/supabase-config.js
           node --check js/main.js
-      - name: Check browser key safety and auth wiring
+          node --check js/v2/app.js
+          node --check js/v2/repository.js
+      - name: Check browser key safety and local-first boundary
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -46,22 +50,36 @@ jobs:
           auth=Path('js/auth/auth-controller.js').read_text(encoding='utf-8')
           config=Path('js/config/supabase-config.js').read_text(encoding='utf-8')
           main=Path('js/main.js').read_text(encoding='utf-8')
+          v2=Path('js/v2/app.js').read_text(encoding='utf-8')
+          repo=Path('js/v2/repository.js').read_text(encoding='utf-8')
           sw=Path('sw.js').read_text(encoding='utf-8')
           app=Path('app.html').read_text(encoding='utf-8')
+
           forbidden=['service_role','SUPABASE_SERVICE_ROLE','secretKey']
-          exposed=[x for x in forbidden if x in config]
-          if exposed: raise SystemExit(f'Secret-like values in browser config: {exposed}')
+          exposed=[x for x in forbidden if x in config or x in v2 or x in app]
+          if exposed: raise SystemExit(f'Secret-like values in browser surface: {exposed}')
+
           required_auth=['signInWithPassword','signUp','signInWithOAuth','getSession','onAuthStateChange','create_personal_organization','signOut']
           missing=[x for x in required_auth if x not in auth]
-          if missing: raise SystemExit(f'Authentication behavior missing: {missing}')
+          if missing: raise SystemExit(f'Legacy authentication behavior missing: {missing}')
+
           required_main=['createAuthController','startApplication','onAccessGranted:startApplication','onAccessRevoked','createApp']
           missing=[x for x in required_main if x not in main]
-          if missing: raise SystemExit(f'Authentication gate missing: {missing}')
-          required_assets=['./css/auth.css','./js/auth/auth-controller.js','./js/config/supabase-config.js']
-          missing=[x for x in required_assets if x not in sw]
-          if missing: raise SystemExit(f'Auth assets absent from PWA shell: {missing}')
-          if './css/auth.css' not in app: raise SystemExit('Authentication stylesheet not loaded by app.html.')
-          print('Authentication gate, public-key safety and PWA assets validated.')
+          if missing: raise SystemExit(f'Legacy authentication implementation damaged: {missing}')
+
+          if './js/v2/app.js' not in app:
+              raise SystemExit('V2 entrypoint missing from app.html.')
+          if 'medper-api-url' in app or 'replit.app' in app.lower():
+              raise SystemExit('V2 must not require a hard-coded remote API.')
+          if 'CaseRepository' not in v2 or 'indexedDB' not in repo or 'localStorage' not in repo:
+              raise SystemExit('Local-first repository boundary is missing.')
+
+          required_v2_assets=['./js/v2/app.js','./js/v2/repository.js','./css/v2.css']
+          missing=[x for x in required_v2_assets if x not in sw]
+          if missing: raise SystemExit(f'V2 assets absent from PWA shell: {missing}')
+          if './js/auth/auth-controller.js' in app or './css/auth.css' in app:
+              raise SystemExit('V2 app unexpectedly depends on legacy auth at startup.')
+          print('Legacy auth safety preserved and V2 local-first boundary validated.')
           PY
       - name: Check database schema isolation
         run: |
@@ -75,5 +93,5 @@ jobs:
           if missing: raise SystemExit(f'Database protections missing: {missing}')
           if 'security definer' not in bootstrap or 'create_personal_organization' not in bootstrap:
               raise SystemExit('Organization bootstrap RPC is missing or unsafe.')
-          print('Multi-tenant schema and RLS safeguards validated.')
+          print('Optional multi-tenant schema and RLS safeguards validated.')
           PY
