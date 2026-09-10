@@ -1,34 +1,28 @@
-const CACHE_NAME='medper-shell-v100-20260910';
-const APP_SHELL=['./','./index.html','./app.html','./css/marketing.css','./css/design-system.css','./css/styles.css','./css/dashboard.css','./css/inspector.css','./css/methodology.css','./css/guided-methodology.css','./css/context-methodology.css','./css/knowledge.css','./css/auth.css','./css/phase2.css','./css/onboarding.css','./js/main.js','./js/core/store.js','./js/core/case-lifecycle.js','./js/core/case-state-sync-controller.js','./js/api/case-state-client.js','./js/api/case-files-client.js','./js/api/auth-client.js','./js/config/api-config.js','./js/auth/api-session.js','./js/auth/onboarding-enhancer.js','./js/methodology/context-resolver.js','./js/methodology/protocols.js','./js/methodology/engine.js','./js/methodology/aipe.js','./js/methodology/posas.js','./js/methodology/internal-damage-source.js','./js/methodology/temporary-damages.js','./js/methodology/pericial-integration.js','./js/methodology/instrument-guide.js','./js/methodology/functional-calc.js','./js/methodology/barema-routing.js','./js/methodology/personal-damage.js','./js/methodology/bodily-damage-protocol.js','./js/knowledge/library.js','./js/models/checklists.js','./js/models/letters.js','./js/models/appointment.js','./js/ui/workflow.js','./js/ui/dashboard-model.js','./js/ui/dashboard-view.js','./js/ui/surface-controller.js','./js/ui/case-inspector.js','./js/ui/inspector-controller.js','./js/ui/method-context-controller.js','./js/ui/case-files-controller.js','./js/ui/app.js','./js/ui/dialog-controller.js','./js/auth/auth-controller.js','./js/config/supabase-config.js','./manifest.webmanifest','./icon.svg'];
+const CACHE_NAME='medper-v2-shell-20260910';
+const APP_SHELL=[
+  './','./index.html','./app.html','./manifest.webmanifest','./icon.svg',
+  './css/marketing.css','./css/v2.css',
+  './js/v2/app.js','./js/v2/case-record.js','./js/v2/repository.js','./js/v2/method-router.js','./js/v2/document.js',
+  './js/methodology/aipe.js','./js/methodology/posas.js'
+];
 
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });
-
 self.addEventListener('activate',event=>{
   event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE_NAME).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));
 });
-
 self.addEventListener('fetch',event=>{
-  if(event.request.method!=='GET')return;
+  if(event.request.method!=='GET') return;
   const url=new URL(event.request.url);
-  if(url.origin!==self.location.origin)return;
-  const isFreshAsset=url.pathname.endsWith('.js')||url.pathname.endsWith('.css')||url.pathname.endsWith('.html');
-  if(event.request.mode==='navigate'||isFreshAsset){
+  if(url.origin!==self.location.origin) return;
+  const fresh=/\.(?:js|css|html)$/.test(url.pathname)||event.request.mode==='navigate';
+  if(fresh){
     event.respondWith(fetch(event.request,{cache:'no-store'}).then(response=>{
-      const clone=response.clone();
-      caches.open(CACHE_NAME).then(cache=>cache.put(event.request,clone));
+      if(response.ok)caches.open(CACHE_NAME).then(cache=>cache.put(event.request,response.clone()));
       return response;
-    }).catch(async()=>{
-      const cached=await caches.match(event.request);
-      if(cached)return cached;
-      const isAppNavigation=url.pathname.endsWith('/app.html')||url.pathname.includes('/app.html');
-      return caches.match(isAppNavigation?'./app.html':'./index.html');
-    }));
+    }).catch(async()=>await caches.match(event.request)||await caches.match(url.pathname.includes('app.html')?'./app.html':'./index.html')));
     return;
   }
-  event.respondWith(caches.match(event.request).then(cached=>cached||fetch(event.request).then(response=>{
-    if(response.ok)caches.open(CACHE_NAME).then(cache=>cache.put(event.request,response.clone()));
-    return response;
-  })));
+  event.respondWith(caches.match(event.request).then(cached=>cached||fetch(event.request).then(response=>{if(response.ok)caches.open(CACHE_NAME).then(cache=>cache.put(event.request,response.clone()));return response;})));
 });
