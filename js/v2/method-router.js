@@ -19,7 +19,11 @@ export function routeMethodology(caseRecord = {}) {
   ].filter(Boolean).join(' '));
   const chosen = new Set();
   const has = (...terms) => terms.some(term => haystack.includes(norm(term)));
-  if (has('estético','estetico','cicatriz','queimadura','deformidade')) { chosen.add('aipe'); chosen.add('posas'); }
+
+  if (has('estético','estetico','cicatriz','queimadura','deformidade')) chosen.add('aipe');
+  // POSAS mede qualidade cicatricial; não deve ser sugerida para qualquer dano
+  // estético (p.ex. deformidade não cicatricial) sem componente de cicatriz.
+  if (has('cicatriz','cicatricial','queimadura')) chosen.add('posas');
   if (has('incapacidade','laborativa','capacidade residual','funcional','função','funcao')) { chosen.add('functional-capacity'); chosen.add('temporary-damage'); }
   if (has('nexo','causal','concausa','acidente','etiologia')) chosen.add('causal-link');
   if (has('responsabilidade profissional','erro médico','erro medico','iatrogenia','má prática','ma pratica')) { chosen.add('professional-liability'); chosen.add('causal-link'); }
