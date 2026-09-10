@@ -28,10 +28,10 @@ assert.equal(aesthetic.some(item => item.id === 'aipe'), true);
 assert.equal(aesthetic.some(item => item.id === 'posas'), true);
 assert.equal(aesthetic.some(item => item.id === 'causal-link'), false);
 
-const nonScarAesthetic = createCaseRecord({ title:'Deformidade estética', context:'civel', object:'dano estético por deformidade não cicatricial' });
-const nonScarRoutes = routeMethodology(nonScarAesthetic).map(item => item.id);
-assert.equal(nonScarRoutes.includes('aipe'), true);
-assert.equal(nonScarRoutes.includes('posas'), false);
+const genericAesthetic = createCaseRecord({ title:'Deformidade estética', context:'civel', object:'avaliação de dano estético por deformidade nasal' });
+const genericAestheticRoutes = routeMethodology(genericAesthetic).map(item => item.id);
+assert.equal(genericAestheticRoutes.includes('aipe'), true);
+assert.equal(genericAestheticRoutes.includes('posas'), false);
 
 const incapacity = createCaseRecord({ title:'Incapacidade', context:'previdenciario', object:'incapacidade laborativa e capacidade residual' });
 const incapacityRoutes = routeMethodology(incapacity).map(item => item.id);
