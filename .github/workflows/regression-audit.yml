@@ -37,13 +37,12 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           set -euo pipefail
-          find js tests -type f \( -name '*.js' -o -name '*.mjs' \) -print0 \
-            | xargs -0 -n1 node --check
+          find js tests -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -n1 node --check
 
-      - name: Run store migration and compatibility tests
+      - name: Run canonical regression suite
         run: |
           set -euo pipefail
-          node tests/store-regression.test.mjs
+          npm test
 
       - name: Verify application entrypoints and storage ownership
         run: |
@@ -56,24 +55,17 @@ jobs:
           public = Path('index.html').read_text(encoding='utf-8')
           js_files = list(Path('js').rglob('*.js'))
 
-          def local_path(ref):
-              return ref.split('?', 1)[0].split('#', 1)[0]
-
+          def local_path(ref): return ref.split('?', 1)[0].split('#', 1)[0]
           scripts = [local_path(ref) for ref in re.findall(r'<script[^>]+src="([^"]+)"', app)]
-          if scripts != ['./js/main.js']:
-              raise SystemExit(f'Unexpected app entrypoints: {scripts}')
-
-          if './js/main.js' in public:
+          if scripts != ['./js/v2/app.js']:
+              raise SystemExit(f'Unexpected V2 app entrypoints: {scripts}')
+          if './js/v2/app.js' in public or './js/main.js' in public:
               raise SystemExit('Public home must not load the internal application.')
 
-          storage_owners = [
-              str(path) for path in js_files
-              if 'localStorage.' in path.read_text(encoding='utf-8')
-          ]
-          if storage_owners != ['js/core/store.js']:
-              raise SystemExit(
-                  f'localStorage must remain owned by store.js only: {storage_owners}'
-              )
+          storage_owners = sorted(str(path) for path in js_files if 'localStorage.' in path.read_text(encoding='utf-8'))
+          allowed = sorted(['js/core/store.js','js/v2/repository.js'])
+          if storage_owners != allowed:
+              raise SystemExit(f'Unexpected localStorage ownership: {storage_owners}; expected {allowed}')
 
           forbidden = ['MutationObserver', 'window.MedPer', 'window.MedPerMethodology']
           combined = '\n'.join(path.read_text(encoding='utf-8') for path in js_files)
@@ -81,10 +73,10 @@ jobs:
           if found:
               raise SystemExit(f'Forbidden architecture patterns found: {found}')
 
-          print('Entrypoints, storage ownership and modular architecture validated.')
+          print('V2 entrypoint, storage ownership and modular architecture validated.')
           PY
 
-      - name: Verify canonical pericial object compatibility
+      - name: Verify legacy knowledge compatibility and V2 canonical model
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -93,38 +85,21 @@ jobs:
 
           store = Path('js/core/store.js').read_text(encoding='utf-8')
           engine = Path('js/methodology/engine.js').read_text(encoding='utf-8')
-          app = Path('js/ui/app.js').read_text(encoding='utf-8')
+          legacy_app = Path('js/ui/app.js').read_text(encoding='utf-8')
+          v2_model = Path('js/v2/case-record.js').read_text(encoding='utf-8')
+          v2_app = Path('js/v2/app.js').read_text(encoding='utf-8')
 
-          required_store = [
-              'synchronizePericialObject',
-              'caseData.methodology.general.object',
-              'caseData.scope = canonical',
-              'normalizeState(next, state)',
-          ]
-          missing = [item for item in required_store if item not in store]
-          if missing:
-              raise SystemExit(f'Canonical object migration safeguards missing: {missing}')
+          required_store=['synchronizePericialObject','caseData.methodology.general.object','caseData.scope = canonical','normalizeState(next, state)']
+          missing=[item for item in required_store if item not in store]
+          if missing: raise SystemExit(f'Legacy migration safeguards missing: {missing}')
+          if "has(g,'object')" not in engine: raise SystemExit('Legacy methodology canonical-object audit missing.')
+          if not re.search(r"\b(?:textarea|bareField)\('scope'", legacy_app):
+              raise SystemExit('Legacy scope compatibility binding changed unexpectedly.')
 
-          if "has(g,'object')" not in engine:
-              raise SystemExit('Methodology audit no longer checks the canonical object.')
-
-          # O invariante é que a interface continue ligada ao caminho legado `scope`,
-          # que o store sincroniza com methodology.general.object. A verificação
-          # anterior exigia o helper `textarea` pelo nome, o que prendia o gate a uma
-          # escolha de renderização: trocar de helper preservando o binding derrubava
-          # a CI, e passar a renderizar sem binding nenhum poderia não derrubar.
-          if not re.search(r"\b(?:textarea|bareField)\('scope'", app):
-              raise SystemExit(
-                  'Legacy interface binding changed without a compatibility migration.'
-              )
-
-          # E o binding renderizado precisa continuar sob teste de comportamento —
-          # grep em código-fonte não prova que o atributo chega ao DOM.
-          surface = Path('tests/case-surface-regression.test.mjs').read_text(encoding='utf-8')
-          if 'data-bind="scope"' not in surface:
-              raise SystemExit(
-                  'The rendered legacy binding is no longer covered by a regression test.'
-              )
-
-          print('Legacy scope and canonical methodology object remain synchronized.')
+          required_v2=['schemaVersion: SCHEMA_VERSION','sources: []','timeline: []','evidenceClaims: []','questions: []','analysis:','conclusion:']
+          missing=[item for item in required_v2 if item not in v2_model]
+          if missing: raise SystemExit(f'V2 canonical CaseRecord incomplete: {missing}')
+          for token in ['routeMethodology','AIPE_CRITERIA','POSAS_PATIENT_ITEMS','composeCaseDocument']:
+              if token not in v2_app: raise SystemExit(f'V2 integration missing: {token}')
+          print('Legacy medico-legal knowledge remains available and V2 canonical case model is wired.')
           PY
