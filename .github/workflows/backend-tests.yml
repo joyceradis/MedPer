@@ -28,6 +28,14 @@ jobs:
           python-version: '3.13'
           cache: pip
           cache-dependency-path: backend/requirements.txt
+      - name: Lock sincronizado com requirements.in
+        run: |
+          pip install pip-tools==7.6.2
+          pip-compile --quiet --no-emit-index-url --strip-extras --output-file=requirements.txt requirements.in
+          git diff --exit-code requirements.txt || {
+            echo "::error file=backend/requirements.txt::requirements.txt fora de sincronia com requirements.in. Rode, em backend/ com Python 3.13: pip-compile --no-emit-index-url --strip-extras --output-file=requirements.txt requirements.in"
+            exit 1
+          }
       - run: pip install -r requirements.txt
       - run: python -m compileall -q app
       - run: pytest -q -k 'not postgres_rls'
