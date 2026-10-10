@@ -40,6 +40,21 @@ A Radis é um workspace pessoal diferente: pode oferecer um atalho para o MedPer
 
 **Fronteira:** o [Kit do Perito](https://github.com/joyceradis/pericia-medica) é uma ferramenta avulsa complementar. Nenhuma dessas funcionalidades deve ser reimplementada em outro produto sem comparação das regras e necessidades.
 
+### Diagrama de orientação · Workflow pericial
+
+```mermaid
+flowchart LR
+  O["OBJETO PERICIAL"] --> E["FONTES E EVIDÊNCIAS"]
+  E --> M["MÉTODO · AIPE · POSAS"]
+  M --> L["FUNDAMENTAÇÃO E LAUDO"]
+  K["KIT DO PERITO · ferramenta independente"] -. "complementa" .-> M
+  classDef source fill:#eff5f2,stroke:#88ab94,color:#263d33;
+  classDef outcome fill:#f4f0fa,stroke:#aa98c5,color:#3e3556;
+  class P,E,O,D,R source;
+```
+
+**Leitura:** setas contínuas representam o fluxo conceitual dentro do produto; setas pontilhadas indicam relação entre sistemas ou possibilidade futura, **não integração implementada**.
+
 ## Visão do produto
 
 A perícia médica não começa pelo laudo. Começa pela compreensão da missão pericial.
