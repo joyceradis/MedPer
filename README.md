@@ -16,6 +16,16 @@
 
 ---
 
+## Papel no ecossistema Radis
+
+**MedPer é o produto especializado no fluxo médico-pericial completo**, da delimitação do objeto à fundamentação e ao documento final. O [Kit do Perito](https://github.com/joyceradis/pericia-medica) é complementar: concentra cálculos e instrumentos rápidos, sem substituir o workflow do MedPer.
+
+**Integração planejada:** a Radis poderá oferecer uma porta de entrada e retomar atividades periciais, mantendo a execução, as regras e o estado do trabalho no sistema responsável. Isso **não** significa importar autos, laudos ou registros de periciandos para a plataforma pessoal. A integração ainda não está implementada.
+
+**Situação:** protótipo público em desenvolvimento, conforme a seção [Estado atual](#estado-atual); não confundir página de demonstração com sistema pericial homologado.
+
+**Rastreabilidade:** [histórico deste README](https://github.com/joyceradis/MedPer/commits/main/README.md) · [PRs do MedPer](https://github.com/joyceradis/MedPer/pulls?q=is%3Apr). A documentação de cada entrega deve vincular seu PR quando houver um identificável.
+
 ## Visão do produto
 
 A perícia médica não começa pelo laudo. Começa pela compreensão da missão pericial.
