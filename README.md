@@ -16,15 +16,17 @@
 
 ---
 
-## Papel no ecossistema Radis
+## Identidade e limites do projeto
 
-**MedPer é o produto especializado no fluxo médico-pericial completo**, da delimitação do objeto à fundamentação e ao documento final. O [Kit do Perito](https://github.com/joyceradis/pericia-medica) é complementar: concentra cálculos e instrumentos rápidos, sem substituir o workflow do MedPer.
+**Categoria:** software médico-pericial especializado · desenvolvimento independente.
 
-**Integração planejada:** a Radis poderá oferecer uma porta de entrada e retomar atividades periciais, mantendo a execução, as regras e o estado do trabalho no sistema responsável. Isso **não** significa importar autos, laudos ou registros de periciandos para a plataforma pessoal. A integração ainda não está implementada.
+O **MedPer** organiza o fluxo pericial completo, da definição do objeto à análise de evidências e ao documento técnico. O [Kit do Perito](https://github.com/joyceradis/pericia-medica) é um produto complementar de cálculos e instrumentos pontuais. Não são o mesmo software.
 
-**Situação:** protótipo público em desenvolvimento, conforme a seção [Estado atual](#estado-atual); não confundir página de demonstração com sistema pericial homologado.
+A Radis é um workspace pessoal diferente: pode oferecer um atalho para o MedPer **se isso for útil e decidido futuramente**, sem assumir seus dados, sua execução ou sua evolução. Não existe integração funcional comprovada entre ambos.
 
-**Rastreabilidade:** [histórico deste README](https://github.com/joyceradis/MedPer/commits/main/README.md) · [PRs do MedPer](https://github.com/joyceradis/MedPer/pulls?q=is%3Apr). A documentação de cada entrega deve vincular seu PR quando houver um identificável.
+**Estado e limitações:** consultar [Estado atual](#estado-atual); protótipo público não equivale a aplicação pericial homologada.
+
+**Rastreabilidade:** [histórico do README](https://github.com/joyceradis/MedPer/commits/main/README.md) · [PRs](https://github.com/joyceradis/MedPer/pulls?q=is%3Apr).
 
 ## Visão do produto
 
