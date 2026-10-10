@@ -1,0 +1,33 @@
+# Vigilância contínua de dependências.
+# Semanal, agrupada e com teto de PRs abertos — para avisar sem virar ruído.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    labels: [dependencies]
+    commit-message:
+      prefix: "fix(deps)"
+    groups:
+      backend-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 2
+    labels: [dependencies]
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        patterns: ["*"]
