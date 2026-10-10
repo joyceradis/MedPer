@@ -1,0 +1,19 @@
+# Dependências DIRETAS do backend. Edite aqui, não em requirements.txt.
+# requirements.txt é o lock completo (diretas + transitivas), gerado com Python 3.13 (igual ao Dockerfile e ao CI):
+#   pip-compile --no-emit-index-url --strip-extras --output-file=requirements.txt requirements.in
+# O CI falha se os dois arquivos estiverem fora de sincronia. O Dependabot regenera o lock sozinho.
+
+fastapi==0.143.0
+starlette==1.7.0
+uvicorn[standard]==0.40.0
+SQLAlchemy==2.0.50
+alembic==1.18.4
+psycopg[binary]==3.3.2
+PyJWT==2.15.1
+argon2-cffi==25.1.0
+cryptography==50.0.0
+pydantic-settings==2.14.2
+email-validator==2.3.0
+python-multipart==0.0.31
+pytest==9.0.3
+httpx==0.28.1
