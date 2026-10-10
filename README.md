@@ -28,6 +28,18 @@ A Radis é um workspace pessoal diferente: pode oferecer um atalho para o MedPer
 
 **Rastreabilidade:** [histórico do README](https://github.com/joyceradis/MedPer/commits/main/README.md) · [PRs](https://github.com/joyceradis/MedPer/pulls?q=is%3Apr).
 
+## Encontrar componentes existentes
+
+| Necessidade | Onde está |
+|---|---|
+| Mapa de páginas e fluxo pericial | [`docs/SITE_MAP.md`](docs/SITE_MAP.md) · [`pages/`](pages/) |
+| Estados e ciclo de vida do caso | [`js/core/case-lifecycle.js`](js/core/case-lifecycle.js) |
+| AIPE, POSAS e danos temporários | [`js/methodology/aipe.js`](js/methodology/aipe.js) · [`posas.js`](js/methodology/posas.js) · [`temporary-damages.js`](js/methodology/temporary-damages.js) |
+| Seleção metodológica e integração pericial | [`js/methodology/engine.js`](js/methodology/engine.js) · [`pericial-integration.js`](js/methodology/pericial-integration.js) |
+| Contratos, status e testes | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/STATUS.md`](docs/STATUS.md) · [`tests/`](tests/) |
+
+**Fronteira:** o [Kit do Perito](https://github.com/joyceradis/pericia-medica) é uma ferramenta avulsa complementar. Nenhuma dessas funcionalidades deve ser reimplementada em outro produto sem comparação das regras e necessidades.
+
 ## Visão do produto
 
 A perícia médica não começa pelo laudo. Começa pela compreensão da missão pericial.
