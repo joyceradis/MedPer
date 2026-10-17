@@ -1,5 +1,7 @@
 # MedPer — Status de engenharia
 
+> **CHECKPOINT HISTÓRICO (15/08/2026), NÃO É ESTADO V2 ATUAL.** A entrada pública já executa `app.html → js/v2/app.js` (11 etapas, IndexedDB/fallback localStorage). Para retomada usar [`V2_RUNTIME.md`](V2_RUNTIME.md), [`ROADMAP.md`](../ROADMAP.md) e [#95](https://github.com/joyceradis/MedPer/issues/95). Os estados GREEN abaixo correspondem aos gates da arquitetura anterior e não comprovam segurança ou migração da V2.
+
 **Checkpoint:** Fase 2 — superfície "Modelos e checklists" operacional  
 **Data:** 2026-08-15  
 **Branch canônica:** `main`  
