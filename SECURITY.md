@@ -6,6 +6,12 @@ A versão publicada do MedPer é um protótipo em desenvolvimento. O modo local 
 
 **Não utilize a versão pública com dados pessoais identificáveis, prontuários, fotografias clínicas reais, documentos judiciais sigilosos ou qualquer informação protegida.**
 
+## Fronteira da V2 publicada
+
+A entrada `app.html` utiliza `js/v2/repository.js`, com IndexedDB e fallback em `localStorage`, **sem criptografia de casos nesse módulo**. Login, RLS e cifragem do backend FastAPI em desenvolvimento **não se estendem automaticamente** a esse armazenamento. Os campos da interface podem conter identificação processual e da pessoa examinada; utilize apenas conteúdo inteiramente fictício no protótipo público.
+
+Arquivos JSON exportados/importados são cópias locais sem proteção garantida pela aplicação. Formatos legados e desconhecidos devem ser preservados externamente, não convertidos silenciosamente. Ver [`docs/V2_RUNTIME.md`](docs/V2_RUNTIME.md) e [#95](https://github.com/joyceradis/MedPer/issues/95).
+
 ## Versões suportadas
 
 | Versão | Suporte de segurança |
