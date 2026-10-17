@@ -23,7 +23,7 @@ O `app.html` executa `js/v2/app.js`. As regras e telas existentes em `js/core/**
 - **Primária:** IndexedDB (`medper-v2`, store `cases`).
 - **Fallback:** `localStorage` (`medper:v2:cases`).
 - **Contrato em uso:** `js/v2/case-record.js`, `schemaVersion: 2`.
-- **Backup:** exportação/importação JSON do navegador; trata-se de arquivo potencialmente identificável, sem proteção criptográfica adicional no módulo V2.
+- **Backup:** exportação/importação JSON do navegador; trata-se de arquivo potencialmente identificável, sem proteção criptográfica adicional no módulo V2. A importação não substitui silenciosamente um caso com o mesmo identificador; restauração exige resolver esse conflito antes.
 - **Limitação:** preservação e migração íntegra de formatos históricos ainda exigem implementação e testes dedicados; não converter casos reais.
 
 ## Testes e critérios
