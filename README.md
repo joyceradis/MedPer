@@ -16,6 +16,31 @@
 
 ---
 
+## Runtime público atual · V2 (17/10/2026)
+
+**A entrada pública `app.html` carrega `js/v2/app.js`, com 11 etapas e persistência local em IndexedDB (`medper-v2`) e fallback `localStorage`.** Esse runtime é diferente do frontend anterior baseado em `js/main.js` e `js/core/store.js`. O backend FastAPI/PostgreSQL e o schema Supabase presentes no repositório não estão conectados à persistência da V2 pública.
+
+- [Como a V2 realmente funciona e quais são os limites de dados](docs/V2_RUNTIME.md)
+- [Manual técnico da V2](README-V2.md) · [Critérios de aceitação](docs/medper-v2-acceptance.md)
+- [Segurança](SECURITY.md) · [Roadmap atualizado](ROADMAP.md) · [Issue de coordenação #95](https://github.com/joyceradis/MedPer/issues/95)
+
+**Não inserir dados reais de periciados, prontuários, fotografias clínicas ou autos sigilosos.** O armazenamento da V2 no dispositivo não tem criptografia aplicada pelo módulo atual. A presença de proteção no backend experimental não protege automaticamente este frontend.
+
+### Componentes executados na entrada V2
+
+| Função | Arquivo |
+| --- | --- |
+| Entrada e interface de 11 etapas | [`app.html`](app.html) · [`js/v2/app.js`](js/v2/app.js) |
+| Modelo e versão do caso | [`js/v2/case-record.js`](js/v2/case-record.js) |
+| IndexedDB e fallback local | [`js/v2/repository.js`](js/v2/repository.js) |
+| Sugestão de instrumentos | [`js/v2/method-router.js`](js/v2/method-router.js) |
+| Documento A4 | [`js/v2/document.js`](js/v2/document.js) |
+| Instrumentos de referência | [`js/methodology/aipe.js`](js/methodology/aipe.js) · [`posas.js`](js/methodology/posas.js) |
+
+Os demais módulos, testes e documentos históricos continuam versionados, mas não devem ser confundidos com dependências carregadas por `app.html`. **Migração integral de casos do frontend antigo para a V2 não está comprovada.**
+
+---
+
 ## Identidade e limites do projeto
 
 **Categoria:** software médico-pericial especializado · desenvolvimento independente.
@@ -107,51 +132,15 @@ O produto busca reduzir três riscos recorrentes:
 
 ## Estado atual
 
-O MedPer está em fase de **protótipo funcional e engenharia cognitiva**.
+O MedPer permanece **protótipo técnico, não homologado para dados reais**. É importante distinguir as funcionalidades da V2 efetivamente carregada das implementações antigas que ainda existem no repositório.
 
-### Implementado
+**V2 executada por `app.html`:** criação e edição local de casos, 11 etapas de workspace, fontes, cronologia, história e exame, instrumentos contextuais, matriz de evidências, quesitos, conclusão redigida pela perita, exportação/importação de JSON V2 e composição de documento A4. Isso descreve capacidades presentes no código, **não certificação de comportamento integral em todos os navegadores**.
 
-- site público separado da aplicação interna;
-- PWA estático compatível com GitHub Pages;
-- execução local e funcionamento offline;
-- criação, abertura e persistência de casos no navegador;
-- organização de perícias em andamento, concluídas e lixeira recuperável;
-- migração retrocompatível das versões antigas do armazenamento;
-- definição de esfera, ramo, papel profissional, matéria e modalidade;
-- delimitação do objeto pericial;
-- inventário de fontes e fatos médico-periciais;
-- cronologia;
-- metodologia geral obrigatória;
-- protocolos guiados para dano estético, incapacidade, nexo causal/concausal e responsabilidade profissional;
-- múltiplos protocolos aplicáveis no mesmo caso, com sugestão conservadora a partir do objeto e controle médico explícito;
-- AIPE restrita ao dano estético, com tabelas de impressão, categorias 0–50 e critérios complementares abertas quando aplicável;
-- matriz de decisão pericial;
-- bloqueios e ressalvas metodológicas, com a etapa aberta pela tarefa que ali se cumpre e as pendências das etapas seguintes registradas a um clique, sem que o total do caso deixe de ser declarado;
-- quesitos;
-- prévia do documento final;
-- exportação JSON;
-- superfície **Modelos e checklists** com o Protocolo de Conferência Pericial operando como ferramenta: oito dimensões colapsáveis, itens marcáveis, progresso por dimensão e conferência persistida por caso (`case.conference`);
-- entrada AIPE derivada da tabela de referência, com a faixa visível no rótulo e preservação de registros feitos sob a escala anterior;
-- revisão automatizada em dois modelos na CI, com o diff tratado como entrada não confiável;
-- autenticação e modelo multiusuário preparados, ainda não conectados a ambiente real;
-- suíte de regressão cobrindo migração, persistência, metodologia, superfícies, conhecimento, marca e runtime da CI.
+**Persistência:** IndexedDB `medper-v2`, fallback `medper:v2:cases` no navegador. Não existe sincronização automática com FastAPI ou Supabase. Casos históricos requerem migração validada antes de qualquer conversão.
 
-### Em desenvolvimento
+**Pendências antes de dados reais:** segurança e isolamento, criptografia apropriada, retenção e recuperação, testes reais do navegador, contrato versionado de caso e backend canônico. O armazenamento local não oferece essas garantias.
 
-- reorganização da aplicação conforme o fluxo cognitivo da perícia;
-- identificadores estáveis para respostas metodológicas;
-- redução do acoplamento do módulo de interface;
-- validação manual em desktop e mobile;
-- projeto Supabase real;
-- sincronização remota dos casos;
-- testes de isolamento e permissões;
-- assinatura, limites de uso e comercialização.
-
-### Não disponível para produção
-
-A versão pública atual **não deve ser utilizada com dados reais, identificáveis, sigilosos, assistenciais ou processuais**.
-
-O modo local utiliza `localStorage`, sem as garantias necessárias de autenticação, segregação, criptografia, backup, controle de acesso e resposta a incidentes exigidas para operação real.
+Veja o estado verificável em [`docs/V2_RUNTIME.md`](docs/V2_RUNTIME.md) e a fila executável em [`ROADMAP.md`](ROADMAP.md).
 
 ---
 
@@ -167,134 +156,24 @@ O modo local utiliza `localStorage`, sem as garantias necessárias de autentica�
 
 ---
 
-## Arquitetura atual
+## Arquitetura atual · entrada V2
 
 ```text
-Navegador
-│
-├── index.html                  site público
-├── app.html                    aplicação médico-pericial
-│
-├── js/main.js                  composição e inicialização
-│   ├── core/store.js           estado, normalização, migração e persistência
-│   ├── core/case-lifecycle.js  andamento, conclusão, lixeira e restauração
-│   ├── auth/                   autenticação preparada
-│   ├── methodology/            protocolos, resolução adaptativa, AIPE e auditoria
-│   └── ui/                     renderização, interação e diálogos
-│
-├── css/                        sistemas visuais público e interno
-├── supabase/                   schema multiusuário e bootstrap
-├── tests/                      testes de regressão
-├── docs/                       especificações técnicas e metodológicas
-│
-├── manifest.webmanifest        metadados do PWA
-└── sw.js                       cache, atualização e fallback offline
+index.html              apresentação
+app.html                entrada do aplicativo
+  └── js/v2/app.js      interface, fluxo de 11 etapas e interações
+      ├── case-record.js    schemaVersion 2 e normalização
+      ├── repository.js     IndexedDB + fallback localStorage
+      ├── method-router.js  sugestões contextuais
+      └── document.js       estrutura A4 para impressão
+sw.js                   cache estático do shell
+backend/                serviço FastAPI em desenvolvimento, não ligado à V2
+supabase/               proposta histórica concorrente, não ligada à V2
 ```
 
-### Propriedade do estado
+O código de `js/main.js`, `js/core/store.js` e `js/ui/**` conserva regras, testes e documentação da arquitetura anterior; não é iniciado pelo `app.html` V2. As invariantes médico-periciais continuam válidas, mas seu funcionamento precisa ser comprovado no runtime efetivo.
 
-O arquivo `js/core/store.js` é o único proprietário do estado persistido no navegador.
-
-```text
-entrada do usuário
-      ↓
-normalização do caso
-      ↓
-persistência local
-      ↓
-notificação controlada da interface
-```
-
-As atualizações narrativas são persistidas sem reconstruir toda a interface a cada caractere. A atualização visual ocorre no encerramento da edição ou em respostas estruturadas que alterem imediatamente a auditoria metodológica.
-
-### Compatibilidade de dados
-
-O store atual reconhece:
-
-- `medper.state.v4`;
-- `medper.state.v3`;
-- `medper.state.v2`;
-- `mlks.prototype.v1`.
-
-Quando uma chave antiga é encontrada, o conteúdo original é copiado para uma chave de backup antes da normalização.
-
----
-
-## Estrutura do repositório
-
-```text
-MedPer/
-├── index.html
-├── app.html
-├── README.md
-├── ROADMAP.md
-├── manifest.webmanifest
-├── sw.js
-├── icon.svg
-│
-├── css/
-│   ├── marketing.css
-│   ├── styles.css
-│   ├── methodology.css
-│   ├── guided-methodology.css
-│   └── auth.css
-│
-├── js/
-│   ├── main.js
-│   ├── auth/
-│   │   └── auth-controller.js
-│   ├── api/
-│   │   ├── auth-client.js
-│   │   ├── case-state-client.js
-│   │   └── case-files-client.js   documentos dos autos, cifrados no servidor
-│   ├── config/
-│   │   └── supabase-config.js
-│   ├── core/
-│   │   ├── store.js
-│   │   └── case-lifecycle.js
-│   ├── methodology/
-│   │   ├── context-resolver.js
-│   │   ├── protocols.js
-│   │   ├── engine.js
-│   │   ├── aipe.js            quadros 1–4 do AIPE/Brasil, fonte única
-│   │   ├── internal-damage-source.js  matriz interna v1.5 — aritmética
-│   │   ├── temporary-damages.js       marcos, contagem inclusiva, contradições
-│   │   └── pericial-integration.js    eixos lado a lado, sem escore global
-│   ├── knowledge/
-│   │   └── library.js          referências com autoridade e localizador
-│   ├── models/
-│   │   ├── checklists.js       instrumentos de conferência, fora do motor
-│   │   └── letters.js          expediente do encargo (aceite, escusa, prazo…)
-│   └── ui/
-│       ├── workflow.js
-│       ├── app.js
-│       ├── dashboard-model.js
-│       ├── dashboard-view.js
-│       ├── surface-controller.js
-│       ├── case-inspector.js
-│       ├── inspector-controller.js
-│       ├── method-context-controller.js
-│       ├── case-files-controller.js  anexos dos autos; nomes só em memória
-│       └── dialog-controller.js
-│
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── PRODUCT_MAP.md          arquitetura de informação e superfícies
-│   ├── STATUS.md               âncora operacional de retomada
-│   ├── AUDIT_REGRESSION.md
-│   ├── FIELD_MIGRATION_MATRIX.md
-│   └── MEDPER_METHOD.md
-│
-├── supabase/
-│   ├── schema.sql
-│   └── 002_bootstrap_organization.sql
-│
-├── tests/
-│   └── suítes de regressão (a cadeia canônica está em `package.json`)
-│
-└── .github/workflows/
-    └── auditorias automatizadas
-```
+**Dado local ≠ dado protegido por backend.** Não realizar migração destrutiva, apagar dados ou presumir isolamento. Mais detalhes em [`docs/V2_RUNTIME.md`](docs/V2_RUNTIME.md).
 
 ---
 
@@ -379,38 +258,11 @@ A documentação integral está em [`docs/MEDPER_METHOD.md`](./docs/MEDPER_METHO
 
 ---
 
-## Modelo de dados futuro
+## Persistência remota · decisão pendente
 
-O schema preparado para Supabase/PostgreSQL contempla:
+Há implementações experimentais de FastAPI/PostgreSQL em `backend/` e modelo Supabase em `supabase/`. **Nenhuma é a persistência operacional do frontend público V2**. A escolha de um backend único, modelo de autorização, migração, sincronização offline, backup e retenção está em revisão nas issues [#68](https://github.com/joyceradis/MedPer/issues/68), [#69](https://github.com/joyceradis/MedPer/issues/69) e [#95](https://github.com/joyceradis/MedPer/issues/95).
 
-```text
-profiles
-organizations
-organization_members
-plans
-subscriptions
-cases
-case_collaborators
-audit_events
-```
-
-A arquitetura futura prevê:
-
-```text
-Frontend PWA
-    ↓
-Supabase Auth
-    ↓
-PostgreSQL + Row-Level Security
-    ↓
-casos por usuário e organização
-    ↓
-armazenamento de arquivos
-    ↓
-auditoria, backup e retenção
-```
-
-Esse modelo ainda não está conectado à aplicação pública.
+Não usar exemplos de schema futuro como prova de implementação.
 
 ---
 
@@ -441,18 +293,7 @@ Nunca devem ser incluídas no frontend:
 
 ## Roadmap oficial
 
-1. separar site público de dashboard — **concluído**;
-2. projetar a experiência cognitiva e a identidade do produto — **em andamento**;
-3. conectar Supabase real;
-4. sincronizar casos;
-5. testar isolamento e permissões;
-6. implementar assinatura e limites;
-7. criar onboarding;
-8. publicar planos;
-9. executar piloto fechado;
-10. abrir venda pública.
-
-A especificação completa e os critérios de aceite estão em [`ROADMAP.md`](./ROADMAP.md).
+O plano deve começar pela integridade e segurança da V2, e não pela conexão prematura a um serviço de dados. Consulte [`ROADMAP.md`](ROADMAP.md) para prioridades, dependências e critérios verificáveis.
 
 ---
 
