@@ -1,5 +1,7 @@
 # Arquitetura do MedPer
 
+> **AVISO DE VERSÃO (17/10/2026):** este documento descreve sobretudo o frontend anterior baseado em `js/main.js` e `js/core/store.js`. A execução pública atual é **`app.html → js/v2/app.js`**, com `js/v2/repository.js` (IndexedDB e fallback localStorage), `schemaVersion: 2` e 11 etapas. Leia primeiro [`V2_RUNTIME.md`](V2_RUNTIME.md). A bifurcação FastAPI/Supabase não está resolvida; backend nenhum autentica ou cifra automaticamente os dados do frontend público V2. As **invariantes metodológicas abaixo permanecem referências de produto**, mas não significam que cada uma tenha execução comprovada na V2.
+
 ## 1. Escopo
 
 Este documento descreve a arquitetura efetivamente utilizada pelo protótipo atual, seus invariantes e os limites entre estado, metodologia, conhecimento, interface e infraestrutura futura.
