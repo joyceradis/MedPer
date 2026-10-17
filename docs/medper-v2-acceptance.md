@@ -9,7 +9,7 @@
 - [ ] Persiste caso no IndexedDB e recupera após fechar e reabrir a aba.
 - [ ] Sem IndexedDB, grava/recupera em fallback local e **informa claramente falhas de quota/indisponibilidade**.
 - [ ] Não transforma falha de persistência em mensagem de "salvo".
-- [ ] Exporta JSON e importa cópia idêntica, sem dados perdidos silenciosamente ou sobrescrita inesperada.
+- [ ] Exporta JSON e importa cópia idêntica; bloqueia importação com ID já presente (sem substituição inesperada) e permite restauração após exclusão deliberada, confirmada em teste sintético.
 - [ ] Preserva fontes, cronologia, história, exame, matriz de evidências, metodologia, quesitos e conclusões preenchidas durante round-trip.
 - [ ] Identifica formato antigo não suportado, sem descartar campos ou migrar irreversivelmente.
 - [ ] Apresenta AIPE/POSAS apenas quando pertinentes, sem concluir pelo usuário.
