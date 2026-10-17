@@ -10,9 +10,13 @@ on:
     paths:
       - 'backend/**'
 
+permissions:
+  contents: read
+
 jobs:
   sqlite-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
@@ -34,6 +38,7 @@ jobs:
 
   postgres-integration:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17-alpine
