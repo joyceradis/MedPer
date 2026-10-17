@@ -51,7 +51,16 @@ export class CaseRepository {
     const map=readLocal(); delete map[id]; writeLocal(map);
   }
   async export(id){ const value=await this.get(id); if(!value) throw new Error('Caso não encontrado.'); return serializeCaseRecord(value); }
-  async import(payload){ const value=importCaseRecord(payload); await this.save(value); return value; }
+  async import(payload){
+    const value = importCaseRecord(payload);
+    // Importar backup não pode substituir silenciosamente uma versão já editada.
+    const existing = await this.get(value.id);
+    if (existing) {
+      throw new Error('Já existe um caso com este identificador. Nada foi substituído; preserve o backup original.');
+    }
+    await this.save(value);
+    return value;
+  }
 }
 
 export function downloadCaseBackup(record){
