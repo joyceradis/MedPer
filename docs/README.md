@@ -2,6 +2,8 @@
 
 Esta pasta concentra as especificações que orientam produto, metodologia, arquitetura e evolução segura do código.
 
+**Primeiro:** [`V2_RUNTIME.md`](V2_RUNTIME.md) identifica a implementação atualmente carregada em `app.html` e os limites de segurança. [`README-V2.md`](../README-V2.md) resume o fluxo. `ARCHITECTURE.md` e `STATUS.md` contêm importantes registros da arquitetura anterior e não devem prevalecer sobre a execução real V2.
+
 ## Leitura recomendada
 
 ### 1. Método do produto
