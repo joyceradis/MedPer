@@ -24,7 +24,7 @@ A V2 apresenta **11 etapas** (ver [README-V2](../README-V2.md)); documentos que 
 ## Dados e compatibilidade
 
 - A aplicação V2 permite dados identificadores e processuais no formulário, mas `js/v2/repository.js` **não oferece criptografia da persistência local**.
-- JSON exportado é arquivo local potencialmente sensível. Controle de acesso, backup, retenção e recuperação não são validados para casos reais.
+- JSON exportado é arquivo local potencialmente sensível. A importação de versão não reconhecida é recusada, assim como substituição silenciosa de caso com ID já existente. Controle de acesso, backup, retenção e recuperação não são validados para casos reais.
 - `normalizeCaseRecord` contempla V2 e uma conversão parcial de formato genérico antigo; **não equivale a migração completa dos estados v4 do frontend anterior**.
 - Trocas de perfil/navegador, limpeza do storage ou falha de armazenamento podem tornar casos inacessíveis; não presumir integridade sem testes.
 - O backend possui controles próprios, mas eles não protegem o armazenamento local da V2 por mera coexistência no mesmo repositório.
