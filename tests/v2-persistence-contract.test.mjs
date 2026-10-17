@@ -31,6 +31,10 @@ test('persistência V2 local: round-trip de caso fictício, exportação e reimp
     assert.equal(recovered?.questions[0].answer, 'Resposta fictícia');
 
     const backup = await repository.export(original.id);
+    await assert.rejects(repository.import(backup), /Já existe um caso/);
+    assert.equal((await repository.get(original.id)).history.summary, original.history.summary,
+      'Importação com ID duplicado não deve sobrescrever caso existente');
+    await repository.remove(original.id);
     const restored = await repository.import(backup);
     assert.equal(restored.id, original.id);
     assert.equal(restored.conclusion.summary, original.conclusion.summary);
