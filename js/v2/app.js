@@ -268,7 +268,7 @@ function documentStep() {
 function bind() {
   root.querySelectorAll('[data-step]').forEach(button => {
     button.onclick = async () => {
-      await saveNow(true);
+      if (!(await saveNow())) return;
       state.step = button.dataset.step;
       renderWorkspace();
     };
@@ -380,7 +380,7 @@ async function handleAction(event, action) {
   event?.preventDefault();
   if (action === 'new-case') return newCaseModal();
   if (action === 'dashboard') {
-    await saveNow(true);
+    if (!(await saveNow())) return;
     state.cases = await repo.list();
     return renderDashboard();
   }
@@ -443,7 +443,7 @@ async function handleAction(event, action) {
     return downloadCaseBackup(state.current);
   }
   if (action === 'print') {
-    await saveNow(true);
+    if (!(await saveNow())) return;
     const popup = window.open('', '_blank');
     if (!popup) {
       toast('O navegador bloqueou a nova janela.');
@@ -489,18 +489,35 @@ function updateSaveLabel() {
 }
 
 async function saveNow() {
-  if (!state.current) return;
+  if (!state.current) return true;
   clearTimeout(saveTimer);
   state.saving = true;
   updateSaveLabel();
-  state.current = await repo.save(state.current);
-  state.dirty = false;
-  state.saving = false;
-  updateSaveLabel();
+  try {
+    const persisted = await repo.save(state.current);
+    state.current = persisted;
+    state.dirty = false;
+    return true;
+  } catch (error) {
+    // Nunca marcar como salvo quando quota/IndexedDB/localStorage falhar.
+    // Manter a edição em memória para permitir nova tentativa sem perder a tela.
+    console.error('MedPer V2 local persistence failure', error);
+    state.dirty = true;
+    toast('Falha ao salvar neste navegador. Não saia desta tela; revise o armazenamento disponível.');
+    return false;
+  } finally {
+    state.saving = false;
+    updateSaveLabel();
+  }
 }
 
-window.addEventListener('beforeunload', () => {
-  if (state.current && state.dirty) repo.save(state.current);
+window.addEventListener('beforeunload', event => {
+  // Um save assíncrono disparado neste ponto não tem conclusão garantida.
+  // Em vez de prometer persistência, solicitar confirmação se houver edição pendente.
+  if (state.current && (state.dirty || state.saving)) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
 });
 
 load().catch(error => {
