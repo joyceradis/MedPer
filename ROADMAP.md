@@ -1,16 +1,35 @@
 # Roadmap oficial do MedPer
 
+**Referência operacional revisada em 17/10/2026:** `app.html` executa a V2 local (11 etapas; IndexedDB/fallback localStorage). O quadro abaixo distingue a V2 atual, os módulos legados e a infraestrutura experimental. Ver [`docs/V2_RUNTIME.md`](docs/V2_RUNTIME.md) e [#95](https://github.com/joyceradis/MedPer/issues/95).
+
+**Gate anterior a qualquer piloto real:** integridade de dados, backup/recovery, autenticação/autorização, controle de acesso, privacidade e validação jurídica/operacional. Não conectar dados pessoais por pressa.
+
+## Frente zero — integridade da V2 publicada
+
+- [ ] Validar salvamento/reabertura e falha de quota/IndexedDB em navegador, sem exibir "salvo" em erro.
+- [ ] Validar round-trip de arquivos V2 com dados sintéticos e rejeição segura de formatos não suportados.
+- [ ] Definir migração não destrutiva das chaves `medper.state.v4/v3/v2` e `mlks.prototype.v1`.
+- [ ] Criar teste comportamental do workspace V2, além de verificação textual de módulos.
+- [ ] Reconciliar documentação V2 e código antigo.
+- [ ] Validar acessibilidade e usabilidade desktop/mobile.
+- [ ] Manter decisão médica sobre instrumentos e conclusões.
+- [ ] Resolver um backend canônico e o contrato versionado **antes** de qualquer sincronização.
+
+**Issues:** [#95](https://github.com/joyceradis/MedPer/issues/95), [#69](https://github.com/joyceradis/MedPer/issues/69), [#70](https://github.com/joyceradis/MedPer/issues/70), [#71](https://github.com/joyceradis/MedPer/issues/71), [#74](https://github.com/joyceradis/MedPer/issues/74).
+
 Este documento é a fonte de verdade para a evolução do produto. Novas funcionalidades devem estar vinculadas a uma etapa ativa ou permanecer no backlog.
 
 ## Status geral
+
+Os marcos de UX e metodologia marcados como concluídos abaixo pertencem a entregas históricas do frontend anterior; sua equivalência com os 11 passos da V2 exige teste próprio.
 
 | Etapa | Status | Resultado esperado |
 |---|---|---|
 | 1. Separar site público de dashboard | **Concluída** | Landing pública independente da aplicação interna |
 | 2. Projetar experiência cognitiva e identidade própria | **Em andamento** | Interface alinhada ao raciocínio médico-pericial e identidade reconhecível |
-| 3. Conectar Supabase real | Preparada | Autenticação e organização operando em ambiente real |
-| 4. Sincronizar casos | Não iniciada | Banco remoto como fonte principal, com suporte offline |
-| 5. Testar isolamento e permissões | Não iniciada | Matriz de autorização validada e automatizada |
+| 3. Definir backend e contrato canônicos | **Bloqueada por decisão arquitetural** | Backend único e schema versionado, sem duplicação FastAPI/Supabase |
+| 4. Sincronizar casos | Não iniciada; depende da etapa 3 | Persistência remota validada, sem perda offline |
+| 5. Testar isolamento e permissões | Não concluída para a V2 | Matriz de autorização em backend canônico e testes entre usuários |
 | 6. Implementar assinatura e limites | Não iniciada | Planos, cobrança, assentos e limites aplicados no servidor |
 | 7. Criar onboarding | Não iniciada | Nova usuária chega ao primeiro valor sem suporte individual |
 | 8. Publicar planos | Não iniciada | Página comercial coerente com entitlements reais |
@@ -30,7 +49,7 @@ Este documento é a fonte de verdade para a evolução do produto. Novas funcion
 - [x] Criar uma landing page pública na raiz do projeto.
 - [x] Mover a aplicação para uma entrada própria (`app.html`).
 - [x] Remover casos, controles internos e mensagens de armazenamento da página pública.
-- [x] Manter autenticação, dashboard e PWA restritos à entrada da aplicação.
+- [x] Manter o workspace na entrada própria; **autenticação real ainda não protege a V2 pública**.
 - [x] Atualizar links de entrada, redirecionamento de autenticação e cache.
 - [x] Revisar experiência de navegação entre site público e aplicação.
 - [x] Validar publicação no GitHub Pages em desktop.
@@ -49,7 +68,7 @@ Este documento é a fonte de verdade para a evolução do produto. Novas funcion
 
 **Objetivo:** materializar o Método MedPer na aplicação e estabelecer uma identidade médico-pericial própria.
 
-### Método-alvo
+### Método-alvo histórico do frontend anterior (9 etapas); a V2 pública possui 11 etapas
 
 1. Delimitação.
 2. Autos e evidências.
@@ -93,13 +112,15 @@ Uma médica deve reconhecer a sequência do trabalho pericial, saber em qual eta
 
 ---
 
-## 3. Conectar Supabase real
+## 3. Definir contrato e backend canônicos (ainda não homologados)
 
-- Criar ambientes de desenvolvimento e produção.
-- Aplicar migrations.
-- Configurar URL, publishable key, redirect URLs e SMTP.
-- Validar cadastro, confirmação de e-mail, login, recuperação e logout.
-- Confirmar criação automática de perfil e organização pessoal.
+- Comparar contratos V2, store legado, FastAPI e Supabase; evitar introduzir uma quarta representação incompatível.
+- Decidir e documentar um único backend operacional, preservando o código histórico até migração segura.
+- Versionar contrato de caso; testar frontend → API → banco → API → frontend com exemplos sintéticos.
+- Projetar autenticação, isolamento por caso/organização, migrações, retenção e chave de cifragem.
+- Antes de produção, validar configuração e implantação em ambiente de homologação isolado.
+
+**Gate:** [#68](https://github.com/joyceradis/MedPer/issues/68), [#69](https://github.com/joyceradis/MedPer/issues/69) e [#95](https://github.com/joyceradis/MedPer/issues/95).
 
 ## 4. Sincronizar casos
 
