@@ -2,6 +2,7 @@ import json
 import logging
 import time
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +14,14 @@ from .routers import auth, cases, files, imports
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO), format="%(message)s")
 logger = logging.getLogger("medper.api")
 
-app = FastAPI(title="MedPer API", version="0.3.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Portão de segurança: recusa subir com configuração insegura.
+    settings.assert_secure_startup()
+    yield
+
+
+app = FastAPI(title="MedPer API", version="0.3.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -21,11 +29,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
-
-
-@app.on_event("startup")
-def validate_startup_security() -> None:
-    settings.assert_secure_startup()
 
 
 @app.middleware("http")
