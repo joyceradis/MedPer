@@ -1,0 +1,27 @@
+name: Recovery browser smoke
+on:
+  pull_request:
+    paths:
+      - 'recuperar.html'
+      - 'recovery/**'
+      - 'tests/recovery-browser-smoke.mjs'
+      - '.github/workflows/recovery-browser-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recovery-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          package-manager-cache: false
+      - name: Install isolated browser test dependencies
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Test recovery with synthetic cases
+        run: node tests/recovery-browser-smoke.mjs
