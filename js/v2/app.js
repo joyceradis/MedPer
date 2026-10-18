@@ -25,6 +25,7 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&a
 const val = value => esc(value ?? '');
 const uid = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 let saveTimer;
+let savePromise;
 
 function toast(message) {
   let element = document.getElementById('toast');
@@ -488,27 +489,41 @@ function updateSaveLabel() {
   if (element) element.textContent = state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : 'Salvo localmente';
 }
 
-async function saveNow() {
-  if (!state.current) return true;
+function saveNow() {
   clearTimeout(saveTimer);
+  if (savePromise) return savePromise;
+  if (!state.current) return Promise.resolve(true);
   state.saving = true;
   updateSaveLabel();
-  try {
-    const persisted = await repo.save(state.current);
-    state.current = persisted;
-    state.dirty = false;
-    return true;
-  } catch (error) {
-    // Nunca marcar como salvo quando quota/IndexedDB/localStorage falhar.
-    // Manter a edição em memória para permitir nova tentativa sem perder a tela.
-    console.error('MedPer V2 local persistence failure', error);
-    state.dirty = true;
-    toast('Falha ao salvar neste navegador. Não saia desta tela; revise o armazenamento disponível.');
-    return false;
-  } finally {
-    state.saving = false;
-    updateSaveLabel();
-  }
+  // One writer drains edits made while IndexedDB is committing a snapshot.
+  savePromise = (async () => {
+    try {
+      while (state.current) {
+        const current = state.current;
+        const snapshot = JSON.stringify(current);
+        const persisted = await repo.save(JSON.parse(snapshot));
+        if (state.current !== current) return false;
+        if (JSON.stringify(current) !== snapshot) {
+          state.dirty = true;
+          continue;
+        }
+        state.current = persisted;
+        state.dirty = false;
+        return true;
+      }
+      return true;
+    } catch (error) {
+      console.error('MedPer V2 local persistence failure', error);
+      state.dirty = true;
+      toast('Falha ao salvar neste navegador. Não saia desta tela; revise o armazenamento disponível.');
+      return false;
+    } finally {
+      state.saving = false;
+      savePromise = null;
+      updateSaveLabel();
+    }
+  })();
+  return savePromise;
 }
 
 window.addEventListener('beforeunload', event => {
