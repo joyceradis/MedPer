@@ -114,3 +114,17 @@ test('a stale completion cannot replace a different current case', async () => {
   assert.equal(await pending, false);
   assert.equal(h.state.current.id, 'another-synthetic-case');
 });
+
+test('serialization failure releases writer and permits recovery', async () => {
+  const h = harness();
+  h.state.current.loop = h.state.current;
+  assert.equal(await h.saveNow(), false);
+  assert.equal(h.state.dirty, true);
+  assert.equal(h.writes.length, 0);
+  delete h.state.current.loop;
+  const retry = h.saveNow();
+  assert.equal(h.writes.length, 1);
+  acknowledge(h.writes[0]);
+  assert.equal(await retry, true);
+  assert.equal(h.state.dirty, false);
+});
