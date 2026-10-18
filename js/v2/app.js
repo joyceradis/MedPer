@@ -519,10 +519,9 @@ function saveNow() {
       return false;
     } finally {
       state.saving = false;
-      savePromise = null;
       updateSaveLabel();
     }
-  })();
+  })().finally(() => { savePromise = null; });
   return savePromise;
 }
 
