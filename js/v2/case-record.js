@@ -69,7 +69,15 @@ export function touchCase(record) {
 export function serializeCaseRecord(record) { return JSON.stringify(normalizeCaseRecord(record), null, 2); }
 export function importCaseRecord(payload) {
   const raw = typeof payload === 'string' ? JSON.parse(payload) : payload;
-  if (!raw || typeof raw !== 'object') throw new Error('Arquivo de caso inválido.');
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error('Arquivo de caso inválido.');
+  }
+  // A migração dos stores anteriores ainda não foi homologada. Rejeitar
+  // formatos desconhecidos é mais seguro que descartá-los silenciosamente.
+  if (raw.schemaVersion !== SCHEMA_VERSION || !raw.identity || !raw.context ||
+      typeof raw.identity !== 'object' || typeof raw.context !== 'object') {
+    throw new Error('Formato de caso incompatível ou não suportado pela V2. Preserve o backup original.');
+  }
   return normalizeCaseRecord(raw);
 }
 export { SCHEMA_VERSION };

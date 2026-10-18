@@ -25,6 +25,7 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&a
 const val = value => esc(value ?? '');
 const uid = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 let saveTimer;
+let savePromise;
 
 function toast(message) {
   let element = document.getElementById('toast');
@@ -268,7 +269,7 @@ function documentStep() {
 function bind() {
   root.querySelectorAll('[data-step]').forEach(button => {
     button.onclick = async () => {
-      await saveNow(true);
+      if (!(await saveNow())) return;
       state.step = button.dataset.step;
       renderWorkspace();
     };
@@ -380,7 +381,7 @@ async function handleAction(event, action) {
   event?.preventDefault();
   if (action === 'new-case') return newCaseModal();
   if (action === 'dashboard') {
-    await saveNow(true);
+    if (!(await saveNow())) return;
     state.cases = await repo.list();
     return renderDashboard();
   }
@@ -443,7 +444,7 @@ async function handleAction(event, action) {
     return downloadCaseBackup(state.current);
   }
   if (action === 'print') {
-    await saveNow(true);
+    if (!(await saveNow())) return;
     const popup = window.open('', '_blank');
     if (!popup) {
       toast('O navegador bloqueou a nova janela.');
@@ -488,19 +489,49 @@ function updateSaveLabel() {
   if (element) element.textContent = state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : 'Salvo localmente';
 }
 
-async function saveNow() {
-  if (!state.current) return;
+function saveNow() {
   clearTimeout(saveTimer);
+  if (savePromise) return savePromise;
+  if (!state.current) return Promise.resolve(true);
   state.saving = true;
   updateSaveLabel();
-  state.current = await repo.save(state.current);
-  state.dirty = false;
-  state.saving = false;
-  updateSaveLabel();
+  // One writer drains edits made while IndexedDB is committing a snapshot.
+  savePromise = (async () => {
+    try {
+      while (state.current) {
+        const current = state.current;
+        const snapshot = JSON.stringify(current);
+        const persisted = await repo.save(JSON.parse(snapshot));
+        if (state.current !== current) return false;
+        if (JSON.stringify(current) !== snapshot) {
+          state.dirty = true;
+          continue;
+        }
+        state.current = persisted;
+        state.dirty = false;
+        return true;
+      }
+      return true;
+    } catch (error) {
+      console.error('MedPer V2 local persistence failure', error);
+      state.dirty = true;
+      toast('Falha ao salvar neste navegador. Não saia desta tela; revise o armazenamento disponível.');
+      return false;
+    } finally {
+      state.saving = false;
+      updateSaveLabel();
+    }
+  })().finally(() => { savePromise = null; });
+  return savePromise;
 }
 
-window.addEventListener('beforeunload', () => {
-  if (state.current && state.dirty) repo.save(state.current);
+window.addEventListener('beforeunload', event => {
+  // Um save assíncrono disparado neste ponto não tem conclusão garantida.
+  // Em vez de prometer persistência, solicitar confirmação se houver edição pendente.
+  if (state.current && (state.dirty || state.saving)) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
 });
 
 load().catch(error => {
