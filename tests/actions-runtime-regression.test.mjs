@@ -26,9 +26,9 @@ for (const name of workflowFiles) workflows.set(name, await readFile(new URL(nam
 const combined = [...workflows.entries()].map(([name, body]) => `\n# ${name}\n${body}`).join('\n');
 
 const canonicalActionMajors = new Map([
-  ['actions/checkout', 'v6'],
+  ['actions/checkout', 'v7'],
   ['actions/setup-node', 'v7'],
-  ['actions/setup-python', 'v6'],
+  ['actions/setup-python', 'v7'],
   ['actions/upload-artifact', 'v7'],
   ['actions/download-artifact', 'v5'],
   ['actions/github-script', 'v8']
