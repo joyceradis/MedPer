@@ -45,3 +45,18 @@ test('scan shows local sources and reports missing IndexedDB instead of inventin
    assert.equal(items.find(x=>x.key==='medper-v2').status,'erro');
  } finally { if(previous!==undefined)globalThis.indexedDB=previous; }
 });
+
+test('a changed source invalidates previous backup before IndexedDB access',async()=>{
+ const previous='{"cases":[]}';
+ const changed=storage({'medper.state.v4':'{"cases":[{"id":"changed"}]}'});
+ await assert.rejects(
+   ()=>recoverWithoutOverwrite('medper.state.v4',{backupConfirmed:true,backedUpRaw:previous,storage:changed}),
+   /mudaram desde o backup/
+ );
+});
+test('a missing exact backup snapshot cannot authorize migration',async()=>{
+ await assert.rejects(
+   ()=>recoverWithoutOverwrite('medper.state.v4',{backupConfirmed:true,storage:store}),
+   /mudaram desde o backup/
+ );
+});
