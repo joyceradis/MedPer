@@ -16,6 +16,46 @@
 
 ---
 
+## Identidade e limites do projeto
+
+**Categoria:** software médico-pericial especializado · desenvolvimento independente.
+
+O **MedPer** organiza o fluxo pericial completo, da definição do objeto à análise de evidências e ao documento técnico. O [Kit do Perito](https://github.com/joyceradis/pericia-medica) é um produto complementar de cálculos e instrumentos pontuais. Não são o mesmo software.
+
+A Radis é um workspace pessoal diferente: pode oferecer um atalho para o MedPer **se isso for útil e decidido futuramente**, sem assumir seus dados, sua execução ou sua evolução. Não existe integração funcional comprovada entre ambos.
+
+**Estado e limitações:** consultar [Estado atual](#estado-atual); protótipo público não equivale a aplicação pericial homologada.
+
+**Rastreabilidade:** [histórico do README](https://github.com/joyceradis/MedPer/commits/main/README.md) · [PRs](https://github.com/joyceradis/MedPer/pulls?q=is%3Apr).
+
+## Encontrar componentes existentes
+
+| Necessidade | Onde está |
+|---|---|
+| Mapa de páginas e fluxo pericial | [`docs/SITE_MAP.md`](docs/SITE_MAP.md) · [`pages/`](pages/) |
+| Estados e ciclo de vida do caso | [`js/core/case-lifecycle.js`](js/core/case-lifecycle.js) |
+| AIPE, POSAS e danos temporários | [`js/methodology/aipe.js`](js/methodology/aipe.js) · [`posas.js`](js/methodology/posas.js) · [`temporary-damages.js`](js/methodology/temporary-damages.js) |
+| Seleção metodológica e integração pericial | [`js/methodology/engine.js`](js/methodology/engine.js) · [`pericial-integration.js`](js/methodology/pericial-integration.js) |
+| Contratos, status e testes | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/STATUS.md`](docs/STATUS.md) · [`tests/`](tests/) |
+
+**Fronteira:** o [Kit do Perito](https://github.com/joyceradis/pericia-medica) é uma ferramenta avulsa complementar. Nenhuma dessas funcionalidades deve ser reimplementada em outro produto sem comparação das regras e necessidades.
+
+### Diagrama de orientação · Workflow pericial
+
+```mermaid
+flowchart LR
+  O["OBJETO PERICIAL"] --> E["FONTES E EVIDÊNCIAS"]
+  E --> M["MÉTODO · AIPE · POSAS"]
+  M --> L["FUNDAMENTAÇÃO E LAUDO"]
+  K["KIT DO PERITO · ferramenta independente"] -. "complementa" .-> M
+  classDef source fill:#eff5f2,stroke:#88ab94,color:#263d33;
+  classDef outcome fill:#f4f0fa,stroke:#aa98c5,color:#3e3556;
+  class O source;
+  class L outcome;
+```
+
+**Leitura:** setas contínuas representam o fluxo conceitual dentro do produto; setas pontilhadas indicam relação entre sistemas ou possibilidade futura, **não integração implementada**.
+
 ## Visão do produto
 
 A perícia médica não começa pelo laudo. Começa pela compreensão da missão pericial.
