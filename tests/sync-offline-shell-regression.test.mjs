@@ -41,3 +41,60 @@ assert.equal(sw.includes("'./js/main.js'"), false,
   'o shell V2 não deve carregar o entrypoint legado desnecessariamente');
 
 console.log('MedPer V2 offline shell regression suite completed successfully.');
+
+const { runInNewContext } = await import('node:vm');
+const handlers = new Map();
+const deleted = [];
+const opened = [];
+const ownCache = new Map([
+  ['./index.html', { body: 'MedPer home' }],
+  ['./app.html', { body: 'MedPer workspace' }]
+]);
+let activation;
+let originWideReads = 0;
+runInNewContext(sw, {
+  URL,
+  self: {
+    location: { origin: 'https://example.test' },
+    clients: { claim: async () => {} },
+    skipWaiting: async () => {},
+    addEventListener: (name, handler) => handlers.set(name, handler)
+  },
+  caches: {
+    keys: async () => ['medper-v2-shell-20260910', 'medper-v2-shell-20261018', 'another-app-cache', 'unrelated-user-backup'],
+    delete: async key => { deleted.push(key); return true; },
+    open: async key => {
+      opened.push(key);
+      return {
+        match: async request => ownCache.get(typeof request === 'string' ? request : request.url),
+        put: async () => {},
+        addAll: async () => {}
+      };
+    },
+    match: async () => { originWideReads++; return { body: 'other application cached response' }; }
+  },
+  fetch: async () => { throw new Error('offline'); }
+});
+handlers.get('activate')({ waitUntil: promise => { activation = promise; } });
+await activation;
+assert.ok(deleted.includes('medper-v2-shell-20260910'), 'retire the old MedPer shell');
+assert.ok(!deleted.includes('medper-v2-shell-20261018'), 'preserve the current shell');
+assert.ok(!deleted.includes('another-app-cache'), 'activation must not erase another app on this origin');
+assert.ok(!deleted.includes('unrelated-user-backup'), 'activation must preserve unrelated caches');
+
+async function offlineRequest(url, mode = 'navigate') {
+  let response;
+  handlers.get('fetch')({
+    request: { method: 'GET', url, mode },
+    respondWith: promise => { response = promise; }
+  });
+  return response;
+}
+assert.equal((await offlineRequest('https://example.test/MedPer/app.html')).body, 'MedPer workspace');
+assert.equal((await offlineRequest('https://example.test/MedPer/index.html')).body, 'MedPer home');
+await assert.rejects(offlineRequest('https://example.test/MedPer/missing.js', 'cors'), /offline/,
+  'a missing script must never receive landing-page HTML');
+await assert.rejects(offlineRequest('https://example.test/MedPer/missing.css', 'cors'), /offline/);
+assert.equal(originWideReads, 0, 'cache reads must be confined to the current MedPer shell');
+assert.ok(opened.every(key => key === 'medper-v2-shell-20261018'));
+console.log('Service-worker activation isolation and offline response behavior: ok');
