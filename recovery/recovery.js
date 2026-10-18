@@ -49,6 +49,7 @@ function extract(source, raw) {
   if (source.kind === 'v2-local') {
     if (!isObj(parsed)) throw new Error('Mapa V2 inválido.');
     records = Object.values(parsed);
+    if (!records.every(record => isObj(record) && record.schemaVersion === 2 && isObj(record.identity) && isObj(record.context))) throw new Error('Formato V2 incompatível; nenhum registro será importado.');
   } else {
     if (!isObj(parsed) || !Array.isArray(parsed.cases)) throw new Error('Estrutura antiga não reconhecida.');
     records = parsed.cases;
@@ -138,6 +139,7 @@ export async function recoverWithoutOverwrite(key, { backupConfirmed = false, st
   const items = prepareRecovery(key, storage);
   // Never overwrite current cases. Transaction makes existence check and insertion atomic.
   const existing = await listCurrentCases();
+  if (existing.some(record => !isObj(record) || typeof record.id !== 'string')) throw new Error('Destino contém registros inválidos; não é seguro migrar.');
   const occupied = new Set(existing.map(x => x.id));
   const conflicts = items.filter(x => occupied.has(x.id));
   if (conflicts.length) throw new Error(conflicts.length + ' IDs já existem na V2. Nenhuma migração executada.');
