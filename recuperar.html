@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>MedPer | Recuperação assistida</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#17314b;background:#f5f7fa}*{box-sizing:border-box}
+main{max-width:820px;margin:30px auto;padding:22px;background:white;border-radius:14px;box-shadow:0 5px 25px #102a4320}
+h1{margin-top:0}p,small{line-height:1.6}table{width:100%;border-collapse:collapse}th,td{padding:12px 8px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top}
+button{background:#163955;color:white;border:0;border-radius:6px;padding:10px;cursor:pointer;margin:3px}button:disabled{background:#97a4b0;cursor:default}
+.notice{background:#edf2f7;padding:15px;border-left:4px solid #274767}.error{color:#a30b2e}#status{white-space:pre-wrap}
+@media(max-width:650px){main{margin:0;padding:12px;overflow-x:auto}table{font-size:13px}}
+</style></head><body><main><p><a href="./app.html">← MedPer</a></p>
+<h1>Recuperação assistida de casos</h1>
+<p>Identifica armazenamentos do MedPer <strong>neste navegador e neste endereço</strong>. A busca não envia dados ao servidor e não remove registros.</p>
+<div class="notice">Não limpe os dados do navegador nem desinstale o aplicativo. Use o mesmo perfil e navegador em que trabalhou anteriormente. Dados de outro computador ou navegador não podem ser localizados aqui. A recuperação de versões antigas preserva uma cópia integral do registro original, mas <strong>não valida automaticamente a correspondência médico-pericial de todos os campos</strong>.</div>
+<p><button id="scan">Procurar casos</button></p>
+<div id="results" aria-live="polite"></div><p id="status" role="status"></p>
+<p><strong>Atenção:</strong> o backup é um arquivo local que pode conter informações sensíveis. Guarde-o em local seguro. A confirmação abaixo declara que você verificou o salvamento do arquivo; o site não consegue verificar seu destino.</p>
+</main><script type="module">
+import { scanRecovery, buildBackup, downloadBackup, recoverWithoutOverwrite } from './recovery/recovery.js';
+const results=document.getElementById('results'),status=document.getElementById('status'),scan=document.getElementById('scan');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let backed=new Set(),busy=false;
+function msg(s,error=false){status.textContent=s;status.className=error?'error':''}
+scan.onclick=async()=>{
+if(busy)return;busy=true;scan.disabled=true;msg('Verificando armazenamentos...');
+try{backed.clear();const sources=await scanRecovery();results.innerHTML='<table><thead><tr><th>Origem</th><th>Estado</th><th>Casos</th><th>Ação</th></tr></thead><tbody>'+sources.map(s=>'<tr><td>'+esc(s.label)+'</td><td>'+esc(s.status)+(s.error?'<br><small>'+esc(s.error)+'</small>':'')+'</td><td>'+s.count+'</td><td>'+(s.kind==='indexeddb'?'Já está no destino; sem migração':s.status==='encontrado'&&s.count?'<button data-backup="'+esc(s.key)+'">Baixar backup</button><br><label><input type="checkbox" data-confirm="'+esc(s.key)+'" disabled> Salvei e conferi o backup</label><br><button data-recover="'+esc(s.key)+'" disabled>Migrar sem sobrescrever</button>':'Não migrável')+'</td></tr>').join('')+'</tbody></table>';msg('Leitura concluída. Nenhum caso foi alterado.');
+}catch(e){msg('Falha ao examinar: '+e.message,true)}finally{busy=false;scan.disabled=false}
+};
+results.addEventListener('click',async ev=>{
+const btn=ev.target.closest('button');if(!btn||busy)return;
+const key=btn.dataset.backup??btn.dataset.recover;if(!key)return;
+if(btn.dataset.backup){try{downloadBackup(buildBackup(key));backed.add(key);const checkbox=Array.from(results.querySelectorAll('[data-confirm]')).find(c=>c.dataset.confirm===key);checkbox.disabled=false;msg('Arquivo de backup solicitado. Confira se foi realmente salvo antes de marcar a confirmação.')}catch(e){msg(e.message,true)}return}
+const checkbox=Array.from(results.querySelectorAll('[data-confirm]')).find(c=>c.dataset.confirm===key);
+if(!backed.has(key)||!checkbox?.checked){msg('É obrigatório salvar e confirmar o backup.',true);return}
+if(!confirm('Confirma a migração da origem '+key+' para IndexedDB? Nada será removido da origem. A V2 não substituirá IDs existentes; campos legados exigem revisão posterior.'))return;
+busy=true;scan.disabled=true;
+try{const output=await recoverWithoutOverwrite(key,{backupConfirmed:true});msg(output.migrated+' caso(s) recuperado(s) sem apagar os originais. Revise-os na V2 antes de trabalhar.');await scan.onclick?.()}catch(e){msg('Migração não efetuada: '+e.message,true)}finally{busy=false;scan.disabled=false}
+});
+results.addEventListener('change',ev=>{const box=ev.target;if(!box.matches('[data-confirm]'))return;const btn=Array.from(results.querySelectorAll('[data-recover]')).find(b=>b.dataset.recover===box.dataset.confirm);if(btn)btn.disabled=!box.checked});
+</script></body></html>
