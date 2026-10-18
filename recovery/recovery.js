@@ -134,8 +134,9 @@ export function prepareRecovery(key, storage = localStorage) {
   return converted;
 }
 
-export async function recoverWithoutOverwrite(key, { backupConfirmed = false, storage = localStorage } = {}) {
+export async function recoverWithoutOverwrite(key, { backupConfirmed = false, backedUpRaw = null, storage = localStorage } = {}) {
   if (!backupConfirmed) throw new Error('Confirme que o backup foi salvo antes de continuar.');
+  if (typeof backedUpRaw !== 'string' || storage.getItem(key) !== backedUpRaw) throw new Error('Os dados mudaram desde o backup. Faça um novo backup antes de migrar.');
   const items = prepareRecovery(key, storage);
   // Never overwrite current cases. Transaction makes existence check and insertion atomic.
   const existing = await listCurrentCases();
