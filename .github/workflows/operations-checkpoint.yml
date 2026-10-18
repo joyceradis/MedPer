@@ -1,0 +1,80 @@
+name: MedPer operations checkpoint
+
+# Runs remotely on GitHub. Does NOT execute agents, merge PRs, deploy, or read private case data.
+on:
+  schedule:
+    - cron: '0 12 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+  issues: write
+
+concurrency:
+  group: medper-operations-checkpoint
+  cancel-in-progress: false
+
+jobs:
+  checkpoint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Update durable GitHub checkpoint
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const heading = 'MedPer | checkpoint automático de execução';
+            const prs = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', per_page: 100 });
+            const rows = [];
+            for (const pr of prs) {
+              const { data: checks } = await github.rest.checks.listForRef({
+                owner, repo, ref: pr.head.sha, per_page: 100
+              });
+              const relevant = checks.check_runs.filter(c => c.name !== 'checkpoint');
+              const bad = relevant.filter(c => c.conclusion && !['success', 'skipped', 'neutral'].includes(c.conclusion));
+              const pending = relevant.filter(c => c.status !== 'completed');
+              const status = bad.length ? 'falha' : pending.length ? 'pendente' : !relevant.length ? 'sem checks detectados' : 'checks concluídos sem falha';
+              rows.push('| [#' + pr.number + '](' + pr.html_url + ') | ' +
+                pr.title.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ') +
+                ' | ' + (pr.draft ? 'draft' : 'aberta') + ' | ' + status + ' |');
+            }
+            const { data: branch } = await github.rest.repos.getBranch({ owner, repo, branch: 'main' });
+            const stamp = new Date().toISOString();
+            const body = [
+              '# ' + heading,
+              '',
+              '> Atualizado automaticamente em ' + stamp + '. Este registro não é uma auditoria, aprovação de PR ou autorização de deploy.',
+              '',
+              '**Main:** ' + branch.commit.sha.slice(0, 12) + ' | ' +
+              (branch.protected ? 'proteção sinalizada pelo GitHub' : '**SEM PROTEÇÃO** (não integrar automaticamente)'),
+              '',
+              '| PR | Alteração | Estado | Checks do último head |',
+              '|---|---|---|---|',
+              ...(rows.length ? rows : ['| — | Nenhuma PR aberta | — | — |']),
+              '',
+              '## Limites de execução',
+              '- Este workflow monitora PRs e registra checkpoints. Não executa modificações no código.',
+              '- CI verde não substitui revisão independente, homologação ou proteção da branch.',
+              '- A ausência de regras de proteção deve ser resolvida antes de habilitar qualquer merge automático.',
+              '- O limite de uso do ChatGPT Work/Codex é independente do GitHub Actions.',
+              '',
+              '## Retomada',
+              'Ao iniciar uma nova sessão de execução, ler este checkpoint, verificar mudanças desde o SHA registrado e continuar PRs existentes antes de abrir novas frentes.',
+              ''
+            ].join('\n');
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner, repo, state: 'open', per_page: 100
+            });
+            const existing = issues.find(i => !i.pull_request && i.title === heading);
+            if (existing) {
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+              core.info('Updated ' + existing.html_url);
+            } else {
+              const { data: issue } = await github.rest.issues.create({ owner, repo, title: heading, body });
+              core.info('Created ' + issue.html_url);
+            }
+            await core.summary.addHeading(heading)
+              .addRaw(body).write();
