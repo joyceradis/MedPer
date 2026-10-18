@@ -33,7 +33,7 @@ const checkbox=Array.from(results.querySelectorAll('[data-confirm]')).find(c=>c.
 if(!backed.has(key)||!checkbox?.checked){msg('É obrigatório salvar e confirmar o backup.',true);return}
 if(!confirm('Confirma a migração da origem '+key+' para IndexedDB? Nada será removido da origem. A V2 não substituirá IDs existentes; campos legados exigem revisão posterior.'))return;
 busy=true;scan.disabled=true;
-try{const output=await recoverWithoutOverwrite(key,{backupConfirmed:true});msg(output.migrated+' caso(s) recuperado(s) sem apagar os originais. Revise-os na V2 antes de trabalhar.');await scan.onclick?.()}catch(e){msg('Migração não efetuada: '+e.message,true)}finally{busy=false;scan.disabled=false}
+try{const output=await recoverWithoutOverwrite(key,{backupConfirmed:true});msg(output.migrated+' caso(s) recuperado(s) sem apagar os originais. Clique em Procurar casos para conferir o destino e revise-os na V2 antes de trabalhar.')}catch(e){msg('Migração não efetuada: '+e.message,true)}finally{busy=false;scan.disabled=false}
 });
 results.addEventListener('change',ev=>{const box=ev.target;if(!box.matches('[data-confirm]'))return;const btn=Array.from(results.querySelectorAll('[data-recover]')).find(b=>b.dataset.recover===box.dataset.confirm);if(btn)btn.disabled=!box.checked});
 </script></body></html>
