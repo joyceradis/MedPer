@@ -6,6 +6,8 @@ import { createCaseRecord } from '../js/v2/case-record.js';
 test('persistência V2 local: round-trip de caso fictício, exportação e reimportação', async () => {
   const content = new Map();
   const previous = { indexedDB: globalThis.indexedDB, localStorage: globalThis.localStorage };
+  const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { locks: { request: async (_name, _options, callback) => callback() } } });
   try {
     delete globalThis.indexedDB;
     globalThis.localStorage = {
@@ -56,6 +58,8 @@ test('persistência V2 local: round-trip de caso fictício, exportação e reimp
     await assert.rejects(repository.save(changed), /Storage quota exceeded/);
     assert.equal((await repository.get(original.id)).identity.title, 'Caso sintético — teste');
   } finally {
+    if (navigatorDescriptor) Object.defineProperty(globalThis, 'navigator', navigatorDescriptor);
+    else delete globalThis.navigator;
     if (previous.indexedDB === undefined) delete globalThis.indexedDB;
     else globalThis.indexedDB = previous.indexedDB;
     if (previous.localStorage === undefined) delete globalThis.localStorage;
