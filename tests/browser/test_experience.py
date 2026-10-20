@@ -134,6 +134,21 @@ class ExperienceLayer(unittest.TestCase):
         expect(page.locator('button[data-step="exam"]')).to_have_attribute("data-progress", "partial")
         expect(page.locator('textarea[data-bind="examination.summary"] ~ .word-count')).to_have_text("5 palavras")
 
+    def test_textareas_stay_scrollable_when_not_autosized_or_capped(self):
+        page = self.open()
+        page.locator('button[data-action="new-case"]').first.click()
+        modal_area = page.locator('#new-case-form textarea[name="object"]')
+        modal_area.fill("linha fictícia\n" * 40)
+        self.assertNotEqual(modal_area.evaluate("el => getComputedStyle(el).overflowY"), "hidden")
+        page.keyboard.press("Escape")
+        self.create_case()
+        area = page.locator('textarea[data-bind="context.object"]')
+        area.fill("linha curta")
+        self.assertEqual(area.evaluate("el => getComputedStyle(el).overflowY"), "hidden")
+        area.fill("linha fictícia\n" * 80)
+        self.assertEqual(area.evaluate("el => getComputedStyle(el).overflowY"), "auto")
+        self.assertLessEqual(area.evaluate("el => el.getBoundingClientRect().height"), 641)
+
     def test_long_narratives_remain_scrollable_after_autosize_limit(self):
         page = self.open()
         self.create_case()
