@@ -169,6 +169,7 @@ function dashboardCasesMarkup() {
       <h2>${repo.mode === 'remote' ? 'Nenhum caso nesta conta' : 'Nenhum caso V2 neste navegador'}</h2>
       <p>${repo.mode === 'remote' ? 'Este ambiente consulta casos autorizados no servidor. Nenhum registro local foi transferido automaticamente.' : 'A área de trabalho está pronta para um <strong>caso fictício</strong>. Registros de versões anteriores podem estar em outros armazenamentos e não aparecem automaticamente aqui.'}</p>
       <button class="btn primary" data-action="new-case">Novo caso</button>
+      ${repo.mode === 'remote' ? '' : '<button class="btn" data-action="scan-recovery">Procurar registros anteriores</button>'}
     </div>
     <div class="empty-journey" aria-label="Etapas do fluxo médico-pericial">
       <span>01 <strong>Delimitar o objeto</strong></span>
@@ -511,6 +512,47 @@ async function handleAction(event, action) {
     state.cases = await repo.list();
     toast('Caso excluído.');
     return renderDashboard();
+  }
+  if (action === 'scan-recovery' && repo.mode !== 'remote') {
+    const container = document.querySelector('#case-results');
+    if (!container) return;
+    const existing = document.getElementById('recovery-results');
+    if (existing) existing.remove();
+    const panel = document.createElement('section');
+    panel.id = 'recovery-results';
+    panel.className = 'card';
+    panel.setAttribute('role', 'status');
+    panel.setAttribute('aria-live', 'polite');
+    panel.innerHTML = '<h3>Registros deste navegador</h3><p>Verificando armazenamentos sem alterar casos...</p>';
+    container.after(panel);
+    try {
+      const { scanRecovery, buildBackup, downloadBackup } = await import('../../recovery/recovery.js');
+      const results = await scanRecovery();
+      const found = results.filter(row => row.status === 'encontrado' && row.count > 0);
+      const errored = results.filter(row => row.status === 'erro' || row.status === 'incompatível');
+      panel.innerHTML = [
+        '<h3>Registros deste navegador</h3>',
+        '<p>Este diagnóstico apenas consulta os armazenamentos. Não importa, modifica nem apaga casos. Registros de outro dispositivo ou perfil não podem ser verificados aqui.</p>',
+        found.length ? '<ul>' + found.map(row =>
+          '<li><strong>' + esc(row.label) + ':</strong> ' + row.count + ' registro(s)' +
+          (row.kind === 'indexeddb' ? ' (V2 atual)' : ' <button class="btn" type="button" data-recovery-backup="' + esc(row.key) + '">Guardar cópia integral</button>') +
+          '</li>').join('') + '</ul>' : '<p>Nenhum registro anterior encontrado nas fontes verificadas.</p>',
+        errored.length ? '<p><strong>Atenção:</strong> algumas fontes não puderam ser lidas. Nenhum dado foi alterado.</p>' : '',
+        '<p class="hint">Antes de qualquer migração, preserve os backups e confira os registros com suporte técnico. Não limpe o armazenamento do navegador.</p>'
+      ].join('');
+      panel.querySelectorAll('[data-recovery-backup]').forEach(button => {
+        button.onclick = () => {
+          if (!window.confirm('O backup pode conter dados pessoais e médicos sensíveis. Guardar uma cópia integral neste dispositivo?')) return;
+          try { downloadBackup(buildBackup(button.dataset.recoveryBackup)); }
+          catch (error) { toast('Não foi possível exportar: ' + error.message); }
+        };
+      });
+    } catch (error) {
+      panel.innerHTML = '<h3>Não foi possível verificar os registros</h3><p>' +
+        esc(error.message || 'Falha de acesso ao armazenamento.') +
+        '</p><p>Nenhum registro foi alterado. Preserve os dados do navegador.</p>';
+    }
+    return;
   }
   if (action === 'import') {
     const input = document.getElementById('import-file');
