@@ -68,6 +68,8 @@ class Settings(BaseSettings):
         issues: list[str] = []
         if self.production_mode and not self.jwt_secret_is_strong:
             issues.append("jwt_secret_insecure")
+        if self.production_mode and not self.file_encryption_key_is_valid:
+            issues.append("case_payload_encryption_required")
         if self.file_storage_required and not self.file_encryption_key_is_valid:
             issues.append("file_encryption_key_invalid")
         return issues
