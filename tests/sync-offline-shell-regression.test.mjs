@@ -46,6 +46,7 @@ const { runInNewContext } = await import('node:vm');
 const handlers = new Map();
 const deleted = [];
 const opened = [];
+const currentShell = 'medper-v2-shell-20261020-pro-adapter';
 const ownCache = new Map([
   ['./index.html', { body: 'MedPer home' }],
   ['./app.html', { body: 'MedPer workspace' }]
@@ -61,7 +62,7 @@ runInNewContext(sw, {
     addEventListener: (name, handler) => handlers.set(name, handler)
   },
   caches: {
-    keys: async () => ['medper-v2-shell-20260910', 'medper-v2-shell-20261018', 'another-app-cache', 'unrelated-user-backup'],
+    keys: async () => ['medper-v2-shell-20260910', 'medper-v2-shell-20261018', currentShell, 'another-app-cache', 'unrelated-user-backup'],
     delete: async key => { deleted.push(key); return true; },
     open: async key => {
       opened.push(key);
@@ -78,7 +79,8 @@ runInNewContext(sw, {
 handlers.get('activate')({ waitUntil: promise => { activation = promise; } });
 await activation;
 assert.ok(deleted.includes('medper-v2-shell-20260910'), 'retire the old MedPer shell');
-assert.ok(!deleted.includes('medper-v2-shell-20261018'), 'preserve the current shell');
+assert.ok(deleted.includes('medper-v2-shell-20261018'), 'retire only obsolete MedPer shell revisions');
+assert.ok(!deleted.includes(currentShell), 'preserve the new current shell');
 assert.ok(!deleted.includes('another-app-cache'), 'activation must not erase another app on this origin');
 assert.ok(!deleted.includes('unrelated-user-backup'), 'activation must preserve unrelated caches');
 
@@ -96,5 +98,5 @@ await assert.rejects(offlineRequest('https://example.test/MedPer/missing.js', 'c
   'a missing script must never receive landing-page HTML');
 await assert.rejects(offlineRequest('https://example.test/MedPer/missing.css', 'cors'), /offline/);
 assert.equal(originWideReads, 0, 'cache reads must be confined to the current MedPer shell');
-assert.ok(opened.every(key => key === 'medper-v2-shell-20261018'));
+assert.ok(opened.every(key => key === currentShell));
 console.log('Service-worker activation isolation and offline response behavior: ok');
