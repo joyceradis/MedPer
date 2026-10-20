@@ -28,6 +28,60 @@ const val = value => esc(value ?? '');
 const uid = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 let saveTimer;
 let savePromise;
+let fieldSequence = 0;
+
+function associateFieldLabels(container) {
+  container.querySelectorAll('.field').forEach(field => {
+    const label = field.querySelector('label');
+    const control = field.querySelector('input,textarea,select');
+    if (!label || !control) return;
+    control.id ||= `medper-field-${++fieldSequence}`;
+    label.htmlFor = control.id;
+    const hint = field.querySelector('.hint');
+    if (hint) {
+      hint.id ||= `${control.id}-hint`;
+      const descriptions = new Set((control.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+      descriptions.add(hint.id);
+      control.setAttribute('aria-describedby', [...descriptions].join(' '));
+    }
+  });
+}
+
+function prepareModal(backdrop, previousFocus) {
+  const form = backdrop.querySelector('form');
+  const heading = form.querySelector('h2');
+  heading.id ||= `${backdrop.id}-title`;
+  form.setAttribute('role', 'dialog');
+  form.setAttribute('aria-modal', 'true');
+  form.setAttribute('aria-labelledby', heading.id);
+  associateFieldLabels(form);
+  const close = () => {
+    backdrop.remove();
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+  };
+  form.addEventListener('keydown', event => {
+    if (event.defaultPrevented || event.isComposing) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    } else if (event.key === 'Tab') {
+      const controls = [...form.querySelectorAll('input,textarea,select,button,[tabindex]')]
+        .filter(control => !control.disabled && control.tabIndex >= 0 && control.getClientRects().length);
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+  });
+  form.querySelector('input,textarea,select')?.focus();
+  return close;
+}
 
 function toast(message) {
   let element = document.getElementById('toast');
@@ -191,14 +245,15 @@ function bindCaseCards() {
 }
 
 function newCaseModal() {
+  const previousFocus = document.activeElement;
   document.getElementById('case-modal')?.remove();
   document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="case-modal"><form class="modal" id="new-case-form"><h2>Novo caso</h2><div class="grid2"><div class="field wide"><label>Título do caso</label><input name="title" required placeholder="Ex.: Souza x Hospital — dano estético"></div><div class="field"><label>Número do processo</label><input name="processNumber"></div><div class="field"><label>Tribunal / vara / origem</label><input name="court"></div><div class="field"><label>Papel profissional</label><select name="professionalRole"><option value="perita_judicial">Perita judicial</option><option value="assistente_tecnica">Assistente técnica</option><option value="parecerista">Parecerista</option><option value="outro">Outra avaliação médico-legal</option></select></div><div class="field"><label>Contexto</label><select name="context"><option value="civel">Cível</option><option value="previdenciario">Previdenciário</option><option value="securitario">Securitário</option><option value="trabalhista">Trabalhista</option><option value="responsabilidade_profissional">Responsabilidade profissional</option><option value="outro">Outro</option></select></div><div class="field"><label>Parte examinada</label><input name="examinedPerson"></div><div class="field"><label>Data da perícia</label><input type="date" name="examinationDate"></div><div class="field"><label>Prazo do laudo/parecer</label><input type="date" name="reportDeadline"></div><div class="field wide"><label>Objeto pericial principal</label><textarea name="object" placeholder="Defina o que efetivamente deve ser respondido pela perícia."></textarea></div></div><div class="modal-actions"><button type="button" class="btn" id="new-case-cancel">Cancelar</button><button class="btn primary">Criar caso</button></div></form></div>`);
-  document.getElementById('new-case-cancel').onclick = () => document.getElementById('case-modal')?.remove();
+  document.getElementById('new-case-cancel').onclick = () => closeModal();
   document.getElementById('case-modal').onclick = event => {
-    if (event.target.id === 'case-modal') document.getElementById('case-modal')?.remove();
+    if (event.target.id === 'case-modal') closeModal();
   };
   const form = document.getElementById('new-case-form');
-  form.querySelector('[name="title"]')?.focus();
+  const closeModal = prepareModal(document.getElementById('case-modal'), previousFocus);
   form.onsubmit = async event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));
@@ -318,6 +373,7 @@ function documentStep() {
 }
 
 function bind() {
+  associateFieldLabels(root);
   root.querySelectorAll('[data-step]').forEach(button => {
     button.onclick = async () => {
       if (!(await saveNow())) return;
@@ -513,6 +569,7 @@ async function handleAction(event, action) {
 }
 
 function editModal(title, fields, onSave, initial = {}) {
+  const previousFocus = document.activeElement;
   document.getElementById('edit-modal')?.remove();
   document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="edit-modal"><form class="modal" id="edit-form"><h2>${esc(title)}</h2><div class="grid2">${fields.map(([name, label, type = 'text', options]) => {
     const initialValue = initial[name] ?? '';
@@ -520,12 +577,12 @@ function editModal(title, fields, onSave, initial = {}) {
     if (type === 'select') return `<div class="field"><label>${esc(label)}</label><select name="${esc(name)}">${options.map(([optionValue, optionLabel]) => `<option value="${esc(optionValue)}" ${String(initialValue) === String(optionValue) ? 'selected' : ''}>${esc(optionLabel)}</option>`).join('')}</select></div>`;
     return `<div class="field"><label>${esc(label)}</label><input name="${esc(name)}" type="${esc(type)}" value="${val(initialValue)}"></div>`;
   }).join('')}</div><div class="modal-actions"><button type="button" class="btn" id="edit-cancel">Cancelar</button><button class="btn primary">Salvar</button></div></form></div>`);
-  document.getElementById('edit-cancel').onclick = () => document.getElementById('edit-modal')?.remove();
+  document.getElementById('edit-cancel').onclick = () => closeModal();
   document.getElementById('edit-modal').onclick = event => {
-    if (event.target.id === 'edit-modal') document.getElementById('edit-modal')?.remove();
+    if (event.target.id === 'edit-modal') closeModal();
   };
   const form = document.getElementById('edit-form');
-  form.querySelector('input,textarea,select')?.focus();
+  const closeModal = prepareModal(document.getElementById('edit-modal'), previousFocus);
   form.onsubmit = event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));

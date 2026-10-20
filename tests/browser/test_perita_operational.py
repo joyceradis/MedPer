@@ -308,6 +308,52 @@ class PeritaOperationalJourney(unittest.TestCase):
             "Dashboard horizontally overflows desktop viewport",
         )
 
+    def test_12_new_case_dialog_supports_labels_keyboard_and_cancel_focus(self):
+        trigger = self.page.locator('.dashboard-hero button[data-action="new-case"]')
+        trigger.click()
+        dialog = self.page.get_by_role("dialog", name="Novo caso")
+        expect(dialog).to_be_visible()
+        title = dialog.get_by_label("Título do caso", exact=True)
+        expect(title).to_be_focused()
+        title.fill("CASO FICTICIO - CANCELADO")
+        title.press("Shift+Tab")
+        expect(dialog.get_by_role("button", name="Criar caso")).to_be_focused()
+        self.page.keyboard.press("Tab")
+        expect(title).to_be_focused()
+        title.press("Escape")
+        expect(dialog).to_have_count(0)
+        expect(trigger).to_be_focused()
+        expect(self.page.locator('[data-open-case]')).to_have_count(0)
+        trigger.click()
+        dialog.get_by_role("button", name="Cancelar").click()
+        expect(trigger).to_be_focused()
+        expect(self.page.locator('[data-open-case]')).to_have_count(0)
+
+    def test_13_workspace_and_source_editor_fields_have_real_accessible_names(self):
+        self.create_demo_case()
+        expect(self.page.get_by_label("Título", exact=True)).to_have_value("CASO FICTICIO - DANO ESTETICO")
+        self.page.get_by_label("Título", exact=True).click()
+        expect(self.page.get_by_label("Título", exact=True)).to_be_focused()
+        self.page.locator('#sidebar button[data-step="sources"]').click()
+        trigger = self.page.get_by_role("button", name="Adicionar fonte", exact=True)
+        trigger.click()
+        dialog = self.page.get_by_role("dialog")
+        expect(dialog).to_have_attribute("aria-modal", "true")
+        expect(dialog.get_by_label("Tipo", exact=True)).to_be_focused()
+        dialog.get_by_label("Título", exact=True).fill("FONTE FICTICIA - CANCELADA")
+        dialog.get_by_label("Título", exact=True).press("Escape")
+        expect(dialog).to_have_count(0)
+        expect(trigger).to_be_focused()
+        expect(self.page.locator("#workspace")).to_contain_text("Nenhuma fonte cadastrada")
+        trigger.click()
+        dialog.get_by_label("Título", exact=True).fill("FONTE FICTICIA - ACESSIVEL")
+        dialog.get_by_role("button", name="Salvar", exact=True).click()
+        expect(self.page.locator("#workspace")).to_contain_text("FONTE FICTICIA - ACESSIVEL")
+        self.assertEqual(self.page.evaluate("""() => {
+            const ids = [...document.querySelectorAll('[id]')].map(el => el.id);
+            return ids.length - new Set(ids).size;
+        }"""), 0, "Form renders must not introduce duplicate IDs")
+
     def test_11_dashboard_is_usable_and_not_clipped_on_mobile(self):
         self.page.set_viewport_size({"width": 390, "height": 844})
         self.page.reload(wait_until="load")
