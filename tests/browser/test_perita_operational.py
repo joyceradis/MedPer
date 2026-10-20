@@ -290,5 +290,42 @@ class PeritaOperationalJourney(unittest.TestCase):
         expect(self.page.locator("#workspace h1")).to_have_text("Objeto e contexto")
 
 
+    def test_10_dashboard_empty_state_has_real_identity_and_storage_warning(self):
+        """No-data first run must not look like an unfinished blank admin screen."""
+        expect(self.page.locator(".dashboard-hero h1")).to_have_text("Casos periciais")
+        expect(self.page.locator(".dashboard-method")).to_contain_text("Objeto e contexto")
+        expect(self.page.locator(".dashboard-register")).to_contain_text("Seus casos")
+        expect(self.page.locator(".empty--cases h2")).to_have_text("Nenhum caso V2 neste navegador")
+        expect(self.page.locator(".dashboard-safety")).to_contain_text("sem login, para dados fictícios")
+        expect(self.page.locator(".dashboard-safety")).to_contain_text("Não limpe os dados")
+        bg = self.page.locator(".dashboard-hero").evaluate(
+            "(el) => getComputedStyle(el).backgroundImage"
+        )
+        self.assertIn("linear-gradient(", bg, "Empty dashboard has reverted to plain white shell")
+        expect(self.page.locator('button[data-action="new-case"]').first).to_be_visible()
+        self.assertLessEqual(
+            self.page.evaluate("document.documentElement.scrollWidth - innerWidth"), 2,
+            "Dashboard horizontally overflows desktop viewport",
+        )
+
+    def test_11_dashboard_is_usable_and_not_clipped_on_mobile(self):
+        self.page.set_viewport_size({"width": 390, "height": 844})
+        self.page.reload(wait_until="load")
+        expect(self.page.locator(".dashboard-hero h1")).to_be_visible()
+        expect(self.page.locator(".dashboard-hero button[data-action='new-case']")).to_be_visible()
+        expect(self.page.locator(".dashboard-safety")).to_be_visible()
+        expect(self.page.locator(".empty--cases h2")).to_be_visible()
+        self.assertLessEqual(
+            self.page.evaluate("document.documentElement.scrollWidth - innerWidth"), 2,
+            "Dashboard horizontally overflows 390px mobile viewport",
+        )
+        hero = self.page.locator(".dashboard-hero").bounding_box()
+        self.assertIsNotNone(hero)
+        self.assertGreaterEqual(hero["width"], 300)
+        self.page.locator(".dashboard-hero button[data-action='new-case']").click()
+        expect(self.page.locator("#new-case-form")).to_be_visible()
+        self.page.locator("#new-case-cancel").click()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
