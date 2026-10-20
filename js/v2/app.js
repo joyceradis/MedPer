@@ -86,7 +86,7 @@ async function load() {
 }
 
 function shell(content, options = {}) {
-  return `<div class="v2-shell"><header class="topbar"><button class="btn ghost mobile-menu" data-action="menu" aria-label="Abrir navegação">☰</button><div class="brand">MedPer <small>${repo.mode === 'remote' ? 'Professional · API' : 'V2 · local-first'}</small></div><div class="spacer"></div>${options.case ? `<span class="save-state">${state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : 'Salvo localmente'}</span><button class="btn ghost" data-action="dashboard">Casos</button>` : ''}${repo.mode === 'remote' ? '<button class="btn ghost" data-action="logout">Sair</button>' : ''}</header>${content}</div>`;
+  return `<div class="v2-shell"><header class="topbar"><button class="btn ghost mobile-menu" data-action="menu" aria-label="Abrir navegação">☰</button><div class="brand">MedPer <small>${repo.mode === 'remote' ? 'Professional · API' : 'V2 · local-first'}</small></div><div class="spacer"></div>${options.case ? `<span class="save-state">${state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : (repo.mode === 'remote' ? 'Salvo no servidor' : 'Salvo localmente')}</span><button class="btn ghost" data-action="dashboard">Casos</button>` : ''}${repo.mode === 'remote' ? '<button class="btn ghost" data-action="logout">Sair</button>' : ''}</header>${content}</div>`;
 }
 
 function filteredCases() {
@@ -543,7 +543,7 @@ function scheduleSave() {
 
 function updateSaveLabel() {
   const element = root.querySelector('.save-state');
-  if (element) element.textContent = state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : 'Salvo localmente';
+  if (element) element.textContent = state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : (repo.mode === 'remote' ? 'Salvo no servidor' : 'Salvo localmente');
 }
 
 function saveNow() {
