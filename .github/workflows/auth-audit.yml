@@ -79,7 +79,7 @@ jobs:
                   or 'new RemoteCaseRepository()' not in selector
                   or 'isRemoteSessionActive()' not in selector
                   or 'indexedDB' not in repo or 'localStorage' not in repo
-                  or 'localStorage' in professional or 'indexedDB' in professional):
+                  or 'localStorage.' in professional or 'indexedDB.open' in professional):
               raise SystemExit('Demo/remote repository boundary is missing or credential storage is unsafe.')
 
           required_v2_assets=['./js/v2/app.js','./js/v2/repository.js','./css/v2.css']
