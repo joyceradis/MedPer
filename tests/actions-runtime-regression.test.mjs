@@ -31,7 +31,7 @@ const canonicalActionMajors = new Map([
   ['actions/setup-python', 'v7'],
   ['actions/upload-artifact', 'v7'],
   ['actions/download-artifact', 'v5'],
-  ['actions/github-script', 'v8']
+  ['actions/github-script', 'v9']
 ]);
 for (const [family, expectedMajor] of canonicalActionMajors) {
   const uses = [...combined.matchAll(new RegExp(`${family.replace('/', '\\/')}@(v\\d+)`, 'g'))];
