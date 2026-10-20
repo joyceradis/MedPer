@@ -466,7 +466,7 @@ body{
   box-shadow:0 1px 1px rgba(7,29,55,.04),0 2px 4px rgba(7,29,55,.04),0 30px 60px -24px rgba(7,29,55,.28);
 }
 .doc-preview::before{
-  content:"";position:absolute;inset:auto 12px -10px 12px;height:10px;border-radius:0 0 6px 6px;z-index:-1;
+  content:"";position:absolute;inset:auto 12px -10px;height:10px;border-radius:0 0 6px 6px;z-index:-1;
   background:#f6f3ec;border:1px solid rgba(13,31,53,.06);border-top:0;
 }
 .doc-preview h1,.doc-preview h2,.doc-preview h3{font-family:var(--mp-serif);color:var(--mp-navy-900);letter-spacing:-.01em}
