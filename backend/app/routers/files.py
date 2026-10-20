@@ -7,13 +7,13 @@ from sqlalchemy.orm import Session
 
 from ..audit import record
 from ..config import settings
-from ..deps import current_user, db_session
+from ..deps import current_user, db_session, require_single_practitioner_case_scope
 from ..models import User
 from ..session_models import StoredFile
 from ..storage import read_file, save_upload
 from .cases import owned_case
 
-router = APIRouter(prefix="/cases", tags=["files"])
+router = APIRouter(prefix="/cases", tags=["files"], dependencies=[Depends(require_single_practitioner_case_scope)])
 
 
 def require_file_storage_ready() -> None:
