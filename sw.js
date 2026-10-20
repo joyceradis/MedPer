@@ -1,5 +1,5 @@
 const CACHE_PREFIX='medper-v2-shell-';
-const CACHE_NAME=`${CACHE_PREFIX}20261020-pro-adapter`;
+const CACHE_NAME=`${CACHE_PREFIX}20261020-premium-ui`;
 const APP_SHELL=[
   './','./index.html','./app.html','./manifest.webmanifest','./icon.svg',
   './css/marketing.css','./css/context-methodology.css','./css/v2.css','./css/v2-premium.css',
