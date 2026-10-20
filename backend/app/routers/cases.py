@@ -4,7 +4,7 @@ from sqlalchemy import delete as sa_delete, select, update
 from sqlalchemy.orm import Session
 from ..audit import record
 from ..db import Base
-from ..deps import current_user, db_session
+from ..deps import current_user, db_session, require_single_practitioner_case_scope
 from ..deadlines import project_deadlines
 from ..payload_crypto import decrypt_payload, encrypt_payload
 from ..models import Case, Evidence, Observation, Finding, Conclusion, User
@@ -12,7 +12,7 @@ from ..session_models import StoredFile
 from ..storage import delete_file
 from ..schemas import CaseIn, CaseStateIn, V2CaseCreateIn, EvidenceIn, ObservationIn, FindingIn, ConclusionIn
 
-router = APIRouter(prefix="/cases", tags=["cases"])
+router = APIRouter(prefix="/cases", tags=["cases"], dependencies=[Depends(require_single_practitioner_case_scope)])
 
 def owned_case(db: Session, user: User, case_id: str) -> Case:
     case = db.scalar(select(Case).where(Case.id == case_id, Case.organization_id == user.organization_id))
