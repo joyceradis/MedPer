@@ -1,5 +1,12 @@
 name: Published MedPer entrance smoke (read-only)
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tests/live/**"
+      - ".github/workflows/medper-published-entry.yml"
+      - "app.html"
+      - "index.html"
   workflow_dispatch:
   schedule:
     - cron: "35 13 * * *"
