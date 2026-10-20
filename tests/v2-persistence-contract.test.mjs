@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CaseRepository } from '../js/v2/repository.js';
-import { createCaseRecord } from '../js/v2/case-record.js';
+import { createCaseRecord, importCaseRecord, serializeCaseRecord } from '../js/v2/case-record.js';
 
 test('persistência V2 local: round-trip de caso fictício, exportação e reimportação', async () => {
   const content = new Map();
@@ -65,4 +65,60 @@ test('persistência V2 local: round-trip de caso fictício, exportação e reimp
     if (previous.localStorage === undefined) delete globalThis.localStorage;
     else globalThis.localStorage = previous.localStorage;
   }
+});
+
+test('invalid backup structures are rejected before a repository write', async () => {
+  let writes = 0;
+  class RecordingRepository extends CaseRepository {
+    async create(value) { writes++; return value; }
+  }
+  const repository = new RecordingRepository();
+  const invalid = [
+    ['sources', value => { value.sources = { original: 'Fonte que não pode sumir' }; }],
+    ['timeline', value => { value.timeline = null; }],
+    ['identity', value => { value.identity = []; }],
+    ['history', value => { value.history = 'Texto fora da estrutura esperada'; }],
+    ['id', value => { value.id = 42; }],
+    ['id', value => { delete value.id; }],
+    ['sources', value => { value.sources = [null]; }],
+    ['questions', value => { value.questions = [{ id: 'q1' }, { id: 'q1' }]; }],
+    ['timeline', value => { value.timeline = [{ id: '' }]; }],
+    ['title', value => { value.identity.title = { original: 'Título inválido' }; }],
+    ['notes', value => { value.sources = [{ id: 'src1', notes: { original: 'Nota inválida' } }]; }],
+    ['sourceIds', value => { value.timeline = [{ id: 'ev1', sourceIds: 'src1' }]; }],
+    ['aipe', value => { value.methodology.aipe = []; }],
+    ['selected', value => { value.methodology.selected = [null]; }]
+  ];
+  for (const [field, corrupt] of invalid) {
+    const payload = createCaseRecord({ id: 'backup-ficticio', title: 'Backup fictício' });
+    corrupt(payload);
+    const original = structuredClone(payload);
+    for (const input of [payload, JSON.stringify(payload)]) {
+      await assert.rejects(repository.import(input), error => {
+        assert.match(error.message, /backup|arquivo|formato/i);
+        assert.ok(error.message.includes(field), `A falha deve identificar ${field}: ${error.message}`);
+        return true;
+      });
+    }
+    assert.deepEqual(payload, original, 'A validação não deve alterar o payload recebido');
+  }
+  assert.equal(writes, 0, 'Nenhum backup inválido deve chegar à escrita do repositório');
+});
+
+test('valid V2 backups preserve extension data and tolerate absent optional sections', () => {
+  const payload = createCaseRecord({ id: 'backup-valido', title: 'Backup fictício válido' });
+  payload.sources.push({ id: 'src1', title: 'Fonte fictícia', extension: { page: 12 } });
+  payload.methodology.aipe.score = 0;
+  payload.extension = { original: ['Valor que deve ser preservado'] };
+  const original = structuredClone(payload);
+  const imported = importCaseRecord(serializeCaseRecord(payload));
+  assert.deepEqual(imported, original);
+  assert.deepEqual(importCaseRecord(payload), original);
+  assert.deepEqual(payload, original, 'Importação de objeto não deve mutar o original');
+
+  const minimal = { schemaVersion: 2, id: 'backup-minimo', identity: {}, context: {} };
+  const restored = importCaseRecord(JSON.stringify(minimal));
+  assert.equal(restored.id, minimal.id);
+  assert.deepEqual(restored.sources, []);
+  assert.equal(restored.history.summary, '');
 });
