@@ -4,6 +4,7 @@ import { createRuntimeRepository } from './repository-selector.js';
 import { logoutRemoteSession } from './remote-repository.js';
 import { routeMethodology } from './method-router.js';
 import { composeCaseDocument } from './document.js';
+import { installExperience, enhanceDashboard, enhanceCards, enhanceWorkspace } from './ui-experience.js';
 import { AIPE_CRITERIA, AIPE_CATEGORIES, aipeCategoryOption } from '../methodology/aipe.js';
 import { POSAS_PATIENT_ITEMS, POSAS_OBSERVER_ITEMS, buildPosasAssessmentFromGuided } from '../methodology/posas.js';
 
@@ -81,6 +82,7 @@ function field(label, path, type = 'text', options = {}) {
 }
 
 async function load() {
+  installExperience({ root, getCase: () => state.current });
   state.cases = await repo.list();
   renderDashboard();
 }
@@ -157,6 +159,7 @@ function renderDashboard() {
     <input id="import-file" type="file" accept="application/json" class="hidden">
   </main>`);
   bind();
+  enhanceDashboard(root, state.cases);
 }
 
 function refreshCaseResults() {
@@ -164,6 +167,7 @@ function refreshCaseResults() {
   if (!results) return;
   results.innerHTML = dashboardCasesMarkup();
   bindCaseCards();
+  enhanceCards(root);
   root.querySelectorAll('#case-results [data-action]').forEach(button => {
     button.onclick = event => handleAction(event, button.dataset.action);
   });
@@ -218,6 +222,7 @@ function renderWorkspace() {
   const caseRecord = state.current = normalizeCaseRecord(state.current);
   root.innerHTML = shell(`<div class="workspace"><aside class="sidebar" id="sidebar"><div class="case-mini"><strong>${esc(caseRecord.identity.title)}</strong><span>${esc(caseRecord.identity.processNumber || 'Sem número do processo')}</span></div>${steps.map(([id, label], index) => `<button class="step ${state.step === id ? 'active' : ''}" data-step="${id}"><i>${index + 1}</i>${esc(label)}</button>`).join('')}</aside><main class="content" id="workspace">${renderStep()}</main></div>`, { case: true });
   bind();
+  enhanceWorkspace(root, caseRecord);
 }
 
 function heading(title, subtitle, actions = '') {
