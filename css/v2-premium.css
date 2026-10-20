@@ -98,7 +98,6 @@ body{
 *::-webkit-scrollbar{width:10px;height:10px}
 *::-webkit-scrollbar-thumb{background:rgba(13,31,53,.18);border-radius:99px;border:3px solid transparent;background-clip:padding-box}
 *::-webkit-scrollbar-thumb:hover{background-color:rgba(13,31,53,.3)}
-.sidebar{scrollbar-color:rgba(255,255,255,.22) transparent}
 .sidebar::-webkit-scrollbar-thumb{background-color:rgba(255,255,255,.2)}
 
 /* ---------- Top bar ---------- */
@@ -174,13 +173,13 @@ body{
   box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 30px 70px -28px rgba(4,15,31,.65);
   border:1px solid rgba(143,201,232,.16);
 }
-.dashboard-hero:before{
+.dashboard-hero::before{
   right:-140px;top:-220px;width:620px;height:620px;
   border:1px solid rgba(230,242,255,.10);
   box-shadow:0 0 0 80px rgba(246,250,255,.022),0 0 0 170px rgba(246,250,255,.016),0 0 0 270px rgba(246,250,255,.01);
   animation:mp-orbit 38s linear infinite;
 }
-.dashboard-hero:after{
+.dashboard-hero::after{
   content:"";pointer-events:none;position:absolute;inset:0;z-index:0;border-radius:inherit;
   background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.06) 50%,transparent 65%);
   background-size:250% 100%;
@@ -316,6 +315,7 @@ body{
     linear-gradient(180deg,#123e6d 0%,#0b2a4d 40%,#051428 100%);
   border-right:1px solid rgba(143,201,232,.10);
   box-shadow:inset -1px 0 0 rgba(255,255,255,.03);
+  scrollbar-color:rgba(255,255,255,.22) transparent;
 }
 .case-mini{
   margin:0 2px 16px;padding:14px 14px 15px;border-radius:14px;border:1px solid rgba(255,255,255,.10);
@@ -326,7 +326,6 @@ body{
 .case-mini span{display:block;margin-top:5px;font-family:var(--mp-mono);font-size:10.5px;color:#9fc2de}
 
 /* Step rail: a thin connector line behind the numbered dots. */
-.sidebar{counter-reset:none}
 .step{
   position:relative;align-items:center;gap:12px;margin:1px 0;padding:9px 12px 9px 10px;border-radius:11px;
   font-size:13px;font-weight:500;color:#d7e6f4;
