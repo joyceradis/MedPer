@@ -10,7 +10,7 @@ from ..payload_crypto import decrypt_payload, encrypt_payload
 from ..models import Case, Evidence, Observation, Finding, Conclusion, User
 from ..session_models import StoredFile
 from ..storage import delete_file
-from ..schemas import CaseIn, CaseStateIn, EvidenceIn, ObservationIn, FindingIn, ConclusionIn
+from ..schemas import CaseIn, CaseStateIn, V2CaseCreateIn, EvidenceIn, ObservationIn, FindingIn, ConclusionIn
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
@@ -28,6 +28,35 @@ def create_case(data: CaseIn, db: Session = Depends(db_session), user: User = De
     record(db, user, "create", "case", case.id)
     db.commit()
     return {"id": case.id}
+
+@router.post("/v2", status_code=201)
+def create_v2_case(data: V2CaseCreateIn, db: Session = Depends(db_session), user: User = Depends(current_user)):
+    """Create both case and full V2 payload in one database transaction.
+
+    The database owns the ID. Never overwrite or migrate existing local cases,
+    and never create an empty remote case followed by a fragile second request.
+    """
+    payload = {**data.payload}
+    identity = payload["identity"]
+    context = payload["context"]
+    case = Case(
+        organization_id=user.organization_id,
+        title=identity["title"].strip(),
+        reference=str(identity.get("processNumber") or "")[:120],
+        object_type=str(context.get("object") or "Perícia")[:80],
+        status=str(identity.get("status") or "rascunho")[:40],
+        scope=str(context.get("object") or ""),
+    )
+    db.add(case)
+    db.flush()
+    payload["id"] = case.id
+    case.state_payload = encrypt_payload(payload)
+    case.state_revision = 1
+    case.state_updated_at = datetime.now(timezone.utc)
+    record(db, user, "create_v2", "case", case.id, {"revision": 1})
+    db.commit()
+    return {"id": case.id, "revision": 1}
+
 
 @router.get("")
 def list_cases(db: Session = Depends(db_session), user: User = Depends(current_user)):
