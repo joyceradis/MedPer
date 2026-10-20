@@ -114,16 +114,13 @@ class ExperienceLayer(unittest.TestCase):
             page.locator(".case-card").first.click()
             expect(page.locator(".case-mini")).to_be_visible()
         page.locator('button[data-action="dashboard"]').click()
-        expect(page.locator(".scroll-progress")).to_have_count(1)
+        expect(page.locator(".command-launcher")).to_have_count(1)
         expect(page.locator('.insight.is-danger .insight-value')).to_have_text("1")
 
-        # One install only: a single shortcut press opens exactly one palette,
-        # and a click produces at most one ripple.
+        # One install only: a single shortcut press opens exactly one palette.
         page.keyboard.press("Control+k")
         expect(page.locator("#command-palette")).to_have_count(1)
         page.keyboard.press("Escape")
-        page.locator('button[data-action="new-case"]').first.dispatch_event("pointerdown", {"clientX": 10, "clientY": 10})
-        self.assertLessEqual(page.locator('button[data-action="new-case"] .ripple').count(), 1)
 
     def test_step_progress_follows_typing(self):
         page = self.open()
@@ -197,6 +194,21 @@ class ExperienceLayer(unittest.TestCase):
         expect(page.get_by_role("combobox", name="Buscar comandos")).to_be_focused()
         page.keyboard.press("Escape")
         self.assertLessEqual(page.evaluate("document.documentElement.scrollWidth - innerWidth"), 2)
+
+    def test_opening_a_case_or_step_starts_at_the_top(self):
+        page = self.open()
+        self.create_case()
+        page.locator('button[data-action="dashboard"]').click()
+        page.mouse.wheel(0, 700)
+        page.wait_for_function("scrollY > 0")
+        page.locator(".case-card").first.click()
+        expect(page.locator(".case-mini")).to_be_visible()
+        self.assertEqual(page.evaluate("scrollY"), 0)
+        page.mouse.wheel(0, 400)
+        page.wait_for_function("scrollY > 0")
+        page.locator('button[data-step="exam"]').click()
+        expect(page.locator(".content h1")).to_have_text("Exame pericial")
+        self.assertEqual(page.evaluate("scrollY"), 0)
 
     # ---------- palette, focus and shortcuts ----------
 
@@ -293,17 +305,20 @@ class ExperienceLayer(unittest.TestCase):
     def test_print_hides_interface_chrome(self):
         page = self.open()
         page.emulate_media(media="print")
-        for selector in (".scroll-progress", ".insight-strip"):
+        for selector in (".insight-strip", ".topbar"):
             self.assertEqual(page.evaluate(f"() => getComputedStyle(document.querySelector('{selector}')).display"), "none")
 
-    def test_reduced_motion_shows_final_values_immediately(self):
+    def test_reduced_motion_settles_entrances_immediately(self):
         page = self.open(reduced_motion="reduce")
         self.create_case(deadline="2020-01-01")
         page.locator('button[data-action="dashboard"]').click()
         self.assertEqual(page.locator(".insight .insight-value").first.inner_text(), "1")
         self.assertEqual(page.locator(".case-count").inner_text(), "1")
-        page.locator('button[data-action="new-case"]').first.dispatch_event("pointerdown", {"clientX": 10, "clientY": 10})
-        self.assertEqual(page.locator(".ripple").count(), 0)
+        # Entrance animations must not leave content hidden or offset.
+        for selector in (".dashboard-hero h1", ".insight", ".case-card"):
+            state = page.locator(selector).first.evaluate(
+                "el => { const s = getComputedStyle(el); return [s.opacity, s.transform === 'none' || new DOMMatrix(s.transform).isIdentity]; }")
+            self.assertEqual(state, ["1", True], selector)
 
 
 if __name__ == "__main__":
