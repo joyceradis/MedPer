@@ -1,5 +1,7 @@
 name: MedPer V2 operational browser acceptance
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
     paths:
