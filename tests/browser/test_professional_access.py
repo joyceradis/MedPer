@@ -43,6 +43,8 @@ class ProfessionalFakeAPI(SimpleHTTPRequestHandler):
             body = (
                 "export const MEDPER_PROFESSIONAL_API_ORIGIN = "
                 + json.dumps(self.server.origin) + ";\n"
+                + "export const MEDPER_GOOGLE_CLIENT_ID = "
+                + json.dumps(getattr(self.server, "google_client_id", "")) + ";\n"
             ).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "text/javascript; charset=utf-8")
@@ -71,6 +73,12 @@ class ProfessionalFakeAPI(SimpleHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers.get("Content-Length", "0"))
         data = self.rfile.read(length)
+        if self.path == "/auth/google/token":
+            body = json.loads(data.decode("utf-8"))
+            if body.get("credential") == "synthetic-jwt-for-browser-only" and getattr(self.server, "google_client_id", ""):
+                return self.respond(200, {"access_token": "browser-synthetic-token",
+                                          "refresh_token": "browser-synthetic-refresh", "token_type": "bearer"})
+            return self.respond(401, {"detail": "Unauthorized"})
         if self.path == "/auth/token":
             fields = urllib.parse.parse_qs(data.decode("utf-8"))
             if fields.get("password") == ["synthetic-pass-12"] and fields.get("username") == ["synthetic@example.com"]:
@@ -181,6 +189,39 @@ class ProfessionalBrowserJourney(unittest.TestCase):
             page.screenshot(path=str(OUT / "professional-server-backed-synthetic.png"), full_page=True)
         finally:
             context.close()
+
+    def test_google_button_uses_authenticated_server_and_not_browser_storage(self):
+        self.server.google_client_id = "sample-client.apps.googleusercontent.com"
+        context = self.browser.new_context(viewport={"width": 1200, "height": 800})
+        page = context.new_page()
+        gis = """
+            window.google = {accounts:{id:{
+              initialize(options){window.__credentialCallback = options.callback},
+              renderButton(target){
+                const button=document.createElement('button');
+                button.id='google-synthetic-button';button.textContent='Entrar com Google';
+                button.onclick=()=>window.__credentialCallback({credential:'synthetic-jwt-for-browser-only'});
+                target.appendChild(button);
+              }
+            }}};
+        """
+        page.route("https://accounts.google.com/gsi/client",
+                   lambda route: route.fulfill(status=200, content_type="application/javascript", body=gis))
+        try:
+            page.goto(self.server.origin + "/professional.html", wait_until="load")
+            expect(page.locator("#google-synthetic-button")).to_be_visible(timeout=10000)
+            page.locator("#google-synthetic-button").click()
+            expect(page.locator(".dashboard h1")).to_have_text("Casos periciais", timeout=10000)
+            expect(page.locator(".dashboard-safety")).to_contain_text("autenticada")
+            self.assertEqual(page.evaluate("localStorage.length"), 0)
+            self.assertEqual(page.evaluate("indexedDB.databases().then(x => x.length)"), 0)
+            page.reload(wait_until="load")
+            expect(page.locator("#app")).to_be_hidden()
+            expect(page.locator("#login-form")).to_be_visible()
+        finally:
+            context.close()
+            self.server.google_client_id = ""
+
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="color-scheme" content="light">
   <meta http-equiv="Cache-Control" content="no-store">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https: http://localhost:8000; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; img-src 'self' https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; connect-src 'self' https: http://localhost:8000; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
   <title>MedPer Professional | Acesso ao ambiente autenticado</title>
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./css/v2.css">
@@ -34,6 +34,11 @@
         <input id="password" name="password" type="password" autocomplete="current-password" required>
         <button type="submit" id="login-submit">Entrar no ambiente</button>
       </form>
+      <div id="google-signin" hidden>
+        <p class="professional-kicker">OU ACESSE COM SUA CONTA GOOGLE</p>
+        <div id="google-button" aria-label="Entrar com Google"></div>
+        <p class="professional-disclaimer">O Google confirma sua identidade; o MedPer continua controlando permissões e acesso aos casos.</p>
+      </div>
       <p class="professional-disclaimer">Este ambiente não importa automaticamente os dados da demonstração, não vende assinaturas e ainda não está autorizado para casos reais.</p>
       <a href="./app.html" class="professional-demo">Abrir a demonstração fictícia</a>
     </section>

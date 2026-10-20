@@ -100,6 +100,8 @@ def test_second_account_in_same_org_never_inherits_access_to_first_users_cases()
 def test_production_disallows_public_registration_by_default(monkeypatch):
     monkeypatch.setattr(settings, "environment", "production")
     monkeypatch.setattr(settings, "open_registration_enabled", False)
+    monkeypatch.setattr(settings, "professional_enabled", True)
+    monkeypatch.setattr(settings, "database_url", "postgresql+psycopg://synthetic/medper")
     with TestClient(app) as client:
         response = client.post("/auth/register", json={
             "organization_name": "Synthetic production",

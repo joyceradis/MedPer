@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from .config import settings
 from .deps import require_api_access
-from .routers import auth, cases, files, imports
+from .routers import auth, cases, files, imports, google_auth
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO), format="%(message)s")
 logger = logging.getLogger("medper.api")
@@ -61,6 +61,7 @@ async def request_log(request: Request, call_next):
 
 
 app.include_router(auth.router, dependencies=[Depends(require_api_access)])
+app.include_router(google_auth.router, dependencies=[Depends(require_api_access)])
 app.include_router(cases.router, dependencies=[Depends(require_api_access)])
 app.include_router(imports.router, dependencies=[Depends(require_api_access)])
 app.include_router(files.router, dependencies=[Depends(require_api_access)])

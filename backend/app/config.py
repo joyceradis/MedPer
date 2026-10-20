@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     file_encryption_key: str = ""
     file_storage_required: bool = False
     professional_enabled: bool = False
+    # Public OAuth client identifier. Google authentication stays disabled until configured.
+    google_client_id: str = ""
+    # First-time Google registration requires an explicit separate opt-in.
+    google_self_signup_enabled: bool = False
     development_api_enabled: bool = False
     max_upload_bytes: int = 25 * 1024 * 1024
     cors_origins: str = "https://joyceradis.github.io,http://localhost:8080"

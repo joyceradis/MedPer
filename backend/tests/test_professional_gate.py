@@ -15,6 +15,8 @@ PROTECTED_REQUESTS = [
     ("POST", "/auth/token", {"data": {"username": "blocked@example.com", "password": "synthetic"}}),
     ("POST", "/auth/refresh", {"json": {"refresh_token": "synthetic"}}),
     ("GET", "/auth/me", {}),
+    ("POST", "/auth/google/token", {"json": {"credential": "synthetic-google-credential-only"}}),
+    ("POST", "/auth/google/link", {"json": {"credential": "synthetic-google-credential-only"}}),
     ("GET", "/cases", {}),
     ("POST", "/cases/import", {"json": {"title": "Synthetic"}}),
     ("POST", "/cases/v2", {"json": {"payload": {

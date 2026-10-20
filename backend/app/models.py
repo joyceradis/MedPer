@@ -54,6 +54,8 @@ class User(Base):
     # ausência sem inventar um nome.
     full_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    # Stable Google OIDC subject; never trust email alone to link accounts.
+    google_subject: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     role: Mapped[str] = mapped_column(String(32), default="perito")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
