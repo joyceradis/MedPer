@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     storage_path: str = "./storage"
     file_encryption_key: str = ""
     file_storage_required: bool = False
+    professional_enabled: bool = False
     max_upload_bytes: int = 25 * 1024 * 1024
     cors_origins: str = "https://joyceradis.github.io,http://localhost:8080"
     log_level: str = "INFO"
@@ -48,6 +49,17 @@ class Settings(BaseSettings):
     @property
     def production_mode(self) -> bool:
         return self.environment.strip().lower() in {"production", "staging"}
+
+    @property
+    def professional_access_ready(self) -> bool:
+        # Readiness is stricter than normal development /health.
+        return (
+            self.professional_enabled
+            and self.production_mode
+            and self.jwt_secret_is_strong
+            and self.file_encryption_key_is_valid
+            and self.database_url.startswith(("postgresql://", "postgresql+psycopg://"))
+        )
 
     @property
     def jwt_secret_is_strong(self) -> bool:
