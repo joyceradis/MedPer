@@ -48,6 +48,28 @@ class PublicEntrypoint(unittest.TestCase):
                              "Live app failed to initialize")
             self.assertFalse(errors, "Live JavaScript errors: " + str(errors))
             page.screenshot(path=str(OUT / "live-app.png"), full_page=True, animations="disabled")
+            # An isolated synthetic browser context only: no user account, patient,
+            # judicial data, or server write. This catches landing/app visual drift.
+            if "Casos periciais" in visible:
+                page.locator('button[data-action="new-case"]').first.click()
+                modal = page.locator("#new-case-form")
+                expect(modal).to_be_visible()
+                modal.locator('[name="title"]').fill("CENARIO VISUAL FICTICIO")
+                modal.locator('[name="object"]').fill("Avaliação visual fictícia sem caso real.")
+                modal.locator('button.btn.primary').click()
+                expect(page.locator(".case-mini")).to_be_visible()
+                page.screenshot(path=str(OUT / "live-app-inside-case.png"),
+                                full_page=True, animations="disabled")
+                sidebar = page.locator(".sidebar").evaluate(
+                    "(el) => getComputedStyle(el).backgroundImage"
+                )
+                logo = page.locator(".brand").evaluate(
+                    "(el) => getComputedStyle(el, '::before').backgroundImage"
+                )
+                self.assertIn("linear-gradient(", sidebar,
+                              "Live internal navigation lost its institutional visual treatment")
+                self.assertIn("icon.svg", logo,
+                              "Live inner app does not display the faceted MedPer logo")
             context.close()
             browser.close()
 
