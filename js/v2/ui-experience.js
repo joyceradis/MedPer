@@ -69,7 +69,7 @@ export function enhanceDashboard(root, cases) {
   if (hero && !root.querySelector('.insight-strip')) {
     const data = caseInsights(cases);
     const tiles = [
-      ['total', 'Casos ativos no ambiente', data.total, ''],
+      ['total', 'Casos no ambiente', data.total, ''],
       ['overdue', 'Prazos vencidos', data.overdue, data.overdue ? 'is-danger' : ''],
       ['dueSoon', 'Prazos em até 7 dias', data.dueSoon, data.dueSoon ? 'is-warning' : ''],
       ['concluded', 'Concluídos ou arquivados', data.concluded, 'is-success']
@@ -80,7 +80,22 @@ export function enhanceDashboard(root, cases) {
   }
   const count = root.querySelector('.case-count');
   if (count) countUp(count, cases.length);
+  enhanceCommandLauncher(root);
   enhanceCards(root);
+}
+
+function enhanceCommandLauncher(root) {
+  const topbar = root.querySelector('.topbar');
+  if (!topbar || topbar.querySelector('.command-launcher')) return;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'btn ghost command-launcher';
+  button.innerHTML = '<span aria-hidden="true">⌘</span><span class="command-label">Comandos</span>';
+  button.setAttribute('aria-label', 'Abrir paleta de comandos');
+  button.setAttribute('aria-haspopup', 'dialog');
+  button.setAttribute('aria-keyshortcuts', 'Control+K Meta+K');
+  button.onclick = openPalette;
+  topbar.appendChild(button);
 }
 
 export function enhanceCards(root) {
@@ -121,7 +136,9 @@ export function refreshWorkspaceProgress(root, caseRecord) {
 
 function autosize(textarea) {
   textarea.style.height = 'auto';
-  textarea.style.height = `${Math.min(textarea.scrollHeight + 2, 640)}px`;
+  const height = textarea.scrollHeight + 2;
+  textarea.style.height = `${Math.min(height, 640)}px`;
+  textarea.style.overflowY = height > 640 ? 'auto' : 'hidden';
 }
 
 function wordCount(text) {
@@ -130,6 +147,7 @@ function wordCount(text) {
 }
 
 export function enhanceWorkspace(root, caseRecord) {
+  enhanceCommandLauncher(root);
   refreshWorkspaceProgress(root, caseRecord);
   root.querySelectorAll('.content textarea').forEach(textarea => {
     autosize(textarea);
@@ -151,7 +169,11 @@ export function enhanceWorkspace(root, caseRecord) {
 function paletteEntries() {
   const entries = [];
   const seen = new Set();
-  document.querySelectorAll('#app [data-step], #app [data-action]').forEach(element => {
+  // Keep the draft's owner and callbacks stable while a case/source editor is open.
+  // Theme switching is safe; navigating the underlying app is not.
+  const buttons = document.querySelector('.modal-backdrop') ? []
+    : document.querySelectorAll('#app [data-step], #app [data-action]');
+  buttons.forEach(element => {
     const isStep = Boolean(element.dataset.step);
     const key = isStep ? `step:${element.dataset.step}` : `action:${element.dataset.action}`;
     const label = element.textContent.replace(/^\s*\d+\s*/, '').trim() || element.getAttribute('aria-label') || '';
@@ -180,7 +202,7 @@ function openPalette() {
   if (document.getElementById('command-palette')) return;
   const previous = document.activeElement;
   const entries = paletteEntries();
-  document.body.insertAdjacentHTML('beforeend', `<div class="palette-backdrop" id="command-palette"><div class="palette" role="dialog" aria-modal="true" aria-label="Paleta de comandos"><div class="palette-search"><span aria-hidden="true">⌘</span><input id="palette-input" type="text" autocomplete="off" spellcheck="false" placeholder="Ir para etapa ou executar ação…" aria-controls="palette-list" aria-activedescendant=""></div><ul class="palette-list" id="palette-list" role="listbox"></ul><footer class="palette-hint"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span></footer></div></div>`);
+  document.body.insertAdjacentHTML('beforeend', `<div class="palette-backdrop" id="command-palette"><div class="palette" role="dialog" aria-modal="true" aria-label="Paleta de comandos"><div class="palette-search"><span aria-hidden="true">⌘</span><input id="palette-input" type="text" role="combobox" aria-label="Buscar comandos" aria-autocomplete="list" aria-expanded="true" autocomplete="off" spellcheck="false" placeholder="Ir para etapa ou executar ação…" aria-controls="palette-list" aria-activedescendant=""></div><ul class="palette-list" id="palette-list" role="listbox"></ul><footer class="palette-hint"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span></footer></div></div>`);
   const backdrop = document.getElementById('command-palette');
   const input = document.getElementById('palette-input');
   const list = document.getElementById('palette-list');
@@ -234,7 +256,7 @@ function openPalette() {
 // ---------- Global interactions ----------
 
 function isTyping(target) {
-  return target?.closest?.('input, textarea, select, [contenteditable="true"]');
+  return target?.isContentEditable || target?.closest?.('input, textarea, select, [role="textbox"]');
 }
 
 function moveStep(direction) {
@@ -285,6 +307,7 @@ export function installExperience({ root, getCase }) {
   });
 
   document.addEventListener('keydown', event => {
+    if (event.defaultPrevented || event.isComposing) return;
     const mod = event.metaKey || event.ctrlKey;
     if (mod && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'k') {
       event.preventDefault();
