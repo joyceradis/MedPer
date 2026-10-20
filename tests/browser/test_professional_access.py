@@ -153,9 +153,7 @@ class ProfessionalBrowserJourney(unittest.TestCase):
             page.locator('#sidebar button[data-step="history"]').click()
             field = page.locator('textarea[data-bind="history.summary"]')
             field.fill("História simulada e exclusiva da suíte E2E")
-            expect(page.locator(".save-state")).to_have_text("Salvo localmente", timeout=10000)
-            # "Salvo localmente" is a misleading inherited label in remote
-            # mode; the gate below will be updated to require "Salvo no servidor".
+            expect(page.locator(".save-state")).to_have_text("Salvo no servidor", timeout=10000)
             page.locator('button[data-action="dashboard"]').click()
             self.assertEqual(len(self.server.cases), 1)
             saved = next(iter(self.server.cases.values()))
