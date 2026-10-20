@@ -1,8 +1,8 @@
 const CACHE_PREFIX='medper-v2-shell-';
-const CACHE_NAME=`${CACHE_PREFIX}20261020-pro-adapter`;
+const CACHE_NAME=`${CACHE_PREFIX}20261020-premium-ui`;
 const APP_SHELL=[
   './','./index.html','./app.html','./manifest.webmanifest','./icon.svg',
-  './css/marketing.css','./css/context-methodology.css','./css/v2.css',
+  './css/marketing.css','./css/context-methodology.css','./css/v2.css','./css/v2-premium.css',
   './js/v2/app.js','./js/v2/case-record.js','./js/v2/repository.js','./js/v2/repository-selector.js','./js/v2/remote-repository.js','./js/v2/method-router.js','./js/v2/document.js',
   './js/methodology/aipe.js','./js/methodology/posas.js'
 ];
