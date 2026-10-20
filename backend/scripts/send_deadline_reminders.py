@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import select
 
 from app.db import SessionLocal
+from app.deps import set_request_context
 from app.deadlines import pending_reminders
 from app.mailer import send_deadline_reminder
 from app.models import DeadlineReminder, User
@@ -34,65 +35,38 @@ from app.models import DeadlineReminder, User
 logger = logging.getLogger("medper.deadlines")
 
 
-def destinatarios(db, organization_id: str) -> list[str]:
-    """Quem recebe o aviso de uma organização.
-
-    Todas as contas ativas dela. No piloto a regra é uma organização por perita,
-    então isto é exatamente uma pessoa; a consulta já cobre o caso de equipe sem
-    precisar mudar depois.
-    """
-    return [
-        usuario.email
-        for usuario in db.scalars(
-            select(User).where(User.organization_id == organization_id, User.is_active.is_(True))
-        ).all()
-        if usuario.email
-    ]
-
-
 def executar(dry_run: bool = False, agora: datetime | None = None) -> int:
     agora = agora or datetime.now(timezone.utc)
     enviados = 0
-
+    # The worker uses the same restricted role and user context as the API.
+    # It never needs BYPASSRLS, and never broadcasts a case to an organization.
     with SessionLocal() as db:
-        devidos = pending_reminders(db, agora)
-        if not devidos:
-            logger.info("nenhum lembrete devido em %s", agora.isoformat())
-            return 0
-
-        for aviso in devidos:
-            emails = destinatarios(db, aviso["organization_id"])
-            if not emails:
-                logger.warning("prazo %s sem destinatário ativo", aviso["deadline_id"])
+        user_ids = list(db.scalars(select(User.id).where(User.is_active.is_(True))))
+    for user_id in user_ids:
+        with SessionLocal() as db:
+            user = db.get(User, user_id)
+            if not user or not user.is_active or not user.email:
                 continue
-
-            if dry_run:
-                print(
-                    f"[simulação] {aviso['kind']} — {aviso['case_title']} "
-                    f"| marco D-{aviso['milestone']} | vence {aviso['due_at'].isoformat()} "
-                    f"| para {', '.join(emails)}"
-                )
-                enviados += 1
-                continue
-
-            entregue = False
-            for email in emails:
+            set_request_context(db, user)
+            devidos = pending_reminders(db, agora, owner_user_id=user.id)
+            for aviso in devidos:
+                set_request_context(db, user)  # commit resets transaction-local RLS settings
+                if dry_run:
+                    # Case titles and addresses do not belong in scheduler logs.
+                    print(f"[simulação] prazo {aviso['deadline_id']} | marco D-{aviso['milestone']}")
+                    enviados += 1
+                    continue
                 try:
-                    entregue = send_deadline_reminder(email, aviso) or entregue
+                    entregue = send_deadline_reminder(user.email, aviso)
                 except Exception:
-                    logger.exception("falha ao enviar lembrete para %s", email)
-
-            # Só marca depois de sair. Falha de SMTP faz tentar de novo na
-            # próxima execução em vez de silenciar o aviso para sempre.
-            if entregue:
-                db.add(DeadlineReminder(
-                    deadline_id=aviso["deadline_id"],
-                    milestone=aviso["milestone"],
-                    sent_at=agora,
-                ))
-                db.commit()
-                enviados += 1
-
+                    logger.exception("falha ao enviar lembrete %s", aviso["deadline_id"])
+                    continue
+                if entregue:
+                    db.add(DeadlineReminder(
+                        deadline_id=aviso["deadline_id"], milestone=aviso["milestone"], sent_at=agora,
+                    ))
+                    db.commit()
+                    enviados += 1
     logger.info("%d lembrete(s) processado(s)", enviados)
     return enviados
 

@@ -128,7 +128,7 @@ def project_deadlines(db: Session, case: Case, payload: dict) -> int:
     return len(vistos)
 
 
-def pending_reminders(db: Session, now: datetime | None = None) -> list[dict]:
+def pending_reminders(db: Session, now: datetime | None = None, owner_user_id: str | None = None) -> list[dict]:
     """Avisos devidos agora, em todas as organizações.
 
     Não envia nada e não escreve nada: devolve o que deve ser enviado, para que
@@ -138,7 +138,10 @@ def pending_reminders(db: Session, now: datetime | None = None) -> list[dict]:
     agora = now or datetime.now(timezone.utc)
     devidos = []
 
-    for prazo in db.scalars(select(CaseDeadline)).all():
+    query = select(CaseDeadline).join(Case, Case.id == CaseDeadline.case_id)
+    if owner_user_id is not None:
+        query = query.where(Case.owner_user_id == owner_user_id)
+    for prazo in db.scalars(query).all():
         due = prazo.due_at if prazo.due_at.tzinfo else prazo.due_at.replace(tzinfo=timezone.utc)
         enviados = {
             aviso.milestone
@@ -155,6 +158,7 @@ def pending_reminders(db: Session, now: datetime | None = None) -> list[dict]:
         devidos.append({
             "deadline_id": prazo.id,
             "organization_id": prazo.organization_id,
+            "owner_user_id": caso.owner_user_id,
             "case_id": prazo.case_id,
             "case_title": caso.title or "Perícia sem título",
             "kind": prazo.kind,

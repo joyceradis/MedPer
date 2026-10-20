@@ -1,7 +1,7 @@
 """Commercial safety gate: synthetic cases, never real case data.
 
-Until a case-grant/owner model is implemented, organization-wide access is
-inadequate for teams. This tests a deliberate fail-closed single-user pilot.
+Case ownership replaces the temporary single-user pilot block. Colleagues
+never inherit case access; public production registration stays closed.
 """
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -68,33 +68,28 @@ def test_second_account_in_same_org_never_inherits_access_to_first_users_cases()
         assert colleague_login.status_code == 200, colleague_login.text
         colleague = {"Authorization": "Bearer " + colleague_login.json()["access_token"]}
 
-        # The full case surface, not just state GET, must fail closed for both
-        # individuals until explicit per-case authorization exists.
-        for user in (owner, colleague):
-            assert client.get("/cases", headers=user).status_code == 403
-            assert client.get(f"/cases/{case_id}/state", headers=user).status_code == 403
-            assert client.put(f"/cases/{case_id}/state", headers=user, json={
-                "payload": {"schemaVersion": 2}, "expectedRevision": 1
-            }).status_code == 403
-            assert client.post("/cases", headers=user, json={
-                "title": "Should never persist", "objectType": "Synthetic"
-            }).status_code == 403
-            assert client.post("/cases/import", headers=user, json={
-                "title": "Should not import"
-            }).status_code == 403
-            assert client.get(f"/cases/{case_id}/files", headers=user).status_code == 403
-            assert client.delete(f"/cases/{case_id}", headers=user).status_code == 403
+        assert client.get(f"/cases/{case_id}/state", headers=owner).status_code == 200
+        assert client.get("/cases", headers=colleague).json() == []
+        assert client.get(f"/cases/{case_id}/state", headers=colleague).status_code == 404
+        assert client.put(f"/cases/{case_id}/state", headers=colleague, json={
+            "payload": {"schemaVersion": 2}, "expectedRevision": 1
+        }).status_code == 404
+        assert client.get(f"/cases/{case_id}/files", headers=colleague).status_code == 404
+        assert client.delete(f"/cases/{case_id}", headers=colleague).status_code == 404
+        colleague_case_id = _synthetic_case(client, colleague)
+        assert client.get(f"/cases/{colleague_case_id}/state", headers=owner).status_code == 404
 
         with SessionLocal() as db:
             existing = db.get(Case, case_id)
             assert existing is not None, "Denial must not delete the existing case"
             assert existing.state_revision == 1
             # Deactivating the second account must not silently reopen
-            # organization-wide access to cases created by a colleague.
+            # access to cases created by a colleague.
             outsider = db.scalar(select(User).where(User.email == "colleague-no-grants@example.com"))
             outsider.is_active = False
             db.commit()
-        assert client.get(f"/cases/{case_id}/state", headers=owner).status_code == 403
+        assert client.get(f"/cases/{case_id}/state", headers=owner).status_code == 200
+        assert client.get(f"/cases/{colleague_case_id}/state", headers=owner).status_code == 404
 
 
 def test_production_disallows_public_registration_by_default(monkeypatch):

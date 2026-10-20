@@ -4,7 +4,7 @@ from sqlalchemy import delete as sa_delete, select, update
 from sqlalchemy.orm import Session
 from ..audit import record
 from ..db import Base
-from ..deps import current_user, db_session, require_single_practitioner_case_scope
+from ..deps import current_user, db_session
 from ..deadlines import project_deadlines
 from ..payload_crypto import decrypt_payload, encrypt_payload
 from ..models import Case, Evidence, Observation, Finding, Conclusion, User
@@ -12,17 +12,17 @@ from ..session_models import StoredFile
 from ..storage import delete_file
 from ..schemas import CaseIn, CaseStateIn, V2CaseCreateIn, EvidenceIn, ObservationIn, FindingIn, ConclusionIn
 
-router = APIRouter(prefix="/cases", tags=["cases"], dependencies=[Depends(require_single_practitioner_case_scope)])
+router = APIRouter(prefix="/cases", tags=["cases"])
 
 def owned_case(db: Session, user: User, case_id: str) -> Case:
-    case = db.scalar(select(Case).where(Case.id == case_id, Case.organization_id == user.organization_id))
+    case = db.scalar(select(Case).where(Case.id == case_id, Case.organization_id == user.organization_id, Case.owner_user_id == user.id))
     if not case:
         raise HTTPException(404, "Caso não encontrado")
     return case
 
 @router.post("", status_code=201)
 def create_case(data: CaseIn, db: Session = Depends(db_session), user: User = Depends(current_user)):
-    case = Case(organization_id=user.organization_id, title=data.title, reference=data.reference, object_type=data.objectType, status=data.status, scope=data.scope)
+    case = Case(organization_id=user.organization_id, owner_user_id=user.id, title=data.title, reference=data.reference, object_type=data.objectType, status=data.status, scope=data.scope)
     db.add(case)
     db.flush()
     record(db, user, "create", "case", case.id)
@@ -41,6 +41,7 @@ def create_v2_case(data: V2CaseCreateIn, db: Session = Depends(db_session), user
     context = payload["context"]
     case = Case(
         organization_id=user.organization_id,
+        owner_user_id=user.id,
         title=identity["title"].strip(),
         reference=str(identity.get("processNumber") or "")[:120],
         object_type=str(context.get("object") or "Perícia")[:80],
@@ -60,7 +61,7 @@ def create_v2_case(data: V2CaseCreateIn, db: Session = Depends(db_session), user
 
 @router.get("")
 def list_cases(db: Session = Depends(db_session), user: User = Depends(current_user)):
-    rows = db.scalars(select(Case).where(Case.organization_id == user.organization_id)).all()
+    rows = db.scalars(select(Case).where(Case.organization_id == user.organization_id, Case.owner_user_id == user.id)).all()
     return [{"id": c.id, "title": c.title, "reference": c.reference, "objectType": c.object_type} for c in rows]
 
 @router.get("/{case_id}/state")
@@ -81,6 +82,7 @@ def put_case_state(case_id: str, data: CaseStateIn, db: Session = Depends(db_ses
         .where(
             Case.id == case_id,
             Case.organization_id == user.organization_id,
+            Case.owner_user_id == user.id,
             Case.state_revision == data.expectedRevision,
         )
         .values(

@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..audit import record
-from ..deps import current_user, db_session, require_single_practitioner_case_scope
+from ..deps import current_user, db_session
 from ..models import Case, Conclusion, Evidence, Finding, Observation, User
 from ..session_models import ImportedSnapshot
 
-router = APIRouter(prefix="/cases", tags=["imports"], dependencies=[Depends(require_single_practitioner_case_scope)])
+router = APIRouter(prefix="/cases", tags=["imports"])
 
 
 def _case_payload(payload: dict) -> tuple[str, dict]:
@@ -26,6 +26,7 @@ def import_case(payload: dict, db: Session = Depends(db_session), user: User = D
     object_type = str(source.get("objectType") or source.get("object_type") or "Não informado")
     case = Case(
         organization_id=user.organization_id,
+        owner_user_id=user.id,
         title=title,
         reference=str(source.get("reference") or ""),
         object_type=object_type,

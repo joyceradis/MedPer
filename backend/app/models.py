@@ -63,6 +63,8 @@ class Case(Base):
     __tablename__ = "cases"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    # Nullable only for pre-ownership records; those remain inaccessible until reviewed.
+    owner_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(200))
     reference: Mapped[str] = mapped_column(String(120), default="")
     object_type: Mapped[str] = mapped_column(String(80))

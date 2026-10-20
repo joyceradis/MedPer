@@ -14,7 +14,7 @@ Documentação interativa: `http://localhost:8000/docs`.
 
 ## Controles implementados
 
-- isolamento por `organization_id` em todos os casos;
+- isolamento por organização e por `owner_user_id` em todos os casos; cargos de organização não concedem acesso aos casos de colegas;
 - senhas com Argon2;
 - tokens JWT com expiração;
 - evidências, observações, achados e conclusões como entidades distintas;
@@ -30,3 +30,5 @@ Documentação interativa: `http://localhost:8000/docs`.
 As rotas de autenticação, casos, importação e arquivos retornam 503 antes de acessar o banco enquanto o modo profissional não estiver pronto. `/health` e `/ready` continuam públicos para monitoramento. Em staging/produção, a API exige `MEDPER_PROFESSIONAL_ENABLED=true`, PostgreSQL, JWT forte e chave Fernet válida. A opção de desenvolvimento não funciona nesses ambientes.
 
 Esses requisitos técnicos não substituem os portões operacionais: TLS, isolamento por usuário/caso, RLS com papel restrito, restauração de backups, retenção, suporte e cobrança. Veja `docs/PROFESSIONAL_RUNTIME_GATES.md` na raiz do repositório.
+
+Antes de atualizar um banco existente, siga `docs/CASE_OWNERSHIP.md`: a migração preserva casos sem autoria comprovada, mas não os expõe. O envio de lembretes usa o papel restrito e notifica somente a pessoa responsável pelo caso.

@@ -73,17 +73,17 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
       - name: Create restricted application role
-        run: psql -h localhost -U medper_owner -d medper -f scripts/init_database.sql
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U medper_owner -d medper -f scripts/init_database.sql
       - name: Apply migrations as owner
         env:
           MEDPER_DATABASE_URL: postgresql+psycopg://medper_owner:owner-test-password@localhost:5432/medper
         run: alembic upgrade head
       - name: Apply grants and RLS
         run: |
-          psql -h localhost -U medper_owner -d medper -f scripts/restrict_audit.sql
-          psql -h localhost -U medper_owner -d medper -f scripts/enable_rls.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U medper_owner -d medper -f scripts/restrict_audit.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U medper_owner -d medper -f scripts/enable_rls.sql
       - name: Run PostgreSQL integration test as restricted role
         env:
           MEDPER_DATABASE_URL: postgresql+psycopg://medper_app:dev-app-password@localhost:5432/medper
           MEDPER_POSTGRES_TEST: '1'
-        run: pytest -q tests/test_postgres_integration.py
+        run: pytest -q tests/test_postgres_integration.py tests/test_case_owner_isolation.py
