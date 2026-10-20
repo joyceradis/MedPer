@@ -72,7 +72,7 @@ def test_authenticated_complete_backup_and_restore_refuses_unsafe_targets(tmp_pa
                 identifier, owner = case.id, user.id
             engine.dispose()
             with psycopg.connect(url(source_name)) as db:
-                for script in ['init_database.sql','restrict_audit.sql','enable_rls.sql']:
+                for script in ['restrict_audit.sql','enable_rls.sql']:
                     db.execute((BACKEND/'scripts'/script).read_text(), prepare=False)
             identity = tmp_path/'identity.txt'
             generated = subprocess.run(['age-keygen','-o',str(identity)],capture_output=True,text=True)

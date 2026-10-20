@@ -10,6 +10,9 @@ on:
     paths:
       - 'backend/**'
 
+permissions:
+  contents: read
+
 jobs:
   sqlite-tests:
     runs-on: ubuntu-latest
