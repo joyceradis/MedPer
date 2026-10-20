@@ -1,12 +1,12 @@
 // Presentation-only layer for the V2 workspace: progress, insights, command
-// palette, shortcuts and micro-interactions. It never reads or writes case
+// palette, shortcuts and writing aids. It never reads or writes case
 // storage and never mutates case data; actions are delegated to the buttons
 // app.js already renders, so save/navigation rules stay in one place.
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]));
 const filled = value => typeof value === 'string' ? value.trim().length > 0 : Boolean(value);
-const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const DAY = 86400000;
+let lastView = '';
 
 // Structural completeness per step. It reflects what was registered, not the
 // quality or correctness of any medico-legal judgement.
@@ -53,35 +53,21 @@ export function caseInsights(cases, now = new Date()) {
   return insights;
 }
 
-function countUp(element, target) {
-  if (reduceMotion() || target === 0) { element.textContent = String(target); return; }
-  const started = performance.now();
-  const frame = time => {
-    const progress = Math.min(1, (time - started) / 700);
-    element.textContent = String(Math.round(target * (1 - Math.pow(1 - progress, 3))));
-    if (progress < 1) requestAnimationFrame(frame);
-  };
-  requestAnimationFrame(frame);
-}
-
 export function enhanceDashboard(root, cases) {
+  lastView = '';
   const hero = root.querySelector('.dashboard-hero');
   if (hero && !root.querySelector('.insight-strip')) {
     const data = caseInsights(cases);
     const tiles = [
-      ['total', 'Casos no ambiente', data.total, ''],
-      ['overdue', 'Prazos vencidos', data.overdue, data.overdue ? 'is-danger' : ''],
-      ['dueSoon', 'Prazos em até 7 dias', data.dueSoon, data.dueSoon ? 'is-warning' : ''],
-      ['concluded', 'Concluídos ou arquivados', data.concluded, 'is-success']
+      ['Casos no ambiente', data.total, ''],
+      ['Prazos vencidos', data.overdue, data.overdue ? 'is-danger' : ''],
+      ['Prazos em até 7 dias', data.dueSoon, data.dueSoon ? 'is-warning' : ''],
+      ['Concluídos ou arquivados', data.concluded, '']
     ];
-    hero.insertAdjacentHTML('afterend', `<section class="insight-strip" aria-label="Indicadores dos casos">${tiles.map(([key, label, value, tone]) =>
-      `<div class="insight ${tone}"><span class="insight-value" data-count="${value}" aria-label="${esc(`${value} ${label}`)}">0</span><span class="insight-label">${esc(label)}</span><i class="insight-key" aria-hidden="true">${esc(key === 'total' ? 'Σ' : key === 'overdue' ? '!' : key === 'dueSoon' ? '◷' : '✓')}</i></div>`).join('')}</section>`);
-    root.querySelectorAll('.insight-value').forEach(element => countUp(element, Number(element.dataset.count)));
+    hero.insertAdjacentHTML('afterend', `<section class="insight-strip" aria-label="Indicadores dos casos">${tiles.map(([label, value, tone]) =>
+      `<div class="insight ${tone}"><span class="insight-label">${esc(label)}</span><span class="insight-value">${value}</span></div>`).join('')}</section>`);
   }
-  const count = root.querySelector('.case-count');
-  if (count) countUp(count, cases.length);
   enhanceCommandLauncher(root);
-  enhanceCards(root);
 }
 
 function enhanceCommandLauncher(root) {
@@ -96,16 +82,6 @@ function enhanceCommandLauncher(root) {
   button.setAttribute('aria-keyshortcuts', 'Control+K Meta+K');
   button.onclick = openPalette;
   topbar.appendChild(button);
-}
-
-export function enhanceCards(root) {
-  root.querySelectorAll('.case-card').forEach(card => {
-    card.onpointermove = event => {
-      const box = card.getBoundingClientRect();
-      card.style.setProperty('--mx', `${event.clientX - box.left}px`);
-      card.style.setProperty('--my', `${event.clientY - box.top}px`);
-    };
-  });
 }
 
 function ring(percent) {
@@ -147,6 +123,12 @@ function wordCount(text) {
 }
 
 export function enhanceWorkspace(root, caseRecord) {
+  // A new case or step starts at the top; re-renders after edits keep position.
+  const view = `${caseRecord?.id}:${root.querySelector('.step.active')?.dataset.step}`;
+  if (view !== lastView) {
+    lastView = view;
+    window.scrollTo(0, 0);
+  }
   enhanceCommandLauncher(root);
   refreshWorkspaceProgress(root, caseRecord);
   root.querySelectorAll('.content textarea').forEach(textarea => {
@@ -266,34 +248,11 @@ function moveStep(direction) {
   if (current >= 0 && next) next.click();
 }
 
-function ripple(event) {
-  const button = event.target.closest?.('.btn, #login-form button');
-  if (!button || button.disabled || reduceMotion()) return;
-  const box = button.getBoundingClientRect();
-  const wave = document.createElement('span');
-  wave.className = 'ripple';
-  wave.style.setProperty('--rx', `${event.clientX - box.left}px`);
-  wave.style.setProperty('--ry', `${event.clientY - box.top}px`);
-  button.appendChild(wave);
-  wave.addEventListener('animationend', () => wave.remove());
-}
-
 let installed = false;
 
 export function installExperience({ root, getCase }) {
   if (installed) return;
   installed = true;
-
-  document.body.insertAdjacentHTML('afterbegin', '<div class="scroll-progress" aria-hidden="true"></div>');
-  const bar = document.body.firstElementChild;
-  const onScroll = () => {
-    const max = document.documentElement.scrollHeight - innerHeight;
-    bar.style.setProperty('--scroll', max > 0 ? String(scrollY / max) : '0');
-  };
-  addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
-
-  document.addEventListener('pointerdown', ripple);
 
   let progressTimer;
   root.addEventListener('input', event => {
