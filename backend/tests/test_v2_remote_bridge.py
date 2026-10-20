@@ -12,7 +12,7 @@ from app.models import Case
 def _register(client, slug):
     response = client.post("/auth/register", json={
         "organization_name": slug, "organization_slug": slug,
-        "email": slug + "@example.test",
+        "email": slug + "@example.com",
         "password": "synthetic-strong-password-2026",
         "full_name": "Profissional fictício",
     })
