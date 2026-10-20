@@ -101,12 +101,59 @@ function filteredCases() {
 function dashboardCasesMarkup() {
   const cases = filteredCases();
   if (cases.length) return `<div class="case-grid">${cases.map(caseCard).join('')}</div>`;
-  return `<div class="empty"><h2>${state.cases.length ? 'Nenhum caso encontrado' : 'Nenhum caso ainda'}</h2><p>${state.cases.length ? 'Tente outra busca.' : 'Crie o primeiro caso para iniciar o fluxo pericial.'}</p>${state.cases.length ? '' : '<button class="btn primary" data-action="new-case">Novo caso</button>'}</div>`;
+  if (state.cases.length) {
+    return '<div class="empty empty--filter"><h2>Nenhum caso encontrado</h2><p>Tente outra busca. Nenhum registro foi apagado.</p></div>';
+  }
+  return `<div class="empty empty--cases">
+    <div class="empty-symbol" aria-hidden="true">+</div>
+    <div class="empty-copy">
+      <span class="empty-eyebrow">Seu ambiente de demonstração</span>
+      <h2>Nenhum caso V2 neste navegador</h2>
+      <p>A área de trabalho está pronta para um <strong>caso fictício</strong>. Registros de versões anteriores podem estar em outros armazenamentos e não aparecem automaticamente aqui.</p>
+      <button class="btn primary" data-action="new-case">Novo caso</button>
+    </div>
+    <div class="empty-journey" aria-label="Etapas do fluxo médico-pericial">
+      <span>01 <strong>Delimitar o objeto</strong></span>
+      <span>02 <strong>Organizar as evidências</strong></span>
+      <span>03 <strong>Fundamentar e responder</strong></span>
+    </div>
+  </div>`;
 }
 
 function renderDashboard() {
   state.current = null;
-  root.innerHTML = shell(`<main class="dashboard"><div class="dashboard-head"><div><h1>Casos periciais</h1><p>Seu trabalho médico-pericial, organizado por caso.</p></div><div class="dashboard-actions"><button class="btn" data-action="import">Importar backup</button><button class="btn primary" data-action="new-case">Novo caso</button></div></div><input class="search" id="case-search" aria-label="Buscar casos" placeholder="Buscar por caso, processo, parte ou objeto" value="${esc(state.search)}"><div style="height:18px"></div><div id="case-results">${dashboardCasesMarkup()}</div><input id="import-file" type="file" accept="application/json" class="hidden"></main>`);
+  root.innerHTML = shell(`<main class="dashboard dashboard--pro">
+    <section class="dashboard-hero" aria-labelledby="dashboard-title">
+      <div class="dashboard-hero-copy">
+        <span class="dashboard-eyebrow"><span class="dashboard-status-dot" aria-hidden="true"></span> MedPer / Estação médico-pericial</span>
+        <h1 id="dashboard-title">Casos periciais</h1>
+        <p>Do objeto e das fontes à fundamentação e aos quesitos. Uma estação de trabalho que organiza o raciocínio sem substituir o juízo médico.</p>
+        <div class="dashboard-actions">
+          <button class="btn dashboard-primary" data-action="new-case">Novo caso</button>
+          <button class="btn dashboard-secondary" data-action="import">Importar backup</button>
+        </div>
+      </div>
+      <div class="dashboard-method" aria-label="Organização do trabalho médico-pericial">
+        <span class="dashboard-method-title">PERCURSO DO CASO</span>
+        <div><span>01</span><strong>Objeto e contexto</strong></div>
+        <div><span>02</span><strong>Autos, cronologia e exame</strong></div>
+        <div><span>03</span><strong>Método, análise e quesitos</strong></div>
+        <div><span>04</span><strong>Documento fundamentado</strong></div>
+      </div>
+    </section>
+    <div class="dashboard-safety" role="note">
+      <span class="dashboard-safety-icon" aria-hidden="true">i</span>
+      <p><strong>Demonstração sem login, para dados fictícios.</strong> As informações são mantidas no armazenamento local deste navegador, sem garantias de segurança para casos reais. Não limpe os dados: registros de versões antigas não são migrados automaticamente.</p>
+    </div>
+    <section class="dashboard-register" aria-labelledby="cases-title">
+      <div class="dashboard-register-head">
+        <div><span class="register-eyebrow">ESTAÇÃO DE TRABALHO</span><h2 id="cases-title">Seus casos <span class="case-count">${state.cases.length}</span></h2></div>
+        <label class="dashboard-search"><span>Pesquisar</span><input class="search" id="case-search" aria-label="Buscar casos" placeholder="Título, processo, parte ou objeto" value="${esc(state.search)}"></label>
+      </div>
+      <div id="case-results">${dashboardCasesMarkup()}</div>
+    </section>
+    <input id="import-file" type="file" accept="application/json" class="hidden">
+  </main>`);
   bind();
 }
 
