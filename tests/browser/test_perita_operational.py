@@ -150,5 +150,125 @@ class PeritaOperationalJourney(unittest.TestCase):
         self.assertIn("255", active_color, "Active navigation must remain readable over the navy sidebar")
 
 
+    def test_06_evidence_chain_to_quesitos_and_printed_document(self):
+        """Simulated perita: source first, then assertion and question; no invented conclusion."""
+        self.create_demo_case()
+        self.page.locator('#sidebar button[data-step="analysis"]').click()
+        self.page.locator('button[data-action="add-claim"]').click()
+        expect(self.page.locator("#toast")).to_contain_text("Cadastre ao menos uma fonte")
+
+        self.page.locator('#sidebar button[data-step="sources"]').click()
+        self.page.locator('button[data-action="add-source"]').click()
+        form = self.page.locator("#edit-form")
+        expect(form).to_be_visible()
+        form.locator('[name="type"]').select_option("documento_autos")
+        form.locator('[name="title"]').fill("Documento fictício de demonstração")
+        form.locator('[name="origin"]').fill("Autos simulados, página fictícia 12")
+        form.locator('[name="notes"]').fill("Este documento é inventado para QA.")
+        form.get_by_role("button", name="Salvar").click()
+        expect(self.page.locator("#workspace")).to_contain_text("Documento fictício de demonstração")
+
+        self.page.locator('#sidebar button[data-step="analysis"]').click()
+        self.page.locator('button[data-action="add-claim"]').click()
+        form = self.page.locator("#edit-form")
+        expect(form).to_be_visible()
+        self.assertIn("Documento fictício de demonstração",
+                      form.locator('[name="sourceId"]').inner_text())
+        form.locator('[name="statement"]').fill("Fato documentado apenas em fonte simulada")
+        form.locator('[name="finding"]').fill("Achado descritivo fictício")
+        form.locator('[name="interpretation"]').fill("Hipótese de demonstração, sem conclusão causal")
+        form.locator('[name="limitations"]').fill("Sem exame ou material real")
+        form.get_by_role("button", name="Salvar").click()
+        expect(self.page.locator("#workspace")).to_contain_text("Documento fictício de demonstração")
+        expect(self.page.locator("#workspace")).to_contain_text("Sem exame ou material real")
+        self.page.locator('textarea[data-bind="analysis.reasoning"]').fill(
+            "Exercício fictício com fonte e limitações explícitas."
+        )
+
+        self.page.locator('#sidebar button[data-step="questions"]').click()
+        self.page.locator('button[data-action="add-question"]').click()
+        expect(self.page.locator('[data-list-bind="questions"][data-key="question"]')).to_have_count(1)
+        self.page.locator('[data-list-bind="questions"][data-key="origin"]').fill("Quesito simulado do juízo")
+        self.page.locator('[data-list-bind="questions"][data-key="question"]').fill("Há nexo demonstrado nos dados fictícios?")
+        self.page.locator('[data-list-bind="questions"][data-key="answer"]').fill(
+            "Indeterminado: o cenário de teste não contém evidência clínica suficiente."
+        )
+        self.page.locator('#sidebar button[data-step="document"]').click()
+        expect(self.page.locator("#workspace")).to_contain_text("A conclusão ainda não foi preenchida.")
+        with self.page.expect_popup() as popup_info:
+            self.page.locator('button[data-action="print"]').click()
+        popup = popup_info.value
+        expect(popup.locator("body")).to_contain_text("Documento fictício de demonstração")
+        expect(popup.locator("body")).to_contain_text("Quesito simulado do juízo")
+        expect(popup.locator("body")).to_contain_text("Sem exame ou material real")
+        expect(popup.locator("body")).to_contain_text("Indeterminado")
+        self.assertNotIn("Existe nexo comprovado", popup.locator("body").inner_text())
+        pdf = popup.pdf(format="A4", print_background=True)
+        self.assertTrue(pdf.startswith(b"%PDF-"))
+        (OUT / "medper-synthetic-document.pdf").write_bytes(pdf)
+        popup.close()
+
+        self.page.locator('button[data-action="dashboard"]').click()
+        self.page.reload(wait_until="load")
+        self.page.locator('[data-open-case]').first.click()
+        self.page.locator('#sidebar button[data-step="questions"]').click()
+        expect(self.page.locator('[data-list-bind="questions"][data-key="answer"]')).to_have_value(
+            "Indeterminado: o cenário de teste não contém evidência clínica suficiente."
+        )
+
+    def test_07_posas_and_aipe_are_independent_and_never_choose_clinical_judgment(self):
+        """A scar route shows POSAS + AIPE, but does not derive one score from the other."""
+        self.create_demo_case()
+        self.page.locator('textarea[data-bind="context.object"]').fill(
+            "Analisar cicatriz em cenário fictício e eventual dano estético."
+        )
+        self.page.locator('#sidebar button[data-step="methods"]').click()
+        expect(self.page.locator("#workspace")).to_contain_text("AIPE — registro estruturado")
+        expect(self.page.locator("#workspace")).to_contain_text("POSAS 2.0")
+        aipe = self.page.locator('input[data-method="aipe"][data-key="score"]')
+        posas = self.page.locator('input[data-method="posas"][data-key^="posasPatient_"]')
+        expect(aipe).to_have_value("")
+        self.assertGreater(posas.count(), 1)
+        posas.first.fill("4")
+        expect(aipe).to_have_value("")  # POSAS must not populate the AIPE score.
+        expect(self.page.locator("#workspace")).to_contain_text("incompleto")
+        aipe.fill("17")  # Independent dummy entry; NOT a method-derived value.
+        self.page.locator('#sidebar button[data-step="summary"]').click()
+        self.page.locator('#sidebar button[data-step="methods"]').click()
+        expect(aipe).to_have_value("17")
+        expect(posas.first).to_have_value("4")
+        self.page.locator('#sidebar button[data-step="document"]').click()
+        with self.page.expect_popup() as popup_info:
+            self.page.locator('button[data-action="print"]').click()
+        popup = popup_info.value
+        try:
+            expect(popup.locator("body")).to_contain_text("AIPE")
+            expect(popup.locator("body")).to_contain_text("POSAS 2.0")
+        finally:
+            popup.close()
+
+    def test_08_backup_duplicate_import_does_not_overwrite_case(self):
+        """Backup must be recoverable yet fail closed for duplicate case identifiers."""
+        self.create_demo_case()
+        self.page.locator('#sidebar button[data-step="document"]').click()
+        self.page.once("dialog", lambda dialog: dialog.accept())
+        with self.page.expect_download() as download_event:
+            self.page.locator('button[data-action="backup"]').click()
+        backup = download_event.value
+        self.assertTrue(backup.suggested_filename.endswith(".json"))
+        backup_path = OUT / "medper-synthetic-backup.json"
+        backup.save_as(str(backup_path))
+        saved = json.loads(backup_path.read_text(encoding="utf-8"))
+        self.assertEqual(saved["schemaVersion"], 2)
+        self.page.locator('button[data-action="dashboard"]').click()
+        expect(self.page.locator('[data-open-case]')).to_have_count(1)
+        self.page.locator('button[data-action="import"]').click()
+        self.page.locator("#import-file").set_input_files(str(backup_path))
+        expect(self.page.locator("#toast")).to_contain_text("Já existe um caso", timeout=10000)
+        expect(self.page.locator('[data-open-case]')).to_have_count(1)
+        self.page.reload(wait_until="load")
+        expect(self.page.locator('[data-open-case]')).to_have_count(1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
