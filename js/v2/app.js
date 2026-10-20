@@ -4,7 +4,7 @@ import { createRuntimeRepository } from './repository-selector.js';
 import { logoutRemoteSession } from './remote-repository.js';
 import { routeMethodology } from './method-router.js';
 import { composeCaseDocument } from './document.js';
-import { installExperience, enhanceDashboard, enhanceCards, enhanceWorkspace } from './ui-experience.js';
+import { installExperience, enhanceDashboard, enhanceWorkspace } from './ui-experience.js';
 import { AIPE_CRITERIA, AIPE_CATEGORIES, aipeCategoryOption } from '../methodology/aipe.js';
 import { POSAS_PATIENT_ITEMS, POSAS_OBSERVER_ITEMS, buildPosasAssessmentFromGuided } from '../methodology/posas.js';
 
@@ -142,7 +142,7 @@ async function load() {
 }
 
 function shell(content, options = {}) {
-  return `<div class="v2-shell"><header class="topbar"><button class="btn ghost mobile-menu" data-action="menu" aria-label="Abrir navegação">☰</button><div class="brand">MedPer <small>${repo.mode === 'remote' ? 'Professional · API' : 'V2 · local-first'}</small></div><div class="spacer"></div>${options.case ? `<span class="save-state">${state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : (repo.mode === 'remote' ? 'Salvo no servidor' : 'Salvo localmente')}</span><button class="btn ghost" data-action="dashboard">Casos</button>` : ''}${repo.mode === 'remote' ? '<button class="btn ghost" data-action="logout">Sair</button>' : ''}</header>${content}</div>`;
+  return `<div class="v2-shell"><header class="topbar"><button class="btn ghost mobile-menu" data-action="menu" aria-label="Abrir navegação">☰</button><div class="brand"><span class="brand-med">Med</span><span class="brand-per">Per</span> <small>${repo.mode === 'remote' ? 'Professional · API' : 'V2 · local-first'}</small></div><div class="spacer"></div>${options.case ? `<span class="save-state">${state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : (repo.mode === 'remote' ? 'Salvo no servidor' : 'Salvo localmente')}</span><button class="btn ghost" data-action="dashboard">Casos</button>` : ''}${repo.mode === 'remote' ? '<button class="btn ghost" data-action="logout">Sair</button>' : ''}</header>${content}</div>`;
 }
 
 function filteredCases() {
@@ -222,7 +222,6 @@ function refreshCaseResults() {
   if (!results) return;
   results.innerHTML = dashboardCasesMarkup();
   bindCaseCards();
-  enhanceCards(root);
   root.querySelectorAll('#case-results [data-action]').forEach(button => {
     button.onclick = event => handleAction(event, button.dataset.action);
   });
