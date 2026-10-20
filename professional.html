@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https: http://localhost:8000; base-uri 'none'; object-src 'none'; form-action 'none'; frame-ancestors 'none'">
+  <title>MedPer Professional | Acesso ao ambiente autenticado</title>
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./css/v2.css">
+  <link rel="stylesheet" href="./css/professional-access.css">
+</head>
+<body>
+  <main id="access-gate" class="professional-access">
+    <section class="professional-intro">
+      <div class="professional-mark"><img src="./icon.svg" width="55" height="55" alt=""> <span>MedPer <strong>Professional</strong></span></div>
+      <p class="professional-kicker">Estação médico-pericial · acesso controlado</p>
+      <h1>Uma plataforma de trabalho, não apenas uma página.</h1>
+      <p class="professional-lead">Autenticação real, estado versionado, isolamento de casos e sincronização pelo servidor. A decisão médico-pericial permanece humana.</p>
+      <div class="professional-line"><span>01</span> Contexto e objeto <span>02</span> Evidências e metodologia <span>03</span> Documento fundamentado</div>
+    </section>
+    <section class="professional-card" aria-labelledby="access-title">
+      <p class="professional-kicker">Prévia técnica, sem dados reais</p>
+      <h2 id="access-title">Acesso profissional</h2>
+      <p id="access-status" role="status" aria-live="polite">Verificando disponibilidade do servidor...</p>
+      <form id="login-form" hidden>
+        <label for="email">E-mail de acesso</label>
+        <input id="email" name="email" type="email" autocomplete="username" required maxlength="254">
+        <label for="password">Senha</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <button type="submit" id="login-submit">Entrar no ambiente</button>
+      </form>
+      <p class="professional-disclaimer">Este ambiente não importa automaticamente os dados da demonstração, não vende assinaturas e ainda não está autorizado para casos reais.</p>
+      <a href="./app.html" class="professional-demo">Abrir a demonstração fictícia</a>
+    </section>
+  </main>
+  <div id="app" hidden></div>
+  <script type="module" src="./js/professional/access.js"></script>
+</body>
+</html>

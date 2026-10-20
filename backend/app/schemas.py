@@ -64,3 +64,25 @@ class ConclusionIn(BaseModel):
         if not self.evidenceIds:
             raise ValueError("Nenhuma conclusão sem evidência.")
         return self
+
+
+class V2CaseCreateIn(BaseModel):
+    """Atomic server-side case creation; preserves the frontend V2 document intact."""
+
+    payload: dict = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def require_v2_structure(self):
+        import json
+
+        value = self.payload
+        if value.get("schemaVersion") != 2:
+            raise ValueError("É obrigatório o contrato de caso V2.")
+        if not isinstance(value.get("identity"), dict) or not isinstance(value.get("context"), dict):
+            raise ValueError("Identidade e contexto V2 são obrigatórios.")
+        title = value["identity"].get("title")
+        if not isinstance(title, str) or not title.strip() or len(title.strip()) > 200:
+            raise ValueError("Título do caso ausente ou muito longo.")
+        if len(json.dumps(value, ensure_ascii=False).encode("utf-8")) > 2 * 1024 * 1024:
+            raise ValueError("O caso excede o limite de 2 MiB para estado estruturado.")
+        return self

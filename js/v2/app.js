@@ -1,11 +1,13 @@
 import { createCaseRecord, normalizeCaseRecord } from './case-record.js';
-import { CaseRepository, downloadCaseBackup } from './repository.js';
+import { downloadCaseBackup } from './repository.js';
+import { createRuntimeRepository } from './repository-selector.js';
+import { logoutRemoteSession } from './remote-repository.js';
 import { routeMethodology } from './method-router.js';
 import { composeCaseDocument } from './document.js';
 import { AIPE_CRITERIA, AIPE_CATEGORIES, aipeCategoryOption } from '../methodology/aipe.js';
 import { POSAS_PATIENT_ITEMS, POSAS_OBSERVER_ITEMS, buildPosasAssessmentFromGuided } from '../methodology/posas.js';
 
-const repo = new CaseRepository();
+const repo = createRuntimeRepository();
 const root = document.getElementById('app');
 const state = { cases: [], current: null, step: 'summary', search: '', dirty: false, saving: false };
 const steps = [
@@ -84,7 +86,7 @@ async function load() {
 }
 
 function shell(content, options = {}) {
-  return `<div class="v2-shell"><header class="topbar"><button class="btn ghost mobile-menu" data-action="menu" aria-label="Abrir navegação">☰</button><div class="brand">MedPer <small>V2 · local-first</small></div><div class="spacer"></div>${options.case ? `<span class="save-state">${state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : 'Salvo localmente'}</span><button class="btn ghost" data-action="dashboard">Casos</button>` : ''}</header>${content}</div>`;
+  return `<div class="v2-shell"><header class="topbar"><button class="btn ghost mobile-menu" data-action="menu" aria-label="Abrir navegação">☰</button><div class="brand">MedPer <small>${repo.mode === 'remote' ? 'Professional · API' : 'V2 · local-first'}</small></div><div class="spacer"></div>${options.case ? `<span class="save-state">${state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : 'Salvo localmente'}</span><button class="btn ghost" data-action="dashboard">Casos</button>` : ''}${repo.mode === 'remote' ? '<button class="btn ghost" data-action="logout">Sair</button>' : ''}</header>${content}</div>`;
 }
 
 function filteredCases() {
@@ -107,9 +109,9 @@ function dashboardCasesMarkup() {
   return `<div class="empty empty--cases">
     <div class="empty-symbol" aria-hidden="true">+</div>
     <div class="empty-copy">
-      <span class="empty-eyebrow">Seu ambiente de demonstração</span>
-      <h2>Nenhum caso V2 neste navegador</h2>
-      <p>A área de trabalho está pronta para um <strong>caso fictício</strong>. Registros de versões anteriores podem estar em outros armazenamentos e não aparecem automaticamente aqui.</p>
+      <span class="empty-eyebrow">${repo.mode === 'remote' ? 'Ambiente profissional autenticado' : 'Seu ambiente de demonstração'}</span>
+      <h2>${repo.mode === 'remote' ? 'Nenhum caso nesta conta' : 'Nenhum caso V2 neste navegador'}</h2>
+      <p>${repo.mode === 'remote' ? 'Este ambiente consulta casos autorizados no servidor. Nenhum registro local foi transferido automaticamente.' : 'A área de trabalho está pronta para um <strong>caso fictício</strong>. Registros de versões anteriores podem estar em outros armazenamentos e não aparecem automaticamente aqui.'}</p>
       <button class="btn primary" data-action="new-case">Novo caso</button>
     </div>
     <div class="empty-journey" aria-label="Etapas do fluxo médico-pericial">
@@ -143,7 +145,7 @@ function renderDashboard() {
     </section>
     <div class="dashboard-safety" role="note">
       <span class="dashboard-safety-icon" aria-hidden="true">i</span>
-      <p><strong>Demonstração sem login, para dados fictícios.</strong> As informações são mantidas no armazenamento local deste navegador, sem garantias de segurança para casos reais. Não limpe os dados: registros de versões antigas não são migrados automaticamente.</p>
+      <p>${repo.mode === 'remote' ? '<strong>Prévia profissional autenticada.</strong> Casos são gravados por API com controle de revisão. Ainda não liberada para dados reais: segurança operacional, retenção e recuperação precisam de validação independente.' : '<strong>Demonstração sem login, para dados fictícios.</strong> As informações são mantidas no armazenamento local deste navegador, sem garantias de segurança para casos reais. Não limpe os dados: registros de versões antigas não são migrados automaticamente.'}</p>
     </div>
     <section class="dashboard-register" aria-labelledby="cases-title">
       <div class="dashboard-register-head">
@@ -201,9 +203,11 @@ function newCaseModal() {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));
     const caseRecord = createCaseRecord(data);
-    await repo.save(caseRecord);
+    let created;
+    try { created = await repo.create(caseRecord); }
+    catch (error) { toast(error.message || 'Não foi possível criar o caso.'); return; }
     state.cases = await repo.list();
-    state.current = caseRecord;
+    state.current = created;
     state.step = 'summary';
     document.getElementById('case-modal')?.remove();
     renderWorkspace();
@@ -433,9 +437,15 @@ async function handleAction(event, action) {
     return renderDashboard();
   }
   if (action === 'menu') return document.getElementById('sidebar')?.classList.toggle('open');
+  if (action === 'logout' && repo.mode === 'remote') {
+    if (!(await saveNow())) return;
+    try { await logoutRemoteSession(); }
+    finally { location.replace('./professional.html'); }
+    return;
+  }
   if (action === 'delete-case') {
     if (!state.current) return;
-    if (!window.confirm(`Excluir o caso “${state.current.identity.title}”? Esta ação remove a cópia local deste navegador.`)) return;
+    if (!window.confirm(`Excluir o caso “${state.current.identity.title}”? ${repo.mode === 'remote' ? 'Esta ação solicita exclusão no servidor e não pode ser desfeita.' : 'Esta ação remove a cópia local deste navegador.'}`)) return;
     await repo.remove(state.current.id);
     state.cases = await repo.list();
     toast('Caso excluído.');
