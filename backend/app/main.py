@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import settings
-from .routers import auth, cases, files, imports
+from .routers import auth, cases, files, imports, google_auth
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO), format="%(message)s")
 logger = logging.getLogger("medper.api")
@@ -60,6 +60,7 @@ async def request_log(request: Request, call_next):
 
 
 app.include_router(auth.router)
+app.include_router(google_auth.router)
 app.include_router(cases.router)
 app.include_router(imports.router)
 app.include_router(files.router)
