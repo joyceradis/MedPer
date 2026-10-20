@@ -20,8 +20,7 @@ function harness() {
     querySelectorAll: selector => selector === '[data-step]' ? [step] : []
   };
   const context = vm.createContext({
-    CaseRepository: function () { return repo; },
-    createRuntimeRepository: () => repo,
+    createRuntimeRepository: function () { return repo; },
     document: { getElementById: () => root },
     window: { addEventListener() {} },
     console: { error() {} },

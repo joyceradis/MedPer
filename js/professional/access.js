@@ -40,7 +40,7 @@ async function init() {
     const response = await apiCall(origin + '/ready');
     if (!response.ok) throw new Error('API não está pronta para uso.');
     const ready = await response.json();
-    if (ready.status !== 'ready' || ready.security !== 'ok' || ready.fileStorage !== 'ready') {
+    if (ready.status !== 'ready' || ready.security !== 'ok' || ready.fileStorage !== 'ready' || ready.professionalAccess !== 'ready') {
       throw new Error('API sem requisitos mínimos de segurança e cifragem.');
     }
   } catch(error) {
@@ -56,8 +56,8 @@ async function init() {
     display('Verificando credenciais...');
     try {
       const body = new URLSearchParams({
-        username: form.email.value.trim(),
-        password: form.password.value,
+        username: form.elements.namedItem('email').value.trim(),
+        password: form.elements.namedItem('password').value,
         grant_type: 'password'
       });
       const tokenResponse = await apiCall(origin + '/auth/token', {
@@ -65,7 +65,7 @@ async function init() {
         headers:{'Content-Type':'application/x-www-form-urlencoded'},
         body
       });
-      form.password.value = '';
+      form.elements.namedItem('password').value = '';
       if (!tokenResponse.ok) throw new Error('Acesso não autorizado ou serviço indisponível.');
       const pair = await tokenResponse.json();
       configureRemoteSession({

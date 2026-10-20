@@ -52,6 +52,8 @@ jobs:
           main=Path('js/main.js').read_text(encoding='utf-8')
           v2=Path('js/v2/app.js').read_text(encoding='utf-8')
           repo=Path('js/v2/repository.js').read_text(encoding='utf-8')
+          selector=Path('js/v2/repository-selector.js').read_text(encoding='utf-8')
+          professional=Path('js/v2/remote-repository.js').read_text(encoding='utf-8')
           sw=Path('sw.js').read_text(encoding='utf-8')
           app=Path('app.html').read_text(encoding='utf-8')
 
@@ -71,11 +73,16 @@ jobs:
               raise SystemExit('V2 entrypoint missing from app.html.')
           if 'medper-api-url' in app or 'replit.app' in app.lower():
               raise SystemExit('V2 must not require a hard-coded remote API.')
-          if 'createRuntimeRepository' not in v2 or 'indexedDB' not in repo or 'localStorage' not in repo:
-              raise SystemExit('Local-first repository boundary is missing.')
+          # V2 routes locally by default; professional mode must explicitly
+          # require authentication and must never fall back to the demo store.
+          if ('createRuntimeRepository' not in v2 or 'new CaseRepository()' not in selector
+                  or 'new RemoteCaseRepository()' not in selector
+                  or 'isRemoteSessionActive()' not in selector
+                  or 'indexedDB' not in repo or 'localStorage' not in repo
+                  or 'localStorage.getItem(' in professional or 'localStorage.setItem(' in professional or 'indexedDB.open(' in professional):
+              raise SystemExit('Demo/remote repository boundary is missing or credential storage is unsafe.')
           # The demo resolves to the local CaseRepository; the professional page
           # must fail closed instead of silently falling back to browser storage.
-          selector=Path('js/v2/repository-selector.js').read_text(encoding='utf-8')
           if 'return new CaseRepository()' not in selector:
               raise SystemExit('Demo no longer resolves to the local-first CaseRepository.')
           if "endsWith('/professional.html')" not in selector or 'throw new Error' not in selector:

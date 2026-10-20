@@ -21,9 +21,7 @@ self.addEventListener('fetch',event=>{
   // Authenticated professional UI, session logic and configuration MUST never
   // be served from the offline cache, including an offline navigation fallback.
   if(url.pathname.endsWith('/professional.html') ||
-     url.pathname.includes('/js/professional/') ||
-     url.pathname.endsWith('/js/v2/remote-repository.js') ||
-     url.pathname.endsWith('/js/v2/repository-selector.js')) {
+     url.pathname.includes('/js/professional/')) {
     event.respondWith(fetch(event.request,{cache:'no-store'}));
     return;
   }

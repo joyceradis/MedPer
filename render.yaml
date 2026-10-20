@@ -7,6 +7,14 @@ services:
     healthCheckPath: /health
     autoDeploy: false
     envVars:
+      # Fail closed if an operator attempts to enable the backend without
+      # authenticated encrypted case storage; autoDeploy remains disabled.
+      - key: MEDPER_ENVIRONMENT
+        value: production
+      - key: MEDPER_FILE_STORAGE_REQUIRED
+        value: "true"
+      - key: MEDPER_PROFESSIONAL_ENABLED
+        value: "false"
       - key: MEDPER_DATABASE_URL
         fromDatabase:
           name: medper-postgres
