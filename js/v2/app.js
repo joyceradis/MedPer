@@ -158,7 +158,7 @@ function filteredCases() {
 
 function dashboardCasesMarkup() {
   const cases = filteredCases();
-  if (cases.length) return `<div class="case-grid">${cases.map(caseCard).join('')}</div>`;
+  if (cases.length) return `<div class="case-grid"><div class="case-table-head" aria-hidden="true"><span>Caso</span><span>Processo</span><span>Parte / objeto</span><span>Situação e prazo</span></div>${cases.map(caseCard).join('')}</div>`;
   if (state.cases.length) {
     return '<div class="empty empty--filter"><h2>Nenhum caso encontrado</h2><p>Tente outra busca. Nenhum registro foi apagado.</p></div>';
   }
@@ -200,10 +200,6 @@ function renderDashboard() {
         <div><span>04</span><strong>Documento fundamentado</strong></div>
       </div>
     </section>
-    <div class="dashboard-safety" role="note">
-      <span class="dashboard-safety-icon" aria-hidden="true">i</span>
-      <p>${repo.mode === 'remote' ? '<strong>Prévia profissional autenticada.</strong> Casos são gravados por API com controle de revisão. Ainda não liberada para dados reais: segurança operacional, retenção e recuperação precisam de validação independente.' : '<strong>Demonstração sem login, para dados fictícios.</strong> As informações são mantidas no armazenamento local deste navegador, sem garantias de segurança para casos reais. Não limpe os dados: registros de versões antigas não são migrados automaticamente.'}</p>
-    </div>
     <section class="dashboard-register" aria-labelledby="cases-title">
       <div class="dashboard-register-head">
         <div><span class="register-eyebrow">ESTAÇÃO DE TRABALHO</span><h2 id="cases-title">Seus casos <span class="case-count">${state.cases.length}</span></h2></div>
@@ -211,6 +207,10 @@ function renderDashboard() {
       </div>
       <div id="case-results">${dashboardCasesMarkup()}</div>
     </section>
+    <div class="dashboard-safety" role="note">
+      <span class="dashboard-safety-icon" aria-hidden="true">i</span>
+      <p>${repo.mode === 'remote' ? '<strong>Prévia profissional autenticada.</strong> Casos são gravados por API com controle de revisão. Ainda não liberada para dados reais: segurança operacional, retenção e recuperação precisam de validação independente.' : '<strong>Demonstração sem login, para dados fictícios.</strong> As informações são mantidas no armazenamento local deste navegador, sem garantias de segurança para casos reais. Não limpe os dados: registros de versões antigas não são migrados automaticamente.'}</p>
+    </div>
     <input id="import-file" type="file" accept="application/json" class="hidden">
   </main>`);
   bind();
@@ -227,8 +227,11 @@ function refreshCaseResults() {
   });
 }
 
+const STATUS_LABELS = { rascunho: 'Rascunho', em_analise: 'Em análise', pericia_realizada: 'Perícia realizada', aguardando_documentos: 'Aguardando documentos', concluido: 'Concluído', arquivado: 'Arquivado' };
+const CONTEXT_LABELS = { civel: 'Cível', previdenciario: 'Previdenciário', securitario: 'Securitário', trabalhista: 'Trabalhista', responsabilidade_profissional: 'Resp. profissional', outro: 'Outro' };
+
 function caseCard(caseRecord) {
-  return `<article class="case-card" tabindex="0" role="button" data-open-case="${esc(caseRecord.id)}"><h3>${esc(caseRecord.identity.title)}</h3><p>${esc(caseRecord.identity.processNumber || 'Processo não informado')}</p><p>${esc(caseRecord.examinedPerson.name || caseRecord.context.object || 'Parte/objeto ainda não informados')}</p><div class="meta-row"><span class="chip">${esc(caseRecord.identity.status)}</span><span class="chip">${esc(caseRecord.context.legalContext)}</span><span class="chip ${dueClass(caseRecord.deadlines.reportDeadline)}">${esc(formatDate(caseRecord.deadlines.reportDeadline))}</span></div></article>`;
+  return `<article class="case-card" tabindex="0" role="button" data-open-case="${esc(caseRecord.id)}"><h3>${esc(caseRecord.identity.title)}</h3><p>${esc(caseRecord.identity.processNumber || 'Processo não informado')}</p><p>${esc(caseRecord.examinedPerson.name || caseRecord.context.object || 'Parte/objeto ainda não informados')}</p><div class="meta-row"><span class="chip">${esc(STATUS_LABELS[caseRecord.identity.status] || caseRecord.identity.status)}</span><span class="chip">${esc(CONTEXT_LABELS[caseRecord.context.legalContext] || caseRecord.context.legalContext)}</span><span class="chip ${dueClass(caseRecord.deadlines.reportDeadline)}">${esc(formatDate(caseRecord.deadlines.reportDeadline))}</span></div></article>`;
 }
 
 function bindCaseCards() {

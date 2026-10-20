@@ -199,6 +199,8 @@ class ExperienceLayer(unittest.TestCase):
         page = self.open()
         self.create_case()
         page.locator('button[data-action="dashboard"]').click()
+        # The compact dashboard only scrolls on a short viewport.
+        page.set_viewport_size({"width": 1365, "height": 360})
         page.mouse.wheel(0, 700)
         page.wait_for_function("scrollY > 0")
         page.locator(".case-card").first.click()
