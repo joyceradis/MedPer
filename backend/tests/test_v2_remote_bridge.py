@@ -100,3 +100,22 @@ def test_production_requires_encrypted_case_state(monkeypatch):
             pass
     monkeypatch.setattr(settings, "file_encryption_key", Fernet.generate_key().decode())
     assert "case_payload_encryption_required" not in settings.security_issues()
+
+
+def test_professional_readiness_is_opt_in_and_requires_postgres(monkeypatch):
+    monkeypatch.setattr(settings, "environment", "production")
+    monkeypatch.setattr(settings, "jwt_secret", "a-strong-test-secret-at-least-32-characters")
+    monkeypatch.setattr(settings, "file_encryption_key", Fernet.generate_key().decode())
+    monkeypatch.setattr(settings, "professional_enabled", False)
+    monkeypatch.setattr(settings, "database_url", "postgresql+psycopg://db.example/medper")
+    with TestClient(app) as client:
+        r = client.get("/ready")
+        assert r.status_code == 200
+        assert r.json()["professionalAccess"] == "disabled"
+    monkeypatch.setattr(settings, "professional_enabled", True)
+    monkeypatch.setattr(settings, "database_url", "sqlite:///./unsafe-demo.db")
+    with TestClient(app) as client:
+        assert client.get("/ready").json()["professionalAccess"] == "disabled"
+    monkeypatch.setattr(settings, "database_url", "postgresql+psycopg://db.example/medper")
+    with TestClient(app) as client:
+        assert client.get("/ready").json()["professionalAccess"] == "ready"
