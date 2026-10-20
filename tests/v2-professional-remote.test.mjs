@@ -36,7 +36,7 @@ test('requires real session and refuses unsafe HTTP host or arbitrary paths', as
   }), /inválida/);
   configure();
   assert.equal(isRemoteSessionActive(),true);
-  stub((_url, opts) => json({},opts.method==='POST'?204:200));
+  stub((_url, opts) => opts.method==='POST' ? new Response(null,{status:204}) : json({}));
   await logoutRemoteSession();
   assert.equal(isRemoteSessionActive(),false);
   assert.throws(()=>new RemoteCaseRepository(),/autenticação real/);
