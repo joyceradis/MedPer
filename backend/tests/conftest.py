@@ -16,6 +16,8 @@ from cryptography.fernet import Fernet
 
 os.environ.setdefault("MEDPER_JWT_SECRET", "test-secret-that-is-longer-than-32-bytes")
 os.environ.setdefault("MEDPER_FILE_ENCRYPTION_KEY", Fernet.generate_key().decode("ascii"))
+os.environ["MEDPER_ENVIRONMENT"] = "test"
+os.environ["MEDPER_DEVELOPMENT_API_ENABLED"] = "true"
 
 # Um banco de teste para toda a suíte, apagado a cada execução.
 #
@@ -27,9 +29,13 @@ os.environ.setdefault("MEDPER_FILE_ENCRYPTION_KEY", Fernet.generate_key().decode
 #
 # Fixar aqui e ligar a engine antes de qualquer módulo de teste torna a suíte
 # determinística e impede que um teste toque o banco de desenvolvimento.
-_BANCO = Path(__file__).resolve().parent.parent / "test_medper_suite.db"
-_BANCO.unlink(missing_ok=True)
-os.environ["MEDPER_DATABASE_URL"] = f"sqlite:///{_BANCO}"
+if os.getenv("MEDPER_POSTGRES_TEST") == "1":
+    if not os.environ.get("MEDPER_DATABASE_URL", "").startswith(("postgresql://", "postgresql+psycopg://")):
+        raise RuntimeError("O job PostgreSQL exige uma conexão PostgreSQL de teste explícita.")
+else:
+    _BANCO = Path(__file__).resolve().parent.parent / "test_medper_suite.db"
+    _BANCO.unlink(missing_ok=True)
+    os.environ["MEDPER_DATABASE_URL"] = f"sqlite:///{_BANCO}"
 
 import app.db  # noqa: E402,F401  — liga a engine à URL acima antes dos módulos
 

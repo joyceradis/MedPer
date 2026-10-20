@@ -4,11 +4,17 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .db import SessionLocal
+from .config import settings
 from .models import User
 from .security import decode_access_token
 
 
 oauth2 = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+
+def require_api_access() -> None:
+    if not settings.api_routes_enabled:
+        raise HTTPException(503, "Acesso profissional indisponível.", headers={"Cache-Control": "no-store"})
 
 
 def db_session():

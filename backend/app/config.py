@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     file_encryption_key: str = ""
     file_storage_required: bool = False
     professional_enabled: bool = False
+    development_api_enabled: bool = False
     max_upload_bytes: int = 25 * 1024 * 1024
     cors_origins: str = "https://joyceradis.github.io,http://localhost:8080"
     log_level: str = "INFO"
@@ -60,6 +61,14 @@ class Settings(BaseSettings):
             and self.file_encryption_key_is_valid
             and self.database_url.startswith(("postgresql://", "postgresql+psycopg://"))
         )
+
+    @property
+    def api_routes_enabled(self) -> bool:
+        local_development = (
+            self.environment.strip().lower() in {"development", "test"}
+            and self.development_api_enabled
+        )
+        return self.professional_access_ready or local_development
 
     @property
     def jwt_secret_is_strong(self) -> bool:

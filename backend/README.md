@@ -8,6 +8,8 @@ Backend FastAPI/SQLAlchemy/Alembic para persistência multi-tenant do domínio p
 docker compose up --build
 ```
 
+O Compose limita a porta a `127.0.0.1` e ativa explicitamente a API de desenvolvimento. Fora dele, a API inicia fechada: use `MEDPER_ENVIRONMENT=development` e `MEDPER_DEVELOPMENT_API_ENABLED=true` apenas no ambiente local.
+
 Documentação interativa: `http://localhost:8000/docs`.
 
 ## Controles implementados
@@ -21,6 +23,10 @@ Documentação interativa: `http://localhost:8000/docs`.
 - registro de auditoria para operações de criação;
 - script PostgreSQL que revoga `UPDATE`, `DELETE` e `TRUNCATE` em `audit_log` do papel de aplicação.
 
-## Limite atual
+## Entrada profissional e implantação
 
-A branch ainda não conecta o frontend PWA à API. Até essa integração, o frontend continua usando `localStorage`. Não use dados reais em produção sem TLS, gestão de segredos, backups, logs, política de retenção e revisão de segurança.
+`professional.html` reutiliza a V2 com persistência remota. Os tokens permanecem em memória; o demonstrativo continua separado e local. A origem pública da API permanece vazia até a implantação.
+
+As rotas de autenticação, casos, importação e arquivos retornam 503 antes de acessar o banco enquanto o modo profissional não estiver pronto. `/health` e `/ready` continuam públicos para monitoramento. Em staging/produção, a API exige `MEDPER_PROFESSIONAL_ENABLED=true`, PostgreSQL, JWT forte e chave Fernet válida. A opção de desenvolvimento não funciona nesses ambientes.
+
+Esses requisitos técnicos não substituem os portões operacionais: TLS, isolamento por usuário/caso, RLS com papel restrito, restauração de backups, retenção, suporte e cobrança. Veja `docs/PROFESSIONAL_RUNTIME_GATES.md` na raiz do repositório.
