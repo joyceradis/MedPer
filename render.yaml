@@ -1,24 +1,29 @@
+# OPTIONAL free-only PREVIEW blueprint. Never deploy real clinical/judicial data here.
+# No paid disk and no paid database resource will be provisioned by this file.
+# Backend remains intentionally disabled until a separate durable PostgreSQL
+# service and encryption keys are configured and reviewed.
 services:
   - type: web
-    name: medper-api
+    name: medper-api-preview
     runtime: docker
+    plan: free
     rootDir: backend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     autoDeploy: false
     envVars:
-      # Fail closed if an operator attempts to enable the backend without
-      # authenticated encrypted case storage; autoDeploy remains disabled.
       - key: MEDPER_ENVIRONMENT
         value: production
-      - key: MEDPER_FILE_STORAGE_REQUIRED
-        value: "true"
       - key: MEDPER_PROFESSIONAL_ENABLED
         value: "false"
+      - key: MEDPER_GOOGLE_SELF_SIGNUP_ENABLED
+        value: "false"
+      - key: MEDPER_GOOGLE_CLIENT_ID
+        sync: false
+      - key: MEDPER_FILE_STORAGE_REQUIRED
+        value: "true"
       - key: MEDPER_DATABASE_URL
-        fromDatabase:
-          name: medper-postgres
-          property: connectionString
+        sync: false
       - key: MEDPER_JWT_SECRET
         generateValue: true
       - key: MEDPER_FILE_ENCRYPTION_KEY
@@ -28,16 +33,4 @@ services:
       - key: MEDPER_PUBLIC_API_URL
         sync: false
       - key: MEDPER_STORAGE_PATH
-        value: /var/data/medper-files
-    disk:
-      name: medper-files
-      mountPath: /var/data
-      sizeGB: 10
-    preDeployCommand: alembic upgrade head
-
-databases:
-  - name: medper-postgres
-    databaseName: medper
-    user: medper_owner
-    plan: basic-256mb
-    ipAllowList: []
+        value: /tmp/medper-preview-files
