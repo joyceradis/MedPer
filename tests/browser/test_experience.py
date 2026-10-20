@@ -290,6 +290,21 @@ class ExperienceLayer(unittest.TestCase):
             ratio = page.evaluate(CONTRAST_JS, [selector, "backgroundColor"])
             self.assertGreaterEqual(ratio, minimum, f"{selector} contrast {ratio:.2f} < {minimum}")
 
+    def test_dark_theme_keeps_labels_links_and_palette_readable(self):
+        page = self.open(color_scheme="dark")
+        for selector in (".register-eyebrow", ".brand-med", ".insight-label"):
+            ratio = page.evaluate(CONTRAST_JS, [selector, "backgroundColor"])
+            self.assertGreaterEqual(ratio, 4.5, f"{selector} contrast {ratio:.2f}")
+        page.keyboard.press("Control+k")
+        ratio = page.evaluate(CONTRAST_JS, [".palette-group", "backgroundColor"])
+        self.assertGreaterEqual(ratio, 4.5, f".palette-group contrast {ratio:.2f}")
+        page.keyboard.press("Escape")
+        page.goto(self.url.replace("app.html", "professional.html"), wait_until="load")
+        expect(page.locator(".professional-demo")).to_be_visible()
+        for selector in (".professional-demo", ".professional-card .professional-kicker", ".professional-card h2"):
+            ratio = page.evaluate(CONTRAST_JS, [selector, "backgroundColor"])
+            self.assertGreaterEqual(ratio, 4.5, f"{selector} contrast {ratio:.2f}")
+
     def test_theme_toggle_is_session_only_and_never_touches_storage(self):
         page = self.open()
         before = page.evaluate("() => [Object.keys(localStorage).sort(), Object.keys(sessionStorage).sort()]")

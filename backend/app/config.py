@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_from: str = ""
     smtp_starttls: bool = True
+    # Closed in staging/production unless onboarding is explicitly authorized.
+    # Development tests can still register synthetic organizations.
+    open_registration_enabled: bool = False
     auth_rate_limit_attempts: int = 10
     auth_rate_limit_window_seconds: int = 60
     model_config = SettingsConfigDict(env_file=".env", env_prefix="MEDPER_")

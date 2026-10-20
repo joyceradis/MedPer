@@ -53,6 +53,8 @@ def issue_pair(db: Session, user: User, request: Request, family_id: str | None 
 
 @router.post("/register", response_model=TokenPair, status_code=201)
 def register(data: RegisterIn, request: Request, db: Session = Depends(db_session)):
+    if settings.production_mode and not settings.open_registration_enabled:
+        raise HTTPException(403, "Cadastro público indisponível. Aguarde convite para a homologação.")
     if db.scalar(select(Organization).where(Organization.slug == data.organization_slug)):
         raise HTTPException(409, "Organização já existe")
     if db.scalar(select(User).where(User.email == str(data.email).lower())):
