@@ -78,6 +78,7 @@ def ready():
         "version": app.version,
         "security": "ok" if not issues else "invalid",
         "fileStorage": "ready" if settings.file_encryption_key_is_valid else "disabled",
+        "professionalAccess": "ready" if settings.professional_access_ready else "disabled",
     }
     if issues:
         payload["issues"] = issues
