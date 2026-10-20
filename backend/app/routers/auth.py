@@ -171,7 +171,9 @@ def forgot_password(data: ForgotIn, request: Request, background: BackgroundTask
         db.commit()
         if settings.smtp_enabled:
             background.add_task(send_password_reset, user.email, raw)
-        elif settings.public_api_url.startswith("http://localhost"):
+        elif (settings.environment.strip().lower() in {"development", "test"}
+              and settings.development_api_enabled
+              and settings.public_api_url.startswith("http://localhost")):
             return {"message": "Solicitação registrada", "development_token": raw}
     return {"message": "Se a conta existir, as instruções serão enviadas."}
 

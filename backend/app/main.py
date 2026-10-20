@@ -48,6 +48,8 @@ async def request_log(request: Request, call_next):
         raise
     duration_ms = round((time.perf_counter() - started) * 1000, 2)
     response.headers["X-Request-ID"] = request_id
+    if request.url.path == "/auth" or request.url.path.startswith("/auth/") or request.url.path == "/cases" or request.url.path.startswith("/cases/"):
+        response.headers["Cache-Control"] = "no-store"
     logger.info(json.dumps({
         "event": "http_request",
         "request_id": request_id,
