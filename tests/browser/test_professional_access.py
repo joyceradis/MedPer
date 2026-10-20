@@ -52,7 +52,7 @@ class ProfessionalFakeAPI(SimpleHTTPRequestHandler):
             self.wfile.write(body)
             return
         if self.path == "/ready":
-            return self.respond(200, {"status": "ready", "security": "ok", "fileStorage": "ready"})
+            return self.respond(200, {"status": "ready", "security": "ok", "fileStorage": "ready", "professionalAccess": "ready"})
         if self.path == "/auth/me":
             return self.respond(200 if self.auth() else 401,
                                 {"id": "synthetic-user", "role": "perito", "email": "synthetic@example.com"}
