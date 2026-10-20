@@ -67,3 +67,31 @@ Não dizer "pronto para a usuária testar" ou "aplicativo pronto" se teste E2E d
 ### Fronteiras
 
 Esta suíte não licencia MedPer para casos reais, não testa segurança multiusuário de um backend desconectado da V2, não homologa o uso médico e não altera visibilidade, permissões, acesso, deployment ou dados existentes.
+
+
+## Sequência profissional de avaliação a reproduzir nos testes (v1)
+
+Os fluxos anteriores definem dois momentos distintos:
+
+**Gestão processual:** nomeação/aceite, estimativa de trabalho e condições dos honorários, leitura dos autos, delimitação do objeto, identificação dos quesitos, agendamento e registro da diligência. Atos administrativos de custas, reserva e intimação que dependem do cartório/tribunal não devem ser delegados automaticamente à perita.
+
+**Atividade pericial:** exame e descrição; registro de presentes, datas, medidas, registros fotográficos quando aplicáveis e suas fontes; qualidade de cicatriz por POSAS quando pertinente; dano estético por AIPE quando pertinente; estado anterior; hipóteses causais, concausas e limites; integração final; quesitos individualizados; documento A4 com proveniência.
+
+**Invariantes médico-periciais que a automação deve preservar:**
+- Ausência de informação não equivale a achado clínico negativo.
+- POSAS não determina AIPE; AIPE não comprova nexo.
+- Manter evidências favoráveis e contrárias; nenhuma justificativa inventada para completar lacunas.
+- Conclusões e quesitos não recebem afirmações clínicas criadas pelo sistema.
+- Não misturar somas de instrumentos de diferentes domínios.
+- Tarefas do tribunal não viram botões obrigatórios da perita.
+- Falha ao salvar mantém o texto em edição e bloqueia a navegação.
+
+**Testes da PR #118:** test_06 vincula fonte, achado, limites, quesito, relatório e recuperação; test_07 preserva autonomia POSAS/AIPE; test_08 rejeita importação destrutiva por ID duplicado; test_09 provoca erro de IndexedDB e reprova falsa sinalização de salvamento.
+
+### Entrada pública versus login profissional
+
+- Demonstração local-first sem login: somente dados fictícios, sem alegação de proteção suficiente para documentos reais.
+- Conta profissional autenticada (não entregue no runtime V2 atual): exige autenticação efetiva, autorização e isolamento de dados; não inserir botões cenográficos. Login Google desejado não significa backend conectado.
+- Aplicação publicada: testes de localhost não comprovam que a versão do GitHub Pages esteja no mesmo estado; smoke tests separados devem visitar a URL pública sem inserir dados.
+
+A pessoa real não deve executar testes de clique, repetição de cálculos, recuperação ou responsividade. A validação humana cabe em decisões substantivas e preferência visual de alto nível. Testes de geometria e screenshots podem detectar regressões de aparência, mas não substituem um baseline visual aceito.
