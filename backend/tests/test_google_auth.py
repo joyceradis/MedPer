@@ -114,15 +114,15 @@ def test_google_link_rejects_mismatched_email_or_other_user_identity(monkeypatch
         bob = register(client, "google-link-b", "person-b@example.com")
         assert client.post("/auth/google/link",
                            headers={"Authorization": "Bearer " + alice},
-                           json={"credential": token(email="person-b@example.com")}).status_code == 403
+                           json={"credential": token(sub="google-provider-subject-1002", email="person-b@example.com")}).status_code == 403
         good = client.post("/auth/google/link", headers={"Authorization": "Bearer " + alice},
-                           json={"credential": token(email="person-a@example.com")})
+                           json={"credential": token(sub="google-provider-subject-1002", email="person-a@example.com")})
         assert good.status_code == 200, good.text
         taken = client.post("/auth/google/link", headers={"Authorization": "Bearer " + bob},
-                            json={"credential": token(email="person-b@example.com")})
+                            json={"credential": token(sub="google-provider-subject-1002", email="person-b@example.com")})
         assert taken.status_code == 409, taken.text
         assert client.post("/auth/google/link",
-                           json={"credential": token(email="person-a@example.com")}).status_code == 401
+                           json={"credential": token(sub="google-provider-subject-1002", email="person-a@example.com")}).status_code == 401
 
 
 def test_google_signup_disabled_until_enabled_and_separates_organizations(monkeypatch):
