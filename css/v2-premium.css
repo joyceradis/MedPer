@@ -512,7 +512,6 @@ body{
 /* =========================================================================
    Professional access gate (professional.html)
    ========================================================================= */
-body:has(.professional-access){background:var(--mp-navy-950)}
 .professional-access{
   position:relative;isolation:isolate;overflow:hidden;
   background:
