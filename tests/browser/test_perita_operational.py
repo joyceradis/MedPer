@@ -133,5 +133,22 @@ class PeritaOperationalJourney(unittest.TestCase):
         expect(self.page.locator('#sidebar button[data-step="context"]')).to_be_visible()
 
 
+    def test_05_visual_identity_includes_canonical_sidebar_and_facet_icon(self):
+        self.create_demo_case()
+        sidebar_background = self.page.locator(".sidebar").evaluate(
+            "(el) => getComputedStyle(el).backgroundImage"
+        )
+        self.assertIn("linear-gradient(", sidebar_background,
+                      "V2 must preserve the approved blue-to-navy sidebar, not revert to white")
+        logo = self.page.locator(".brand").evaluate(
+            "(el) => getComputedStyle(el, '::before').backgroundImage"
+        )
+        self.assertIn("icon.svg", logo, "MedPer facet brand mark has gone missing")
+        active_color = self.page.locator(".step.active").evaluate(
+            "(el) => getComputedStyle(el).color"
+        )
+        self.assertIn("255", active_color, "Active navigation must remain readable over the navy sidebar")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
