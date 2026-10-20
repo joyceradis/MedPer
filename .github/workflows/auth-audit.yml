@@ -71,8 +71,18 @@ jobs:
               raise SystemExit('V2 entrypoint missing from app.html.')
           if 'medper-api-url' in app or 'replit.app' in app.lower():
               raise SystemExit('V2 must not require a hard-coded remote API.')
-          if 'CaseRepository' not in v2 or 'indexedDB' not in repo or 'localStorage' not in repo:
+          if 'createRuntimeRepository' not in v2 or 'indexedDB' not in repo or 'localStorage' not in repo:
               raise SystemExit('Local-first repository boundary is missing.')
+          # The demo resolves to the local CaseRepository; the professional page
+          # must fail closed instead of silently falling back to browser storage.
+          selector=Path('js/v2/repository-selector.js').read_text(encoding='utf-8')
+          if 'return new CaseRepository()' not in selector:
+              raise SystemExit('Demo no longer resolves to the local-first CaseRepository.')
+          if "endsWith('/professional.html')" not in selector or 'throw new Error' not in selector:
+              raise SystemExit('Professional mode must fail closed without a remote session.')
+          remote=Path('js/v2/remote-repository.js').read_text(encoding='utf-8')
+          if 'indexedDB' in remote or 'localStorage.' in remote:
+              raise SystemExit('Professional transport must not touch browser case storage.')
 
           required_v2_assets=['./js/v2/app.js','./js/v2/repository.js','./css/v2.css']
           missing=[x for x in required_v2_assets if x not in sw]

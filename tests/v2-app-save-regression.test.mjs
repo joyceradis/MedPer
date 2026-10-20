@@ -21,6 +21,7 @@ function harness() {
   };
   const context = vm.createContext({
     CaseRepository: function () { return repo; },
+    createRuntimeRepository: () => repo,
     document: { getElementById: () => root },
     window: { addEventListener() {} },
     console: { error() {} },
