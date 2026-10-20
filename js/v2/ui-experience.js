@@ -119,9 +119,15 @@ export function refreshWorkspaceProgress(root, caseRecord) {
   meter.innerHTML = `${ring(progress.overall)}<div><span class="case-progress-value">${progress.overall}%</span><span class="case-progress-label">preenchimento estrutural</span></div>`;
 }
 
+const AUTOSIZE_MAX = 640;
+
+// Grows with the text up to a cap; past the cap the textarea scrolls again.
+// Textareas this layer never autosizes (e.g. modals) keep native scrolling.
 function autosize(textarea) {
   textarea.style.height = 'auto';
-  textarea.style.height = `${Math.min(textarea.scrollHeight + 2, 640)}px`;
+  const capped = textarea.scrollHeight + 2 > AUTOSIZE_MAX;
+  textarea.style.height = `${Math.min(textarea.scrollHeight + 2, AUTOSIZE_MAX)}px`;
+  textarea.style.overflowY = capped ? 'auto' : 'hidden';
 }
 
 function wordCount(text) {
