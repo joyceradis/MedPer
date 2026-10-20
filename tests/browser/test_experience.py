@@ -149,6 +149,55 @@ class ExperienceLayer(unittest.TestCase):
         self.assertEqual(area.evaluate("el => getComputedStyle(el).overflowY"), "auto")
         self.assertLessEqual(area.evaluate("el => el.getBoundingClientRect().height"), 641)
 
+    def test_long_narratives_remain_scrollable_after_autosize_limit(self):
+        page = self.open()
+        self.create_case()
+        page.locator('button[data-step="history"]').click()
+        area = page.get_by_label("Síntese da história", exact=True)
+        text = "\n".join(f"Linha fictícia {i}: registro narrativo para teste." for i in range(160))
+        area.fill(text)
+        expect(area).to_have_css("overflow-y", "auto")
+        self.assertGreater(area.evaluate("el => el.scrollHeight"), area.evaluate("el => el.clientHeight"))
+        area.evaluate("el => { el.scrollTop = 0; }")
+        area.hover()
+        page.mouse.wheel(0, 600)
+        page.wait_for_function("document.querySelector('[data-bind=\"history.summary\"]').scrollTop > 0")
+        expect(area).to_have_value(text)
+
+    def test_palette_cannot_navigate_away_from_an_open_source_draft(self):
+        page = self.open()
+        self.create_case()
+        page.locator('button[data-step="sources"]').click()
+        page.get_by_role("button", name="Adicionar fonte", exact=True).click()
+        dialog = page.get_by_role("dialog", name="Nova fonte", exact=True)
+        dialog.get_by_label("Título", exact=True).fill("FONTE FICTICIA - RASCUNHO")
+        notes = dialog.get_by_label("Observações", exact=True)
+        notes.fill("Rascunho fictício ainda não enviado.")
+        page.keyboard.press("Control+k")
+        expect(page.get_by_role("combobox", name="Buscar comandos")).to_be_focused()
+        self.assertEqual(page.locator(".palette-item").all_inner_texts(), ["Alternar tema claro/escuro"])
+        page.keyboard.press("Escape")
+        expect(notes).to_be_focused()
+        expect(notes).to_have_value("Rascunho fictício ainda não enviado.")
+        expect(page.locator("#workspace h1")).to_have_text("Autos e fontes")
+        dialog.get_by_role("button", name="Salvar", exact=True).click()
+        expect(page.locator("#workspace")).to_contain_text("FONTE FICTICIA - RASCUNHO")
+
+    def test_touch_launcher_exposes_palette_on_dashboard_and_workspace(self):
+        page = self.open(has_touch=True, is_mobile=True)
+        page.set_viewport_size({"width": 390, "height": 844})
+        launcher = page.get_by_role("button", name="Abrir paleta de comandos", exact=True)
+        launcher.tap()
+        expect(page.get_by_role("dialog", name="Paleta de comandos")).to_be_visible()
+        page.keyboard.press("Escape")
+        expect(launcher).to_be_focused()
+        self.create_case()
+        expect(launcher).to_have_count(1)
+        launcher.tap()
+        expect(page.get_by_role("combobox", name="Buscar comandos")).to_be_focused()
+        page.keyboard.press("Escape")
+        self.assertLessEqual(page.evaluate("document.documentElement.scrollWidth - innerWidth"), 2)
+
     # ---------- palette, focus and shortcuts ----------
 
     def test_palette_opens_with_ctrl_and_meta_and_restores_focus(self):
