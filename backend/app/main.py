@@ -4,11 +4,12 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import settings
+from .deps import require_api_access
 from .routers import auth, cases, files, imports, google_auth
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO), format="%(message)s")
@@ -59,11 +60,11 @@ async def request_log(request: Request, call_next):
     return response
 
 
-app.include_router(auth.router)
-app.include_router(google_auth.router)
-app.include_router(cases.router)
-app.include_router(imports.router)
-app.include_router(files.router)
+app.include_router(auth.router, dependencies=[Depends(require_api_access)])
+app.include_router(google_auth.router, dependencies=[Depends(require_api_access)])
+app.include_router(cases.router, dependencies=[Depends(require_api_access)])
+app.include_router(imports.router, dependencies=[Depends(require_api_access)])
+app.include_router(files.router, dependencies=[Depends(require_api_access)])
 
 
 @app.get("/health")

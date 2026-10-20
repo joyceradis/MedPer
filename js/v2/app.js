@@ -4,6 +4,7 @@ import { createRuntimeRepository } from './repository-selector.js';
 import { logoutRemoteSession } from './remote-repository.js';
 import { routeMethodology } from './method-router.js';
 import { composeCaseDocument } from './document.js';
+import { installExperience, enhanceDashboard, enhanceWorkspace } from './ui-experience.js';
 import { AIPE_CRITERIA, AIPE_CATEGORIES, aipeCategoryOption } from '../methodology/aipe.js';
 import { POSAS_PATIENT_ITEMS, POSAS_OBSERVER_ITEMS, buildPosasAssessmentFromGuided } from '../methodology/posas.js';
 
@@ -28,6 +29,60 @@ const val = value => esc(value ?? '');
 const uid = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 let saveTimer;
 let savePromise;
+let fieldSequence = 0;
+
+function associateFieldLabels(container) {
+  container.querySelectorAll('.field').forEach(field => {
+    const label = field.querySelector('label');
+    const control = field.querySelector('input,textarea,select');
+    if (!label || !control) return;
+    control.id ||= `medper-field-${++fieldSequence}`;
+    label.htmlFor = control.id;
+    const hint = field.querySelector('.hint');
+    if (hint) {
+      hint.id ||= `${control.id}-hint`;
+      const descriptions = new Set((control.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+      descriptions.add(hint.id);
+      control.setAttribute('aria-describedby', [...descriptions].join(' '));
+    }
+  });
+}
+
+function prepareModal(backdrop, previousFocus) {
+  const form = backdrop.querySelector('form');
+  const heading = form.querySelector('h2');
+  heading.id ||= `${backdrop.id}-title`;
+  form.setAttribute('role', 'dialog');
+  form.setAttribute('aria-modal', 'true');
+  form.setAttribute('aria-labelledby', heading.id);
+  associateFieldLabels(form);
+  const close = () => {
+    backdrop.remove();
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+  };
+  form.addEventListener('keydown', event => {
+    if (event.defaultPrevented || event.isComposing) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    } else if (event.key === 'Tab') {
+      const controls = [...form.querySelectorAll('input,textarea,select,button,[tabindex]')]
+        .filter(control => !control.disabled && control.tabIndex >= 0 && control.getClientRects().length);
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+  });
+  form.querySelector('input,textarea,select')?.focus();
+  return close;
+}
 
 function toast(message) {
   let element = document.getElementById('toast');
@@ -81,12 +136,13 @@ function field(label, path, type = 'text', options = {}) {
 }
 
 async function load() {
+  installExperience({ root, getCase: () => state.current });
   state.cases = await repo.list();
   renderDashboard();
 }
 
 function shell(content, options = {}) {
-  return `<div class="v2-shell"><header class="topbar"><button class="btn ghost mobile-menu" data-action="menu" aria-label="Abrir navegação">☰</button><div class="brand">MedPer <small>${repo.mode === 'remote' ? 'Professional · API' : 'V2 · local-first'}</small></div><div class="spacer"></div>${options.case ? `<span class="save-state">${state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : (repo.mode === 'remote' ? 'Salvo no servidor' : 'Salvo localmente')}</span><button class="btn ghost" data-action="dashboard">Casos</button>` : ''}${repo.mode === 'remote' ? '<button class="btn ghost" data-action="logout">Sair</button>' : ''}</header>${content}</div>`;
+  return `<div class="v2-shell"><header class="topbar"><button class="btn ghost mobile-menu" data-action="menu" aria-label="Abrir navegação">☰</button><div class="brand"><span class="brand-med">Med</span><span class="brand-per">Per</span> <small>${repo.mode === 'remote' ? 'Professional · API' : 'V2 · local-first'}</small></div><div class="spacer"></div>${options.case ? `<span class="save-state">${state.saving ? 'Salvando…' : state.dirty ? 'Alterações pendentes' : (repo.mode === 'remote' ? 'Salvo no servidor' : 'Salvo localmente')}</span><button class="btn ghost" data-action="dashboard">Casos</button>` : ''}${repo.mode === 'remote' ? '<button class="btn ghost" data-action="logout">Sair</button>' : ''}</header>${content}</div>`;
 }
 
 function filteredCases() {
@@ -113,6 +169,7 @@ function dashboardCasesMarkup() {
       <h2>${repo.mode === 'remote' ? 'Nenhum caso nesta conta' : 'Nenhum caso V2 neste navegador'}</h2>
       <p>${repo.mode === 'remote' ? 'Este ambiente consulta casos autorizados no servidor. Nenhum registro local foi transferido automaticamente.' : 'A área de trabalho está pronta para um <strong>caso fictício</strong>. Registros de versões anteriores podem estar em outros armazenamentos e não aparecem automaticamente aqui.'}</p>
       <button class="btn primary" data-action="new-case">Novo caso</button>
+      ${repo.mode === 'remote' ? '' : '<button class="btn" data-action="scan-recovery">Procurar registros anteriores</button>'}
     </div>
     <div class="empty-journey" aria-label="Etapas do fluxo médico-pericial">
       <span>01 <strong>Delimitar o objeto</strong></span>
@@ -157,6 +214,7 @@ function renderDashboard() {
     <input id="import-file" type="file" accept="application/json" class="hidden">
   </main>`);
   bind();
+  enhanceDashboard(root, state.cases);
 }
 
 function refreshCaseResults() {
@@ -191,14 +249,15 @@ function bindCaseCards() {
 }
 
 function newCaseModal() {
+  const previousFocus = document.activeElement;
   document.getElementById('case-modal')?.remove();
   document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="case-modal"><form class="modal" id="new-case-form"><h2>Novo caso</h2><div class="grid2"><div class="field wide"><label>Título do caso</label><input name="title" required placeholder="Ex.: Souza x Hospital — dano estético"></div><div class="field"><label>Número do processo</label><input name="processNumber"></div><div class="field"><label>Tribunal / vara / origem</label><input name="court"></div><div class="field"><label>Papel profissional</label><select name="professionalRole"><option value="perita_judicial">Perita judicial</option><option value="assistente_tecnica">Assistente técnica</option><option value="parecerista">Parecerista</option><option value="outro">Outra avaliação médico-legal</option></select></div><div class="field"><label>Contexto</label><select name="context"><option value="civel">Cível</option><option value="previdenciario">Previdenciário</option><option value="securitario">Securitário</option><option value="trabalhista">Trabalhista</option><option value="responsabilidade_profissional">Responsabilidade profissional</option><option value="outro">Outro</option></select></div><div class="field"><label>Parte examinada</label><input name="examinedPerson"></div><div class="field"><label>Data da perícia</label><input type="date" name="examinationDate"></div><div class="field"><label>Prazo do laudo/parecer</label><input type="date" name="reportDeadline"></div><div class="field wide"><label>Objeto pericial principal</label><textarea name="object" placeholder="Defina o que efetivamente deve ser respondido pela perícia."></textarea></div></div><div class="modal-actions"><button type="button" class="btn" id="new-case-cancel">Cancelar</button><button class="btn primary">Criar caso</button></div></form></div>`);
-  document.getElementById('new-case-cancel').onclick = () => document.getElementById('case-modal')?.remove();
+  document.getElementById('new-case-cancel').onclick = () => closeModal();
   document.getElementById('case-modal').onclick = event => {
-    if (event.target.id === 'case-modal') document.getElementById('case-modal')?.remove();
+    if (event.target.id === 'case-modal') closeModal();
   };
   const form = document.getElementById('new-case-form');
-  form.querySelector('[name="title"]')?.focus();
+  const closeModal = prepareModal(document.getElementById('case-modal'), previousFocus);
   form.onsubmit = async event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));
@@ -218,6 +277,7 @@ function renderWorkspace() {
   const caseRecord = state.current = normalizeCaseRecord(state.current);
   root.innerHTML = shell(`<div class="workspace"><aside class="sidebar" id="sidebar"><div class="case-mini"><strong>${esc(caseRecord.identity.title)}</strong><span>${esc(caseRecord.identity.processNumber || 'Sem número do processo')}</span></div>${steps.map(([id, label], index) => `<button class="step ${state.step === id ? 'active' : ''}" data-step="${id}"><i>${index + 1}</i>${esc(label)}</button>`).join('')}</aside><main class="content" id="workspace">${renderStep()}</main></div>`, { case: true });
   bind();
+  enhanceWorkspace(root, caseRecord);
 }
 
 function heading(title, subtitle, actions = '') {
@@ -318,6 +378,7 @@ function documentStep() {
 }
 
 function bind() {
+  associateFieldLabels(root);
   root.querySelectorAll('[data-step]').forEach(button => {
     button.onclick = async () => {
       if (!(await saveNow())) return;
@@ -451,6 +512,47 @@ async function handleAction(event, action) {
     toast('Caso excluído.');
     return renderDashboard();
   }
+  if (action === 'scan-recovery' && repo.mode !== 'remote') {
+    const container = document.querySelector('#case-results');
+    if (!container) return;
+    const existing = document.getElementById('recovery-results');
+    if (existing) existing.remove();
+    const panel = document.createElement('section');
+    panel.id = 'recovery-results';
+    panel.className = 'card';
+    panel.setAttribute('role', 'status');
+    panel.setAttribute('aria-live', 'polite');
+    panel.innerHTML = '<h3>Registros deste navegador</h3><p>Verificando armazenamentos sem alterar casos...</p>';
+    container.after(panel);
+    try {
+      const { scanRecovery, buildBackup, downloadBackup } = await import('../../recovery/recovery.js');
+      const results = await scanRecovery();
+      const found = results.filter(row => row.status === 'encontrado' && row.count > 0);
+      const errored = results.filter(row => row.status === 'erro' || row.status === 'incompatível');
+      panel.innerHTML = [
+        '<h3>Registros deste navegador</h3>',
+        '<p>Este diagnóstico apenas consulta os armazenamentos. Não importa, modifica nem apaga casos. Registros de outro dispositivo ou perfil não podem ser verificados aqui.</p>',
+        found.length ? '<ul>' + found.map(row =>
+          '<li><strong>' + esc(row.label) + ':</strong> ' + row.count + ' registro(s)' +
+          (row.kind === 'indexeddb' ? ' (V2 atual)' : ' <button class="btn" type="button" data-recovery-backup="' + esc(row.key) + '">Guardar cópia integral</button>') +
+          '</li>').join('') + '</ul>' : '<p>Nenhum registro anterior encontrado nas fontes verificadas.</p>',
+        errored.length ? '<p><strong>Atenção:</strong> algumas fontes não puderam ser lidas. Nenhum dado foi alterado.</p>' : '',
+        '<p class="hint">Antes de qualquer migração, preserve os backups e confira os registros com suporte técnico. Não limpe o armazenamento do navegador.</p>'
+      ].join('');
+      panel.querySelectorAll('[data-recovery-backup]').forEach(button => {
+        button.onclick = () => {
+          if (!window.confirm('O backup pode conter dados pessoais e médicos sensíveis. Guardar uma cópia integral neste dispositivo?')) return;
+          try { downloadBackup(buildBackup(button.dataset.recoveryBackup)); }
+          catch (error) { toast('Não foi possível exportar: ' + error.message); }
+        };
+      });
+    } catch (error) {
+      panel.innerHTML = '<h3>Não foi possível verificar os registros</h3><p>' +
+        esc(error.message || 'Falha de acesso ao armazenamento.') +
+        '</p><p>Nenhum registro foi alterado. Preserve os dados do navegador.</p>';
+    }
+    return;
+  }
   if (action === 'import') {
     const input = document.getElementById('import-file');
     input.onchange = async () => {
@@ -513,6 +615,7 @@ async function handleAction(event, action) {
 }
 
 function editModal(title, fields, onSave, initial = {}) {
+  const previousFocus = document.activeElement;
   document.getElementById('edit-modal')?.remove();
   document.body.insertAdjacentHTML('beforeend', `<div class="modal-backdrop" id="edit-modal"><form class="modal" id="edit-form"><h2>${esc(title)}</h2><div class="grid2">${fields.map(([name, label, type = 'text', options]) => {
     const initialValue = initial[name] ?? '';
@@ -520,12 +623,12 @@ function editModal(title, fields, onSave, initial = {}) {
     if (type === 'select') return `<div class="field"><label>${esc(label)}</label><select name="${esc(name)}">${options.map(([optionValue, optionLabel]) => `<option value="${esc(optionValue)}" ${String(initialValue) === String(optionValue) ? 'selected' : ''}>${esc(optionLabel)}</option>`).join('')}</select></div>`;
     return `<div class="field"><label>${esc(label)}</label><input name="${esc(name)}" type="${esc(type)}" value="${val(initialValue)}"></div>`;
   }).join('')}</div><div class="modal-actions"><button type="button" class="btn" id="edit-cancel">Cancelar</button><button class="btn primary">Salvar</button></div></form></div>`);
-  document.getElementById('edit-cancel').onclick = () => document.getElementById('edit-modal')?.remove();
+  document.getElementById('edit-cancel').onclick = () => closeModal();
   document.getElementById('edit-modal').onclick = event => {
-    if (event.target.id === 'edit-modal') document.getElementById('edit-modal')?.remove();
+    if (event.target.id === 'edit-modal') closeModal();
   };
   const form = document.getElementById('edit-form');
-  form.querySelector('input,textarea,select')?.focus();
+  const closeModal = prepareModal(document.getElementById('edit-modal'), previousFocus);
   form.onsubmit = event => {
     event.preventDefault();
     const data = Object.fromEntries(new FormData(event.currentTarget));

@@ -308,6 +308,52 @@ class PeritaOperationalJourney(unittest.TestCase):
             "Dashboard horizontally overflows desktop viewport",
         )
 
+    def test_12_new_case_dialog_supports_labels_keyboard_and_cancel_focus(self):
+        trigger = self.page.locator('.dashboard-hero button[data-action="new-case"]')
+        trigger.click()
+        dialog = self.page.get_by_role("dialog", name="Novo caso")
+        expect(dialog).to_be_visible()
+        title = dialog.get_by_label("Título do caso", exact=True)
+        expect(title).to_be_focused()
+        title.fill("CASO FICTICIO - CANCELADO")
+        title.press("Shift+Tab")
+        expect(dialog.get_by_role("button", name="Criar caso")).to_be_focused()
+        self.page.keyboard.press("Tab")
+        expect(title).to_be_focused()
+        title.press("Escape")
+        expect(dialog).to_have_count(0)
+        expect(trigger).to_be_focused()
+        expect(self.page.locator('[data-open-case]')).to_have_count(0)
+        trigger.click()
+        dialog.get_by_role("button", name="Cancelar").click()
+        expect(trigger).to_be_focused()
+        expect(self.page.locator('[data-open-case]')).to_have_count(0)
+
+    def test_13_workspace_and_source_editor_fields_have_real_accessible_names(self):
+        self.create_demo_case()
+        expect(self.page.get_by_label("Título", exact=True)).to_have_value("CASO FICTICIO - DANO ESTETICO")
+        self.page.get_by_label("Título", exact=True).click()
+        expect(self.page.get_by_label("Título", exact=True)).to_be_focused()
+        self.page.locator('#sidebar button[data-step="sources"]').click()
+        trigger = self.page.get_by_role("button", name="Adicionar fonte", exact=True)
+        trigger.click()
+        dialog = self.page.get_by_role("dialog")
+        expect(dialog).to_have_attribute("aria-modal", "true")
+        expect(dialog.get_by_label("Tipo", exact=True)).to_be_focused()
+        dialog.get_by_label("Título", exact=True).fill("FONTE FICTICIA - CANCELADA")
+        dialog.get_by_label("Título", exact=True).press("Escape")
+        expect(dialog).to_have_count(0)
+        expect(trigger).to_be_focused()
+        expect(self.page.locator("#workspace")).to_contain_text("Nenhuma fonte cadastrada")
+        trigger.click()
+        dialog.get_by_label("Título", exact=True).fill("FONTE FICTICIA - ACESSIVEL")
+        dialog.get_by_role("button", name="Salvar", exact=True).click()
+        expect(self.page.locator("#workspace")).to_contain_text("FONTE FICTICIA - ACESSIVEL")
+        self.assertEqual(self.page.evaluate("""() => {
+            const ids = [...document.querySelectorAll('[id]')].map(el => el.id);
+            return ids.length - new Set(ids).size;
+        }"""), 0, "Form renders must not introduce duplicate IDs")
+
     def test_11_dashboard_is_usable_and_not_clipped_on_mobile(self):
         self.page.set_viewport_size({"width": 390, "height": 844})
         self.page.reload(wait_until="load")
@@ -325,6 +371,44 @@ class PeritaOperationalJourney(unittest.TestCase):
         self.page.locator(".dashboard-hero button[data-action='new-case']").click()
         expect(self.page.locator("#new-case-form")).to_be_visible()
         self.page.locator("#new-case-cancel").click()
+
+
+    def test_12_public_entry_labels_demo_without_promising_login(self):
+        """A visitor should never mistake the unrestricted demo for a professional account."""
+        index_url = self.url.replace("/app.html", "/index.html")
+        self.page.goto(index_url, wait_until="load")
+        expect(self.page.get_by_role("link", name="Experimentar o MedPer sem login")).to_be_visible()
+        expect(self.page.get_by_role("link", name="Explorar demonstração")).to_be_visible()
+        self.assertEqual(self.page.get_by_role("link", name="Entrar", exact=True).count(), 0)
+        expect(self.page.locator("#acesso")).to_contain_text("O acesso profissional")
+        expect(self.page.locator("#acesso")).to_contain_text("casos fictícios")
+        self.page.get_by_role("link", name="Experimentar o MedPer sem login").click()
+        expect(self.page.locator(".dashboard-hero h1")).to_have_text("Casos periciais")
+        expect(self.page.locator(".dashboard-safety")).to_contain_text("Demonstração sem login")
+
+    def test_13_rescue_finds_legacy_cases_without_migrating_or_erasing_them(self):
+        """A synthetic earlier case is discovered and backed up byte-for-byte, not auto-imported."""
+        legacy = '{"version":4,"cases":[{"id":"old-fictitious-case","title":"Caso anterior simulado","custom":{"no-loss":"sentinel"}}]}'
+        self.page.evaluate(
+            "value => localStorage.setItem('medper.state.v4', value)", legacy
+        )
+        self.page.get_by_role("button", name="Procurar registros anteriores").click()
+        panel = self.page.locator("#recovery-results")
+        expect(panel).to_contain_text("MedPer anterior (v4)")
+        expect(panel).to_contain_text("1 registro(s)")
+        expect(self.page.locator(".empty--cases")).to_be_visible()
+        self.assertEqual(self.page.locator(".case-card").count(), 0)
+        self.page.once("dialog", lambda dialog: dialog.accept())
+        with self.page.expect_download() as event:
+            panel.locator('button[data-recovery-backup="medper.state.v4"]').click()
+        target = OUT / "legacy-recovery-synthetic-only.json"
+        event.value.save_as(str(target))
+        recovered = json.loads(target.read_text(encoding="utf-8"))
+        self.assertEqual(recovered["raw"], legacy, "Recovery must preserve exact original bytes")
+        self.assertEqual(self.page.evaluate("localStorage.getItem('medper.state.v4')"), legacy)
+        self.assertEqual(self.page.locator(".case-card").count(), 0)
+        self.page.reload(wait_until="load")
+        self.assertEqual(self.page.evaluate("localStorage.getItem('medper.state.v4')"), legacy)
 
 
 if __name__ == "__main__":

@@ -43,10 +43,16 @@ assert.equal(sw.includes("'./js/main.js'"), false,
 console.log('MedPer V2 offline shell regression suite completed successfully.');
 
 const { runInNewContext } = await import('node:vm');
+// Derive the live shell cache from sw.js so bumping the version never breaks this suite.
+const cachePrefix = sw.match(/CACHE_PREFIX='([^']+)'/)?.[1];
+const cacheVersion = sw.match(/CACHE_NAME=`\$\{CACHE_PREFIX\}([^`]+)`/)?.[1];
+assert.ok(cachePrefix && cacheVersion, 'sw.js must declare CACHE_PREFIX and a versioned CACHE_NAME');
+const currentCache = cachePrefix + cacheVersion;
+assert.notEqual(currentCache, 'medper-v2-shell-20260910', 'the retired fixture cache must differ from the live one');
 const handlers = new Map();
 const deleted = [];
 const opened = [];
-const currentShell = 'medper-v2-shell-20261020-pro-adapter';
+const currentShell = currentCache;
 const ownCache = new Map([
   ['./index.html', { body: 'MedPer home' }],
   ['./app.html', { body: 'MedPer workspace' }]

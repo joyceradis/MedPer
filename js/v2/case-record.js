@@ -67,6 +67,54 @@ export function touchCase(record) {
 }
 
 export function serializeCaseRecord(record) { return JSON.stringify(normalizeCaseRecord(record), null, 2); }
+
+function validateBackup(raw) {
+  const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  const invalid = path => {
+    throw new Error(`Backup inválido no campo "${path}". Nada foi importado; preserve o arquivo original.`);
+  };
+  if (typeof raw.id !== 'string' || !raw.id.trim()) invalid('id');
+  if (!object(raw.identity)) invalid('identity');
+  if (!object(raw.context)) invalid('context');
+
+  // Validate only known structure. Missing optional fields receive defaults,
+  // while unknown extension fields remain intact in normalization/export.
+  const validateObject = (value, expected, path = '') => {
+    if (!object(value)) invalid(path);
+    for (const [key, fallback] of Object.entries(expected)) {
+      if (!Object.hasOwn(value, key)) continue;
+      const field = path ? `${path}.${key}` : key;
+      if (typeof fallback === 'string' && typeof value[key] !== 'string') invalid(field);
+      else if (object(fallback)) validateObject(value[key], fallback, field);
+      else if (Array.isArray(fallback) && !Array.isArray(value[key])) invalid(field);
+    }
+  };
+  validateObject(raw, createCaseRecord({ id: raw.id }));
+  if (raw.methodology?.selected?.some(value => typeof value !== 'string')) invalid('methodology.selected');
+
+  const collections = {
+    sources: ['type', 'title', 'date', 'origin', 'notes'],
+    timeline: ['date', 'title', 'description', 'certainty'],
+    evidenceClaims: ['sourceId', 'statement', 'finding', 'interpretation', 'limitations', 'certainty'],
+    questions: ['origin', 'question', 'answer', 'status']
+  };
+  for (const [name, textFields] of Object.entries(collections)) {
+    if (!Object.hasOwn(raw, name)) continue;
+    const ids = new Set();
+    raw[name].forEach((entry, index) => {
+      const path = `${name}[${index}]`;
+      if (!object(entry)) invalid(path);
+      if (typeof entry.id !== 'string' || !entry.id.trim() || ids.has(entry.id)) invalid(`${path}.id`);
+      ids.add(entry.id);
+      for (const key of textFields) {
+        if (Object.hasOwn(entry, key) && typeof entry[key] !== 'string') invalid(`${path}.${key}`);
+      }
+      if (Object.hasOwn(entry, 'sourceIds') &&
+          (!Array.isArray(entry.sourceIds) || entry.sourceIds.some(id => typeof id !== 'string'))) invalid(`${path}.sourceIds`);
+    });
+  }
+}
+
 export function importCaseRecord(payload) {
   const raw = typeof payload === 'string' ? JSON.parse(payload) : payload;
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -74,10 +122,10 @@ export function importCaseRecord(payload) {
   }
   // A migração dos stores anteriores ainda não foi homologada. Rejeitar
   // formatos desconhecidos é mais seguro que descartá-los silenciosamente.
-  if (raw.schemaVersion !== SCHEMA_VERSION || !raw.identity || !raw.context ||
-      typeof raw.identity !== 'object' || typeof raw.context !== 'object') {
+  if (raw.schemaVersion !== SCHEMA_VERSION) {
     throw new Error('Formato de caso incompatível ou não suportado pela V2. Preserve o backup original.');
   }
+  validateBackup(raw);
   return normalizeCaseRecord(raw);
 }
 export { SCHEMA_VERSION };
