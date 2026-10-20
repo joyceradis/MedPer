@@ -1,7 +1,7 @@
 import { normalizeCaseRecord, touchCase, importCaseRecord, serializeCaseRecord } from './case-record.js';
 
 // The professional transport is explicitly opt-in and NEVER reads or writes the
-// demo's IndexedDB/localStorage. Session credentials remain in module memory.
+// demo's IndexedDB or local storage; session credentials remain in module memory.
 let session = null;
 let refreshTask = null;
 
