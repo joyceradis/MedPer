@@ -373,5 +373,43 @@ class PeritaOperationalJourney(unittest.TestCase):
         self.page.locator("#new-case-cancel").click()
 
 
+    def test_12_public_entry_labels_demo_without_promising_login(self):
+        """A visitor should never mistake the unrestricted demo for a professional account."""
+        index_url = self.url.replace("/app.html", "/index.html")
+        self.page.goto(index_url, wait_until="load")
+        expect(self.page.get_by_role("link", name="Experimentar o MedPer sem login")).to_be_visible()
+        expect(self.page.get_by_role("link", name="Explorar demonstração")).to_be_visible()
+        self.assertEqual(self.page.get_by_role("link", name="Entrar", exact=True).count(), 0)
+        expect(self.page.locator("#acesso")).to_contain_text("O acesso profissional")
+        expect(self.page.locator("#acesso")).to_contain_text("casos fictícios")
+        self.page.get_by_role("link", name="Experimentar o MedPer sem login").click()
+        expect(self.page.locator(".dashboard-hero h1")).to_have_text("Casos periciais")
+        expect(self.page.locator(".dashboard-safety")).to_contain_text("Demonstração sem login")
+
+    def test_13_rescue_finds_legacy_cases_without_migrating_or_erasing_them(self):
+        """A synthetic earlier case is discovered and backed up byte-for-byte, not auto-imported."""
+        legacy = '{"version":4,"cases":[{"id":"old-fictitious-case","title":"Caso anterior simulado","custom":{"no-loss":"sentinel"}}]}'
+        self.page.evaluate(
+            "value => localStorage.setItem('medper.state.v4', value)", legacy
+        )
+        self.page.get_by_role("button", name="Procurar registros anteriores").click()
+        panel = self.page.locator("#recovery-results")
+        expect(panel).to_contain_text("MedPer anterior (v4)")
+        expect(panel).to_contain_text("1 registro(s)")
+        expect(self.page.locator(".empty--cases")).to_be_visible()
+        self.assertEqual(self.page.locator(".case-card").count(), 0)
+        self.page.once("dialog", lambda dialog: dialog.accept())
+        with self.page.expect_download() as event:
+            panel.locator('button[data-recovery-backup="medper.state.v4"]').click()
+        target = OUT / "legacy-recovery-synthetic-only.json"
+        event.value.save_as(str(target))
+        recovered = json.loads(target.read_text(encoding="utf-8"))
+        self.assertEqual(recovered["raw"], legacy, "Recovery must preserve exact original bytes")
+        self.assertEqual(self.page.evaluate("localStorage.getItem('medper.state.v4')"), legacy)
+        self.assertEqual(self.page.locator(".case-card").count(), 0)
+        self.page.reload(wait_until="load")
+        self.assertEqual(self.page.evaluate("localStorage.getItem('medper.state.v4')"), legacy)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
