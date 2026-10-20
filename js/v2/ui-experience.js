@@ -55,17 +55,17 @@ export function caseInsights(cases, now = new Date()) {
 
 export function enhanceDashboard(root, cases) {
   lastView = '';
-  const hero = root.querySelector('.dashboard-hero');
-  if (hero && !root.querySelector('.insight-strip')) {
+  const heading = root.querySelector('.dashboard-register-head h2');
+  if (heading && !root.querySelector('.insight-strip')) {
     const data = caseInsights(cases);
     const tiles = [
-      ['Casos no ambiente', data.total, ''],
-      ['Prazos vencidos', data.overdue, data.overdue ? 'is-danger' : ''],
-      ['Prazos em até 7 dias', data.dueSoon, data.dueSoon ? 'is-warning' : ''],
-      ['Concluídos ou arquivados', data.concluded, '']
+      [data.total === 1 ? 'caso' : 'casos', data.total, ''],
+      [data.overdue === 1 ? 'prazo vencido' : 'prazos vencidos', data.overdue, data.overdue ? 'is-danger' : ''],
+      ['vencem em até 7 dias', data.dueSoon, data.dueSoon ? 'is-warning' : ''],
+      [data.concluded === 1 ? 'concluído ou arquivado' : 'concluídos ou arquivados', data.concluded, '']
     ];
-    hero.insertAdjacentHTML('afterend', `<section class="insight-strip" aria-label="Indicadores dos casos">${tiles.map(([label, value, tone]) =>
-      `<div class="insight ${tone}"><span class="insight-label">${esc(label)}</span><span class="insight-value">${value}</span></div>`).join('')}</section>`);
+    heading.insertAdjacentHTML('afterend', `<section class="insight-strip" aria-label="Indicadores dos casos">${tiles.map(([label, value, tone]) =>
+      `<div class="insight ${tone}${value ? '' : ' is-zero'}"><span class="insight-label">${esc(label)}</span><span class="insight-value">${value}</span></div>`).join('')}</section>`);
   }
   enhanceCommandLauncher(root);
 }
