@@ -40,7 +40,7 @@ async function init() {
     const response = await apiCall(origin + '/ready');
     if (!response.ok) throw new Error('API não está pronta para uso.');
     const ready = await response.json();
-    if (ready.status !== 'ready' || ready.security !== 'ok' || ready.fileStorage !== 'ready') {
+    if (ready.status !== 'ready' || ready.security !== 'ok' || ready.fileStorage !== 'ready' || ready.professionalAccess !== 'ready') {
       throw new Error('API sem requisitos mínimos de segurança e cifragem.');
     }
   } catch(error) {
