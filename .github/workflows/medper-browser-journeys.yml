@@ -9,6 +9,7 @@ on:
       - "app.html"
       - "js/v2/**"
       - "css/v2.css"
+      - "css/v2-premium.css"
       - ".github/workflows/medper-browser-journeys.yml"
   workflow_dispatch:
 
