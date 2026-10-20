@@ -270,5 +270,25 @@ class PeritaOperationalJourney(unittest.TestCase):
         expect(self.page.locator('[data-open-case]')).to_have_count(1)
 
 
+    def test_09_failed_storage_must_not_claim_saved_or_lose_unsaved_form(self):
+        """Fail-closed persistence: a failed write cannot silently advance the operator."""
+        self.create_demo_case()
+        self.page.locator('#sidebar button[data-step="context"]').click()
+        self.page.evaluate("""() => {
+            Object.defineProperty(window.indexedDB, 'open', {
+                configurable: true,
+                value() { throw new Error('SIMULATED STORAGE FAILURE'); }
+            });
+        }""")
+        value = "Texto fictício que não foi persistido devido a falha simulada."
+        question = self.page.locator('textarea[data-bind="analysis.medicoLegalQuestion"]')
+        question.fill(value)
+        expect(self.page.locator("#toast")).to_contain_text("Falha ao salvar", timeout=10000)
+        self.assertNotEqual(self.page.locator(".save-state").inner_text(), "Salvo localmente")
+        self.page.locator('#sidebar button[data-step="summary"]').click()
+        expect(self.page.locator('textarea[data-bind="analysis.medicoLegalQuestion"]')).to_have_value(value)
+        expect(self.page.locator("#workspace h1")).to_have_text("Objeto e contexto")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
