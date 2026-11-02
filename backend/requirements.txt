@@ -4,7 +4,7 @@
 #
 #    pip-compile --no-emit-index-url --output-file=requirements.txt --strip-extras requirements.in
 #
-alembic==1.20.0
+alembic==1.20.1
     # via -r requirements.in
 annotated-doc==0.0.5
     # via fastapi
@@ -35,7 +35,7 @@ dnspython==2.9.0
     # via email-validator
 email-validator==2.3.0
     # via -r requirements.in
-fastapi==0.143.2
+fastapi==0.162.0
     # via -r requirements.in
 h11==0.16.0
     # via
@@ -76,13 +76,13 @@ pydantic==2.14.0
     #   pydantic-settings
 pydantic-core==2.50.0
     # via pydantic
-pydantic-settings==2.16.0
+pydantic-settings==2.16.2
     # via -r requirements.in
 pygments==2.21.0
     # via pytest
 pyjwt==2.15.1
     # via -r requirements.in
-pytest==9.1.1
+pytest==9.2.0
     # via -r requirements.in
 python-dotenv==1.2.4
     # via
@@ -92,11 +92,11 @@ python-multipart==0.0.32
     # via -r requirements.in
 pyyaml==6.0.3
     # via uvicorn
-sqlalchemy==2.1.4
+sqlalchemy==2.1.6
     # via
     #   -r requirements.in
     #   alembic
-starlette==1.8.0
+starlette==1.10.0
     # via
     #   -r requirements.in
     #   fastapi
