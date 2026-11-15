@@ -19,7 +19,7 @@ argon2-cffi==25.1.0
     # via -r requirements.in
 argon2-cffi-bindings==26.1.0
     # via argon2-cffi
-certifi==2026.7.22
+certifi==2026.10.18
     # via
     #   httpcore
     #   httpx
